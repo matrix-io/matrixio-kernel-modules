@@ -20,10 +20,10 @@
 	{
 		target = <&spi0>;
 		__overlay__ {
-			status = "okay";
-
-			matrixio-core@0
-			{
+			#address-cells = <1>;
+			#size-cells = <0>;
+			status = "okay"; 
+			matrixio-core@0 {
 				compatible = "matrixio-core";
 				spi-max-frequency = <10000000>;
 				spi-cs-high = <1>;

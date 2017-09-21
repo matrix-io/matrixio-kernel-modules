@@ -2,6 +2,7 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/spi/spi.h>
+#include <linux/of.h>
 
 #include "matrixio-core.h"
 
@@ -78,7 +79,7 @@ int matrixio_hw_reg_write(void *context, unsigned int reg, unsigned int val)
 	return matrixio_spi_transfer(spi, send_buf, (uint8_t *)recv_buf, 4);
 }
 
-static int __init matrixio_core_probe(struct spi_device *spi)
+static int  matrixio_core_probe(struct spi_device *spi)
 {
 	printk(KERN_INFO "matrixio_core_probe ");
 	spi->mode = SPI_MODE_3;
@@ -94,15 +95,24 @@ static int __init matrixio_core_probe(struct spi_device *spi)
 	return 0;
 }
 
-static const struct spi_device_id core_id[] = {{"matrixio_core", 0}, {}};
+static const struct of_device_id matrixio_core_dt_ids[] = {
+	{ .compatible = "matrixio-core", .data = (void *) 1000 }, 
+	{}
+};
+
+MODULE_DEVICE_TABLE(of, matrixio_core_dt_ids);
 
 static struct spi_driver matrixio_core_driver = {
-    .driver = {.name = "matrixio_core",
-	       .bus = &spi_bus_type,
-	       .owner = THIS_MODULE},
-    .id_table = core_id,
-    .probe = matrixio_core_probe};
+    .driver = {
+	    .name           = "matrixio-core",
+	    .of_match_table = of_match_ptr(matrixio_core_dt_ids),
+    },
+    .probe = matrixio_core_probe
+};
 
+module_spi_driver(matrixio_core_driver);
+
+/*
 static int __init matrixio_core_init(void)
 {
 	int ret;
@@ -125,6 +135,7 @@ static void __exit matrixio_core_exit(void)
 
 module_init(matrixio_core_init);
 module_exit(matrixio_core_exit);
+*/
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Andres Calderon <andres.calderon@admobilize.com>");
