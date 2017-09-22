@@ -12,15 +12,6 @@ struct hardware_address {
 	uint16_t reg : 14;
 };
 
-#define MATRIX_RXTX_BUFFER_SIZE 4096
-
-/* driver data structure */
-struct matrixio_hw_data {
-	struct device *dev;
-	char rx_buf[MATRIX_RXTX_BUFFER_SIZE];
-	char tx_buf[MATRIX_RXTX_BUFFER_SIZE];
-};
-
 static int matrixio_spi_transfer(struct spi_device *spi, uint8_t *send_buffer,
 				 uint8_t *receive_buffer, unsigned int size)
 {
@@ -31,6 +22,7 @@ static int matrixio_spi_transfer(struct spi_device *spi, uint8_t *send_buffer,
 
 	spi_message_init(&msg);
 
+	transfer.tx_buf = send_buffer;
 	transfer.rx_buf = receive_buffer;
 	transfer.len = size;
 
@@ -112,30 +104,6 @@ static struct spi_driver matrixio_core_driver = {
 
 module_spi_driver(matrixio_core_driver);
 
-/*
-static int __init matrixio_core_init(void)
-{
-	int ret;
-
-	ret = spi_register_driver(&matrixio_core_driver);
-
-	printk(KERN_INFO "MATRIXIO core module loaded\n");
-
-	if (ret != 0)
-		pr_err("Failed to register matrixio core spi driver: %d\n",
-		       ret);
-
-	return 0;
-}
-
-static void __exit matrixio_core_exit(void)
-{
-	spi_unregister_driver(&matrixio_core_driver);
-}
-
-module_init(matrixio_core_init);
-module_exit(matrixio_core_exit);
-*/
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Andres Calderon <andres.calderon@admobilize.com>");
