@@ -73,22 +73,17 @@ int matrixio_hw_reg_write(void *context, unsigned int reg, unsigned int val)
 
 static int  matrixio_core_probe(struct spi_device *spi)
 {
-	printk(KERN_INFO "matrixio_core_probe ");
+	int i;
 	spi->mode = SPI_MODE_3;
 	spi->bits_per_word = 8;
-	spi_setup(spi);
-
-	printk(KERN_INFO "spi stup done....\n");
-
-	matrixio_hw_reg_write(spi, MATRIXIO_EVERLOOP_BASE, 122);
-	matrixio_hw_reg_write(spi, MATRIXIO_EVERLOOP_BASE + 10, 122);
-	matrixio_hw_reg_write(spi, MATRIXIO_EVERLOOP_BASE + 20, 122);
-
-	return 0;
+	return spi_setup(spi);
 }
 
 static const struct of_device_id matrixio_core_dt_ids[] = {
-	{ .compatible = "matrixio-core", .data = (void *) 1000 }, 
+	{ 
+		.compatible = "matrixio-core", 
+		.data = (void *) 1000 
+	}, 
 	{}
 };
 
@@ -103,7 +98,6 @@ static struct spi_driver matrixio_core_driver = {
 };
 
 module_spi_driver(matrixio_core_driver);
-
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Andres Calderon <andres.calderon@admobilize.com>");
