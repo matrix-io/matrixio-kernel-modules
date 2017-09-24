@@ -2,6 +2,7 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/spi/spi.h>
+#include <linux/regmap.h>
 #include <linux/of.h>
 
 #include "matrixio-core.h"
@@ -11,6 +12,15 @@ struct hardware_address {
 	uint8_t burst : 1;
 	uint16_t reg : 14;
 };
+
+struct regmap_config matrixio_regmap_config = {
+	.reg_bits  = 16,
+	.val_bits  = 16,
+	.reg_read  = matrixio_hw_reg_read,
+	.reg_write = matrixio_hw_reg_write,
+};
+
+
 
 static int matrixio_spi_transfer(struct spi_device *spi, uint8_t *send_buffer,
 				 uint8_t *receive_buffer, unsigned int size)
@@ -34,7 +44,8 @@ static int matrixio_spi_transfer(struct spi_device *spi, uint8_t *send_buffer,
 int matrixio_hw_reg_read(void *context, unsigned int reg, unsigned int *val)
 {
 	int ret;
-	struct spi_device *spi = context;
+
+	struct matrixio *matrixio = context;
 	struct hardware_address *hw_addr;
 	uint8_t send_buf[4];
 	uint16_t recv_buf[2];
@@ -44,7 +55,7 @@ int matrixio_hw_reg_read(void *context, unsigned int reg, unsigned int *val)
 	hw_addr->burst = 0;
 	hw_addr->readnwrite = 1;
 
-	ret = matrixio_spi_transfer(spi, send_buf, (uint8_t *)recv_buf, 4);
+	ret = matrixio_spi_transfer(matrixio->spi, send_buf, (uint8_t *)recv_buf, 4);
 
 	if (ret < 0) {
 		*val = 0;
@@ -57,7 +68,7 @@ int matrixio_hw_reg_read(void *context, unsigned int reg, unsigned int *val)
 
 int matrixio_hw_reg_write(void *context, unsigned int reg, unsigned int val)
 {
-	struct spi_device *spi = context;
+	struct matrixio *matrixio = context;
 
 	struct hardware_address *hw_addr;
 	uint8_t send_buf[4];
@@ -68,21 +79,46 @@ int matrixio_hw_reg_write(void *context, unsigned int reg, unsigned int val)
 	hw_addr->burst = 0;
 	hw_addr->readnwrite = 0;
 
-	return matrixio_spi_transfer(spi, send_buf, (uint8_t *)recv_buf, 4);
+	return matrixio_spi_transfer(matrixio->spi, send_buf, (uint8_t *)recv_buf, 4);
 }
 
 static int  matrixio_core_probe(struct spi_device *spi)
 {
-	int i;
+	int ret;
+	struct matrixio *matrixio;
+
 	spi->mode = SPI_MODE_3;
 	spi->bits_per_word = 8;
-	return spi_setup(spi);
+	ret = spi_setup(spi);
+
+	if(ret<0)
+		return ret;
+
+	matrixio = devm_kzalloc(&spi->dev, sizeof(struct matrixio), GFP_KERNEL);
+	
+	if(matrixio == NULL)
+		return -ENOMEM;
+
+	spi_set_drvdata(spi, matrixio);
+
+	matrixio->dev = &spi->dev;
+
+	matrixio->regmap = devm_regmap_init(&spi->dev, NULL, matrixio, &matrixio_regmap_config);
+
+	if(IS_ERR(matrixio->regmap)) {
+		ret = PTR_ERR(matrixio->regmap);
+		dev_err(matrixio->dev, "Failed to allocate register map: %d\n",
+					ret);
+		return ret;
+	}
+
+	return 0;
 }
 
 static const struct of_device_id matrixio_core_dt_ids[] = {
 	{ 
 		.compatible = "matrixio-core", 
-		.data = (void *) 1000 
+		.data = (void *) 0 
 	}, 
 	{}
 };

@@ -2,7 +2,7 @@ DTC=dtc
 
 obj-m += matrixio-core.o
 obj-m += matrixio-tty.o
-
+obj-m += matrixio-everloop.o
 
 all:	matrixio-core.dtbo
 	make -C /lib/modules/$(shell uname -r)/build M=$(PWD) modules
