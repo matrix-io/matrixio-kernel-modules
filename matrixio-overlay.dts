@@ -1,0 +1,49 @@
+/dts-v1/ ;
+/plugin/ ;
+
+/ {
+	compatible = "brcm,bcm2835", "brcm,bcm2708", "brcm,bcm2709";
+
+	fragment@0 {
+		target = <&spi0>;
+		__overlay__ { status = "okay"; };
+	};
+
+	fragment@1 {
+		target = <&spidev0>;
+		__overlay__ { status = "disabled"; };
+	};
+
+	fragment@2 {
+		target = <&spi0>;
+		__overlay__ {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			status = "okay"; 
+			matrixio-core@0 {
+				compatible = "matrixio-core";
+				spi-max-frequency = <10000000>;
+				spi-cs-high = <1>;
+				reg = <0>;
+			};
+		};
+	};
+
+        fragment@3 {
+                target-path = "/";
+                __overlay__ {
+                        matrixio-everloop@0 {
+                                compatible = "matrixio-everloop";
+                        };
+                };
+        };
+
+        fragment@4 {
+                target-path = "/";
+                __overlay__ {
+                        matrixio-uart@0 {
+                                compatible = "matrixio-uart";
+                        };
+                };
+        };
+};

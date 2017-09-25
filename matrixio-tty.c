@@ -58,6 +58,7 @@ static void matrixio_uart_start_tx(struct uart_port *port)
 {
 
 	while (1) {
+		/*
 		fpga_putc(port, port->state->xmit.buf[port->state->xmit.tail]);
 		printk("enviado: %c\n",
 		       port->state->xmit.buf[port->state->xmit.tail]);
@@ -67,6 +68,7 @@ static void matrixio_uart_start_tx(struct uart_port *port)
 		port->icount.tx++;
 		if (uart_circ_empty(&port->state->xmit))
 			break;
+			*/
 	}
 }
 static void matrixio_uart_stop_rx(struct uart_port *port) {}
@@ -112,7 +114,7 @@ static void matrixio_uart_set_termios(struct uart_port *port, struct ktermios *t
 {
 }
 
-static const char *fpga_type(struct uart_port *port) { return "ttyfpga"; }
+static const char *matrixio_uart_type(struct uart_port *port) { return "matrixio-uart"; }
 
 static int matrixio_uart_request_port(struct uart_port *port) { return 0; }
 
@@ -155,7 +157,8 @@ static struct uart_driver matrixio_uart_driver = {
     .minor = 0,
     .nr = 2,
 };
-static int __init matrixio_uart_init(void)
+
+static int matrixio_uart_probe(struct platform_device *pdev)
 {
 	/*	int ret;
 		unsigned int irq;
@@ -195,11 +198,14 @@ static int __init matrixio_uart_init(void)
 	return 0;
 }
 
-static void __exit matrixio_uart_exit(void)
+static int matrixio_uart_remove(struct platform_device *pdev)
 {
+	/*
 	uart_remove_one_port(&fpga_driver, &port);
 	uart_unregister_driver(&fpga_driver);
 	printk("%s: Modulo descargado...\n", driver_name);
+	*/
+	return 0;
 }
 
 static struct platform_driver matrixio_uart_platform_driver = {

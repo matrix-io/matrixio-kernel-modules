@@ -38,10 +38,13 @@ struct file_operations matrixio_everloop_file_operations = {
     .read = matrixio_everloop_read,
     .write = matrixio_everloop_write,
     .open = matrixio_everloop_open,
-    .release = matrixio_everloop_close};
+    .release = matrixio_everloop_close
+};
 
 static int matrixio_everloop_probe(struct platform_device *pdev)
 {
+	printk(KERN_INFO "everloop probe");
+
 	register_chrdev(301, "matrixio-everloop",
 			&matrixio_everloop_file_operations);
 	return 0;
