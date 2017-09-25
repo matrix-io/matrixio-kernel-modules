@@ -2,6 +2,7 @@
 #include <linux/init.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
+#include <linux/platform_device.h>
 #include <linux/serial.h>
 #include <linux/serial_core.h>
 
@@ -29,7 +30,7 @@ struct uart_port port;
 static const char driver_name[] = "ttyFPGA";
 static const char tty_dev_name[] = "ttyFPGA";
 
-static void fpga_putc(struct uart_port *port, unsigned char c)
+static void matrixio_uart_putc(struct uart_port *port, unsigned char c)
 {
 	// outb(c, FPGA_BASE);
 }
@@ -42,18 +43,18 @@ static irqreturn_t vuart_rxint(int irq, void *dev_id)
 	return IRQ_HANDLED;
 }
 
-static unsigned int fpga_tx_empty(struct uart_port *port) { return 1; }
+static unsigned int matrixio_uart_tx_empty(struct uart_port *port) { return 1; }
 
-static void fpga_set_mctrl(struct uart_port *port, unsigned int mctrl) {}
+static void matrixio_uart_set_mctrl(struct uart_port *port, unsigned int mctrl) {}
 
-static unsigned int fpga_get_mctrl(struct uart_port *port)
+static unsigned int matrixio_uart_get_mctrl(struct uart_port *port)
 {
 	return TIOCM_CAR | TIOCM_DSR | TIOCM_CTS;
 }
 
-static void fpga_stop_tx(struct uart_port *port) {}
+static void matrixio_uart_stop_tx(struct uart_port *port) {}
 
-static void fpga_start_tx(struct uart_port *port)
+static void matrixio_uart_start_tx(struct uart_port *port)
 {
 
 	while (1) {
@@ -68,13 +69,13 @@ static void fpga_start_tx(struct uart_port *port)
 			break;
 	}
 }
-static void fpga_stop_rx(struct uart_port *port) {}
+static void matrixio_uart_stop_rx(struct uart_port *port) {}
 
-static void fpga_enable_ms(struct uart_port *port) {}
+static void matrixio_uart_enable_ms(struct uart_port *port) {}
 
-static void fpga_break_ctl(struct uart_port *port, int break_state) {}
+static void matrixio_uart_break_ctl(struct uart_port *port, int break_state) {}
 
-static int fpga_startup(struct uart_port *port)
+static int matrixio_uart_startup(struct uart_port *port)
 {
 	/*
 		int res;
@@ -101,52 +102,52 @@ static int fpga_startup(struct uart_port *port)
 	*/
 	return 0;
 }
-static void fpga_shutdown(struct uart_port *port)
+static void matrixio_uart_shutdown(struct uart_port *port)
 {
 	free_irq(port->irq, (void *)port);
 }
 
-static void fpga_set_termios(struct uart_port *port, struct ktermios *termios,
+static void matrixio_uart_set_termios(struct uart_port *port, struct ktermios *termios,
 			     struct ktermios *old)
 {
 }
 
 static const char *fpga_type(struct uart_port *port) { return "ttyfpga"; }
 
-static int fpga_request_port(struct uart_port *port) { return 0; }
+static int matrixio_uart_request_port(struct uart_port *port) { return 0; }
 
-static void fpga_config_port(struct uart_port *port, int flags)
+static void matrixio_uart_config_port(struct uart_port *port, int flags)
 {
 	if (flags & UART_CONFIG_TYPE)
 		port->type = PORT_16550A;
 }
-static void fpga_release_port(struct uart_port *port) {}
+static void matrixio_uart_release_port(struct uart_port *port) {}
 
-static int fpga_verify_port(struct uart_port *port, struct serial_struct *ser)
+static int matrixio_uart_verify_port(struct uart_port *port, struct serial_struct *ser)
 {
 	return 0;
 }
 
-static struct uart_ops fpga_uart_ops = {
-    .tx_empty = fpga_tx_empty,
-    .set_mctrl = fpga_set_mctrl,
-    .get_mctrl = fpga_get_mctrl,
-    .stop_tx = fpga_stop_tx,
-    .start_tx = fpga_start_tx,
-    .stop_rx = fpga_stop_rx,
-    .enable_ms = fpga_enable_ms,
-    .break_ctl = fpga_break_ctl,
-    .startup = fpga_startup,
-    .shutdown = fpga_shutdown,
-    .set_termios = fpga_set_termios,
-    .type = fpga_type,
-    .release_port = fpga_release_port,
-    .request_port = fpga_request_port,
-    .config_port = fpga_config_port,
-    .verify_port = fpga_verify_port,
+static struct uart_ops matrixio_uart_uart_ops = {
+    .tx_empty = matrixio_uart_tx_empty,
+    .set_mctrl = matrixio_uart_set_mctrl,
+    .get_mctrl = matrixio_uart_get_mctrl,
+    .stop_tx = matrixio_uart_stop_tx,
+    .start_tx = matrixio_uart_start_tx,
+    .stop_rx = matrixio_uart_stop_rx,
+    .enable_ms = matrixio_uart_enable_ms,
+    .break_ctl = matrixio_uart_break_ctl,
+    .startup = matrixio_uart_startup,
+    .shutdown = matrixio_uart_shutdown,
+    .set_termios = matrixio_uart_set_termios,
+    .type = matrixio_uart_type,
+    .release_port = matrixio_uart_release_port,
+    .request_port = matrixio_uart_request_port,
+    .config_port = matrixio_uart_config_port,
+    .verify_port = matrixio_uart_verify_port,
 };
 
-static struct uart_driver fpga_driver = {
+static struct uart_driver matrixio_uart_driver = {
     .owner = THIS_MODULE,
     .driver_name = driver_name,
     .dev_name = tty_dev_name,
@@ -154,7 +155,7 @@ static struct uart_driver fpga_driver = {
     .minor = 0,
     .nr = 2,
 };
-static int __init fpga_init(void)
+static int __init matrixio_uart_init(void)
 {
 	/*	int ret;
 		unsigned int irq;
@@ -194,16 +195,25 @@ static int __init fpga_init(void)
 	return 0;
 }
 
-static void __exit fpga_exit(void)
+static void __exit matrixio_uart_exit(void)
 {
 	uart_remove_one_port(&fpga_driver, &port);
 	uart_unregister_driver(&fpga_driver);
 	printk("%s: Modulo descargado...\n", driver_name);
 }
 
-MODULE_AUTHOR("amasprillav <amasprillav@unal.edu.co>");
-MODULE_DESCRIPTION("Driver para UART tipo 8250 implementada en Verilog");
-MODULE_LICENSE("GPL");
+static struct platform_driver matrixio_uart_platform_driver = {
+	.driver = {
+		.name = "matrixio-uart",
+	},
+	.probe = matrixio_uart_probe,
+	.remove = matrixio_uart_remove,
+};
 
-module_init(fpga_init);
-module_exit(fpga_exit);
+module_platform_driver(matrixio_uart_platform_driver);
+
+MODULE_LICENSE("GPL");
+MODULE_AUTHOR("Andres Calderon <andres.calderon@admobilize.com>");
+MODULE_DESCRIPTION("MATRIXIO TTY module");
+
+
