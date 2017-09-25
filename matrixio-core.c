@@ -4,7 +4,7 @@
 #include <linux/spi/spi.h>
 #include <linux/regmap.h>
 #include <linux/of.h>
-
+#include <linux/mfd/core.h>
 #include "matrixio-core.h"
 
 struct hardware_address {
@@ -13,14 +13,23 @@ struct hardware_address {
 	uint16_t reg : 14;
 };
 
-struct regmap_config matrixio_regmap_config = {
+static struct regmap_config matrixio_regmap_config = {
 	.reg_bits  = 16,
 	.val_bits  = 16,
 	.reg_read  = matrixio_hw_reg_read,
 	.reg_write = matrixio_hw_reg_write,
 };
 
+enum matrixio_dev_idx {
+	MATRIXIO_EVERLOOP = 0,
+};
 
+static struct mfd_cell matrixio_devs[] = {
+	[MATRIXIO_EVERLOOP] = {
+		.name = "matrixio-everloop",
+		.of_compatible = "matrixio-everloop",
+	},	
+};
 
 static int matrixio_spi_transfer(struct spi_device *spi, uint8_t *send_buffer,
 				 uint8_t *receive_buffer, unsigned int size)
@@ -102,6 +111,7 @@ static int  matrixio_core_probe(struct spi_device *spi)
 	spi_set_drvdata(spi, matrixio);
 
 	matrixio->dev = &spi->dev;
+	matrixio->spi = spi;
 
 	matrixio->regmap = devm_regmap_init(&spi->dev, NULL, matrixio, &matrixio_regmap_config);
 
@@ -112,7 +122,15 @@ static int  matrixio_core_probe(struct spi_device *spi)
 		return ret;
 	}
 
-	return 0;
+	ret = mfd_add_devices(&spi->dev, -1, matrixio_devs,
+			ARRAY_SIZE(matrixio_devs), NULL,
+			0, NULL);
+	if(ret){
+		dev_err(matrixio->dev, "Failed to add child devices: %d\n",
+					ret);
+	}
+
+	return ret;
 }
 
 static const struct of_device_id matrixio_core_dt_ids[] = {
