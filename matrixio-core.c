@@ -69,7 +69,7 @@ int matrixio_hw_reg_write(void *context, unsigned int reg, unsigned int val)
 	struct matrixio *matrixio = context;
 
 	struct hardware_address *hw_addr;
-	uint8_t send_buf[4];
+	uint16_t send_buf[2];
 	uint8_t recv_buf[4];
 
 	hw_addr = (struct hardware_address *)send_buf;
@@ -77,7 +77,9 @@ int matrixio_hw_reg_write(void *context, unsigned int reg, unsigned int val)
 	hw_addr->burst = 0;
 	hw_addr->readnwrite = 0;
 
-	return matrixio_spi_transfer(matrixio->spi, send_buf, (uint8_t *)recv_buf, 4);
+	send_buf[1] = val;
+
+	return matrixio_spi_transfer(matrixio->spi, (uint8_t *)send_buf, (uint8_t *)recv_buf, 4);
 }
 
 static int matrixio_register_devices(struct matrixio *matrixio)

@@ -6,6 +6,9 @@
 
 #include "matrixio-core.h"
 
+static struct matrixio* matrixio;
+
+
 ssize_t matrixio_everloop_read(struct file *pfile, char __user *buffer,
 				size_t length, loff_t *offset)
 {
@@ -16,9 +19,13 @@ ssize_t matrixio_everloop_write(struct file *pfile, const char __user *buffer,
 				 size_t length, loff_t *offset)
 {
 	int i;
-	for(i=0; i<length; i++)
-		printk(KERN_INFO "0x%20x", buffer[i]);
+	uint16_t value;
+	for(i=0; i<length; i=i+2)
+	{
+		value= buffer[i+1] | buffer[i]<<8;
+		regmap_write(matrixio->regmap, MATRIXIO_EVERLOOP_BASE+(i>>1), value);
 
+	}
 	printk(KERN_INFO "l=%d o=%d", length, *offset);
 	return length;
 }
@@ -48,7 +55,7 @@ static int matrixio_everloop_probe(struct platform_device *pdev)
 
 	printk(KERN_INFO ": %s",  pdev->name );
 
-	struct matrixio* matrixio = dev_get_drvdata(pdev->dev.parent);
+	matrixio = dev_get_drvdata(pdev->dev.parent);
 
 	printk(KERN_INFO ": %x", matrixio->stamp);
 
