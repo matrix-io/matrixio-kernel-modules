@@ -43,7 +43,14 @@ struct file_operations matrixio_everloop_file_operations = {
 
 static int matrixio_everloop_probe(struct platform_device *pdev)
 {
+
 	printk(KERN_INFO "everloop probe");
+
+	printk(KERN_INFO ": %s",  pdev->name );
+
+	struct matrixio* matrixio = dev_get_drvdata(pdev->dev.parent);
+
+	printk(KERN_INFO ": %x", matrixio->stamp);
 
 	register_chrdev(301, "matrixio-everloop",
 			&matrixio_everloop_file_operations);
@@ -52,6 +59,10 @@ static int matrixio_everloop_probe(struct platform_device *pdev)
 
 static int  matrixio_everloop_remove(struct platform_device *pdev)
 {
+	struct device *dev = &pdev->dev;
+	printk( KERN_INFO " 1: %s", pdev->name); 
+
+
 	unregister_chrdev(301, "matrixio-everloop");
 	return 0;
 }

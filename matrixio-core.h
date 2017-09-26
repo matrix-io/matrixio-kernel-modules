@@ -22,13 +22,18 @@
 #define MATRIXIO_MICROPHONE_ARRAY_BASE 0x1800
 #define MATRIXIO_EVERLOOP_BASE 0x2000
 
+
 struct matrixio {
 	struct device *dev;
 	struct spi_device *spi;
 	struct regmap *regmap;
 	struct mutex lock;
+	int stamp;
 };
 
+struct matrixio_platform_data {
+	int (*platform_init)(struct device *dev);
+};
 
 int matrixio_hw_reg_read(void *context, unsigned int reg, unsigned int *val);
 int matrixio_hw_reg_write(void *context, unsigned int reg, unsigned int val);

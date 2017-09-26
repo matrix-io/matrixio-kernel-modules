@@ -20,17 +20,6 @@ static struct regmap_config matrixio_regmap_config = {
 	.reg_write = matrixio_hw_reg_write,
 };
 
-enum matrixio_dev_idx {
-	MATRIXIO_EVERLOOP = 0,
-};
-
-static struct mfd_cell matrixio_devs[] = {
-	[MATRIXIO_EVERLOOP] = {
-		.name = "matrixio-everloop",
-		.of_compatible = "matrixio-everloop",
-	},	
-};
-
 static int matrixio_spi_transfer(struct spi_device *spi, uint8_t *send_buffer,
 				 uint8_t *receive_buffer, unsigned int size)
 {
@@ -91,7 +80,51 @@ int matrixio_hw_reg_write(void *context, unsigned int reg, unsigned int val)
 	return matrixio_spi_transfer(matrixio->spi, send_buf, (uint8_t *)recv_buf, 4);
 }
 
-static int  matrixio_core_probe(struct spi_device *spi)
+static int matrixio_register_devices(struct matrixio *matrixio)
+{
+	const struct mfd_cell cells[] = {
+		{
+               	 .name = "matrixio-everloop",
+                 .of_compatible = "matrixio-everloop",
+		 .platform_data = matrixio,
+		 .pdata_size = sizeof(*matrixio),
+		},
+        };
+
+	return devm_mfd_add_devices(matrixio->dev, -1, cells, ARRAY_SIZE(cells), NULL, 0, NULL);
+}
+
+
+static int matrixio_init(struct matrixio *matrixio,
+			 struct matrixio_platform_data *pdata)
+{
+	int ret;
+
+	dev_set_drvdata(matrixio->dev, matrixio);
+
+	/* TODO: Check that this is actually a MATRIX FPGA */
+
+	ret = matrixio_register_devices(matrixio);
+
+	if (ret != 0) {
+		dev_err(matrixio->dev, "Failed to register MATRIX FPGA \n");
+		return ret;
+	}
+
+	if(pdata && pdata->platform_init) {
+		ret = pdata->platform_init(matrixio->dev);
+		if(ret != 0) {
+			dev_err(matrixio->dev, "Platform init failed: %d\n",
+						ret);
+			return ret;
+		}
+	} else
+		dev_warn(matrixio->dev, "No platform initialization provided\n");
+
+	return 0;
+}
+
+static int matrixio_core_probe(struct spi_device *spi)
 {
 	int ret;
 	struct matrixio *matrixio;
@@ -108,10 +141,9 @@ static int  matrixio_core_probe(struct spi_device *spi)
 	if(matrixio == NULL)
 		return -ENOMEM;
 
-	spi_set_drvdata(spi, matrixio);
-
 	matrixio->dev = &spi->dev;
 	matrixio->spi = spi;
+	matrixio->stamp = 0x1221;
 
 	matrixio->regmap = devm_regmap_init(&spi->dev, NULL, matrixio, &matrixio_regmap_config);
 
@@ -122,15 +154,7 @@ static int  matrixio_core_probe(struct spi_device *spi)
 		return ret;
 	}
 
-	ret = mfd_add_devices(&spi->dev, -1, matrixio_devs,
-			ARRAY_SIZE(matrixio_devs), NULL,
-			0, NULL);
-	if(ret){
-		dev_err(matrixio->dev, "Failed to add child devices: %d\n",
-					ret);
-	}
-
-	return ret;
+	return matrixio_init(matrixio, dev_get_platdata(&spi->dev));
 }
 
 static const struct of_device_id matrixio_core_dt_ids[] = {
