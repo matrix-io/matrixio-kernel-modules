@@ -1,5 +1,6 @@
 /*
- * matrix-core.h -- MATRIX core functions to talk with the FPGA internal bus
+ * matrix-core.h -- MATRIX core functions to talk with the FPGA internal 
+ *                  bus
  *
  * Copyright 2017 MATRIX Labs
  *
