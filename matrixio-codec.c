@@ -30,6 +30,8 @@ static struct matrixio* matrixio;
 
 static int matrixio_codec_hw_params(struct snd_pcm_substream *substream, struct snd_pcm_hw_params *params, struct snd_soc_dai *dai) {
 
+	printk(KERN_INFO "::rate %d", params_rate(params));
+
 	return 0;
 }
 
@@ -98,6 +100,8 @@ static  struct snd_soc_dai_driver matrixio_dai_driver = {
 static int matrixio_codec_probe(struct platform_device *pdev)
 {
 	int ret;
+	printk(KERN_INFO "codec probe");
+
 	matrixio = dev_get_drvdata(pdev->dev.parent);
 
 	ret = snd_soc_register_codec(matrixio->dev, 
@@ -108,10 +112,11 @@ static int matrixio_codec_probe(struct platform_device *pdev)
 		dev_err(matrixio->dev, "Failed to register MATRIXIO codec: %d\n", ret);
 	}
 
+	printk(KERN_INFO "MATRIXIO codec registered\n");
 	return ret;
 }
 
-static int  matrixio_codec_remove(struct platform_device *pdev)
+static int matrixio_codec_remove(struct platform_device *pdev)
 {
 	return 0;
 }

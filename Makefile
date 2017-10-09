@@ -5,7 +5,6 @@ obj-m += matrixio-tty.o
 obj-m += matrixio-everloop.o
 obj-m += matrixio-codec.o
 
-
 all:	matrixio.dtbo
 	make -C /lib/modules/$(shell uname -r)/build M=$(PWD) modules
 

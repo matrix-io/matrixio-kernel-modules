@@ -50,8 +50,8 @@
         fragment@5 {
                 target = <&sound>;
                 __overlay__ {
-                        matrixio-uart@0 {
-                                compatible = "matrixio-uart";
+                        matrixio-codec@0 {
+                                compatible = "matrixio-codec";
                         };
                 };
         };
