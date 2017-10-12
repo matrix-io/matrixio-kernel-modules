@@ -1,7 +1,7 @@
 DTC=dtc
 
 obj-m += matrixio-core.o
-obj-m += matrixio-tty.o
+obj-m += matrixio-uart.o
 obj-m += matrixio-everloop.o
 obj-m += matrixio-codec.o
 
