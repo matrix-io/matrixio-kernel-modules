@@ -34,10 +34,9 @@
 #include <sound/pcm_params.h>
 #include <sound/soc.h>
 #include <sound/jack.h>
-#include <sound/rawmidi.h>
 #include <sound/asequencer.h>
 #include <sound/control.h>
-
+/*
 static int pisnd_spi_init(struct device *dev);
 static void pisnd_spi_uninit(void);
 
@@ -50,10 +49,7 @@ static void pisnd_spi_set_callback(pisnd_spi_recv_cb cb, void *data);
 static const char *pisnd_spi_get_serial(void);
 static const char *pisnd_spi_get_id(void);
 static const char *pisnd_spi_get_version(void);
-
-static int pisnd_midi_init(struct snd_card *card);
-static void pisnd_midi_uninit(void);
-
+*/
 #define PISOUND_LOG_PREFIX "pisound: "
 
 #ifdef DEBUG
@@ -65,149 +61,11 @@ static void pisnd_midi_uninit(void);
 #define printe(...) pr_err(PISOUND_LOG_PREFIX __VA_ARGS__)
 #define printi(...) pr_info(PISOUND_LOG_PREFIX __VA_ARGS__)
 
-static int pisnd_output_open(struct snd_rawmidi_substream *substream)
-{
-	return 0;
-}
 
-static int pisnd_output_close(struct snd_rawmidi_substream *substream)
-{
-	return 0;
-}
 
-static void pisnd_output_trigger(
-	struct snd_rawmidi_substream *substream,
-	int up
-	)
-{
-	uint8_t data;
-
-	if (!up)
-		return;
-
-	while (snd_rawmidi_transmit_peek(substream, &data, 1)) {
-		pisnd_spi_send(data);
-		snd_rawmidi_transmit_ack(substream, 1);
-	}
-}
-
-static void pisnd_output_drain(struct snd_rawmidi_substream *substream)
-{
-	uint8_t data;
-
-	while (snd_rawmidi_transmit_peek(substream, &data, 1)) {
-		pisnd_spi_send(data);
-
-		snd_rawmidi_transmit_ack(substream, 1);
-	}
-}
-
-static int pisnd_input_open(struct snd_rawmidi_substream *substream)
-{
-	return 0;
-}
-
-static int pisnd_input_close(struct snd_rawmidi_substream *substream)
-{
-	return 0;
-}
-
-static void pisnd_midi_recv_callback(void *substream)
-{
-	uint8_t data[128];
-	uint8_t n = 0;
-
-	while ((n = pisnd_spi_recv(data, sizeof(data)))) {
-		int res = snd_rawmidi_receive(substream, data, n);
-		(void)res;
-		printd("midi recv 0x%02x, res = %d\n", data, res);
-	}
-}
-
-static void pisnd_input_trigger(struct snd_rawmidi_substream *substream, int up)
-{
-	if (up) {
-		pisnd_spi_set_callback(pisnd_midi_recv_callback, substream);
-		pisnd_midi_recv_callback(substream);
-	} else {
-		pisnd_spi_set_callback(NULL, NULL);
-	}
-}
-
-static struct snd_rawmidi *g_rmidi;
-
-static struct snd_rawmidi_ops pisnd_output_ops = {
-	.open = pisnd_output_open,
-	.close = pisnd_output_close,
-	.trigger = pisnd_output_trigger,
-	.drain = pisnd_output_drain,
-};
-
-static struct snd_rawmidi_ops pisnd_input_ops = {
-	.open = pisnd_input_open,
-	.close = pisnd_input_close,
-	.trigger = pisnd_input_trigger,
-};
-
-static void pisnd_get_port_info(
-	struct snd_rawmidi *rmidi,
-	int number,
-	struct snd_seq_port_info *seq_port_info
-	)
-{
-	seq_port_info->type =
-		SNDRV_SEQ_PORT_TYPE_MIDI_GENERIC |
-		SNDRV_SEQ_PORT_TYPE_HARDWARE |
-		SNDRV_SEQ_PORT_TYPE_PORT;
-	seq_port_info->midi_voices = 0;
-}
-
-static struct snd_rawmidi_global_ops pisnd_global_ops = {
-	.get_port_info = pisnd_get_port_info,
-};
-
-static int pisnd_midi_init(struct snd_card *card)
-{
-	int err = snd_rawmidi_new(card, "pisound MIDI", 0, 1, 1, &g_rmidi);
-
-	if (err < 0) {
-		printe("snd_rawmidi_new failed: %d\n", err);
-		return err;
-	}
-
-	strcpy(g_rmidi->name, "pisound MIDI ");
-	strcat(g_rmidi->name, pisnd_spi_get_serial());
-
-	g_rmidi->info_flags =
-		SNDRV_RAWMIDI_INFO_OUTPUT |
-		SNDRV_RAWMIDI_INFO_INPUT |
-		SNDRV_RAWMIDI_INFO_DUPLEX;
-
-	g_rmidi->ops = &pisnd_global_ops;
-
-	g_rmidi->private_data = (void *)0;
-
-	snd_rawmidi_set_ops(
-		g_rmidi,
-		SNDRV_RAWMIDI_STREAM_OUTPUT,
-		&pisnd_output_ops
-		);
-
-	snd_rawmidi_set_ops(
-		g_rmidi,
-		SNDRV_RAWMIDI_STREAM_INPUT,
-		&pisnd_input_ops
-		);
-
-	return 0;
-}
-
-static void pisnd_midi_uninit(void)
-{
-}
 
 static void *g_recvData;
-static pisnd_spi_recv_cb g_recvCallback;
+//static pisnd_spi_recv_cb g_recvCallback;
 
 #define FIFO_SIZE 512
 
@@ -231,7 +89,7 @@ static struct work_struct pisnd_work_process;
 
 static void pisnd_work_handler(struct work_struct *work);
 
-static uint16_t spi_transfer16(uint16_t val);
+//static uint16_t spi_transfer16(uint16_t val);
 
 static int pisnd_init_workqueues(void)
 {
@@ -248,18 +106,19 @@ static void pisnd_uninit_workqueues(void)
 
 	pisnd_workqueue = NULL;
 }
-
+/*
 static bool pisnd_spi_has_more(void)
 {
 	return gpiod_get_value(data_available);
 }
-
+*/
 enum task_e {
 	TASK_PROCESS = 0,
 };
 
 static void pisnd_schedule_process(enum task_e task)
 {
+	/*
 	if (pisnd_spi_device != NULL &&
 		pisnd_workqueue != NULL &&
 		!work_pending(&pisnd_work_process)
@@ -267,22 +126,24 @@ static void pisnd_schedule_process(enum task_e task)
 		printd("schedule: has more = %d\n", pisnd_spi_has_more());
 		if (task == TASK_PROCESS)
 			queue_work(pisnd_workqueue, &pisnd_work_process);
-	}
+	}*/
 }
 
 static irqreturn_t data_available_interrupt_handler(int irq, void *dev_id)
 {
+	/*
 	if (irq == gpiod_to_irq(data_available) && pisnd_spi_has_more()) {
 		printd("schedule from irq\n");
 		pisnd_schedule_process(TASK_PROCESS);
 	}
-
+*/
 	return IRQ_HANDLED;
 }
 
 static DEFINE_SPINLOCK(spilock);
 static unsigned long spilockflags;
 
+/*
 static uint16_t spi_transfer16(uint16_t val)
 {
 	int err;
@@ -385,13 +246,14 @@ static struct spi_device *pisnd_spi_find_device(void)
 	else
 		return NULL;
 }
+*/
 
 static void pisnd_work_handler(struct work_struct *work)
 {
 	uint16_t rx;
 	uint16_t tx;
 	uint8_t val;
-
+/*
 	if (work == &pisnd_work_process) {
 		if (pisnd_spi_device == NULL)
 			return;
@@ -425,8 +287,10 @@ static void pisnd_work_handler(struct work_struct *work)
 		if (!kfifo_is_empty(&spi_fifo_in) && g_recvCallback)
 			g_recvCallback(g_recvData);
 	}
+*/
 }
 
+#if 0
 static int pisnd_spi_gpio_init(struct device *dev)
 {
 	spi_reset = gpiod_get_index(dev, "reset", 1, GPIOD_ASIS);
@@ -669,6 +533,7 @@ static const char *pisnd_spi_get_version(void)
 
 	return "";
 }
+#endif
 
 static const struct of_device_id pisound_of_match[] = {
 	{ .compatible = "blokaslabs,pisound", },
@@ -872,12 +737,7 @@ static struct snd_soc_dai_link pisnd_dai[] = {
 
 static int pisnd_card_probe(struct snd_soc_card *card)
 {
-	int err = pisnd_midi_init(card->snd_card);
-
-	if (err < 0) {
-		printe("pisnd_midi_init failed: %d\n", err);
-		return err;
-	}
+	int err;
 
 	err = pisnd_ctl_init(card->snd_card);
 	if (err < 0) {
@@ -891,7 +751,6 @@ static int pisnd_card_probe(struct snd_soc_card *card)
 static int pisnd_card_remove(struct snd_soc_card *card)
 {
 	pisnd_ctl_uninit();
-	pisnd_midi_uninit();
 	return 0;
 }
 
@@ -961,7 +820,7 @@ static ssize_t pisnd_serial_show(
 	char *buf
 	)
 {
-	return sprintf(buf, "%s\n", pisnd_spi_get_serial());
+	return sprintf(buf, "%s\n", "serial");
 }
 
 static ssize_t pisnd_id_show(
@@ -970,7 +829,7 @@ static ssize_t pisnd_id_show(
 	char *buf
 	)
 {
-	return sprintf(buf, "%s\n", pisnd_spi_get_id());
+	return sprintf(buf, "%s\n", "ïd");
 }
 
 static ssize_t pisnd_version_show(
@@ -979,7 +838,7 @@ static ssize_t pisnd_version_show(
 	char *buf
 	)
 {
-	return sprintf(buf, "%s\n", pisnd_spi_get_version());
+	return sprintf(buf, "%s\n", "version");
 }
 
 static ssize_t pisnd_led_store(
@@ -991,12 +850,12 @@ static ssize_t pisnd_led_store(
 {
 	uint32_t timeout;
 	int err;
-
+/*
 	err = kstrtou32(buf, 10, &timeout);
 
 	if (err == 0 && timeout <= 255)
 		pisnd_spi_flash_leds(timeout);
-
+i*/
 	return length;
 }
 
@@ -1024,26 +883,26 @@ static int pisnd_probe(struct platform_device *pdev)
 	int ret = 0;
 	int i;
 
-	ret = pisnd_spi_init(&pdev->dev);
+//	ret = pisnd_spi_init(&pdev->dev);
 	if (ret < 0) {
 		printe("pisnd_spi_init failed: %d\n", ret);
 		return ret;
 	}
-
+/*
 	printi("Detected pisound card:\n");
 	printi("\tSerial:  %s\n", pisnd_spi_get_serial());
 	printi("\tVersion: %s\n", pisnd_spi_get_version());
 	printi("\tId:      %s\n", pisnd_spi_get_id());
-
+*/
 	pisnd_kobj = kobject_create_and_add("pisound", kernel_kobj);
 	if (!pisnd_kobj) {
-		pisnd_spi_uninit();
+		//pisnd_spi_uninit();
 		return -ENOMEM;
 	}
 
 	ret = sysfs_create_group(pisnd_kobj, &attr_group);
 	if (ret < 0) {
-		pisnd_spi_uninit();
+		//pisnd_spi_uninit();
 		kobject_put(pisnd_kobj);
 		return -ENOMEM;
 	}
@@ -1068,7 +927,7 @@ static int pisnd_probe(struct platform_device *pdev)
 				dai->cpu_of_node = i2s_node;
 				dai->platform_name = NULL;
 				dai->platform_of_node = i2s_node;
-				dai->stream_name = pisnd_spi_get_serial();
+				//dai->stream_name = pisnd_spi_get_serial();
 			}
 		}
 	}
@@ -1080,7 +939,7 @@ static int pisnd_probe(struct platform_device *pdev)
 			printe("snd_soc_register_card() failed: %d\n", ret);
 		pisnd_uninit_gpio();
 		kobject_put(pisnd_kobj);
-		pisnd_spi_uninit();
+		//pisnd_spi_uninit();
 	}
 
 	return ret;
@@ -1095,7 +954,7 @@ static int pisnd_remove(struct platform_device *pdev)
 		pisnd_kobj = NULL;
 	}
 
-	pisnd_spi_uninit();
+	//pisnd_spi_uninit();
 
 	/* Turn off */
 	gpiod_set_value(reset, false);
@@ -1108,7 +967,7 @@ MODULE_DEVICE_TABLE(of, pisound_of_match);
 
 static struct platform_driver pisnd_driver = {
 	.driver = {
-		.name           = "snd-rpi-pisound",
+		.name           = "snd-matrixio-audio",
 		.owner          = THIS_MODULE,
 		.of_match_table = pisound_of_match,
 	},

@@ -4,6 +4,7 @@ obj-m += matrixio-core.o
 obj-m += matrixio-tty.o
 obj-m += matrixio-everloop.o
 obj-m += matrixio-codec.o
+obj-m += matrixio-audio.o
 
 all:	matrixio.dtbo
 	make -C /lib/modules/$(shell uname -r)/build M=$(PWD) modules

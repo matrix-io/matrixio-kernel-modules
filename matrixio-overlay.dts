@@ -57,4 +57,49 @@
                         };
                 };
         };
+
+	fragment@6 {
+		target-path = "/";
+		__overlay__ {
+			pcm5102a-codec {
+				#sound-dai-cells = <0>;
+				compatible = "ti,pcm5102a";
+				status = "okay";
+			};
+		};
+	};
+
+	fragment@7 {
+		target = <&sound>;
+		__overlay__ {
+			compatible = "blokaslabs,pisound";
+			i2s-controller = <&i2s>;
+			status = "okay";
+
+			pinctrl-0 = <&pisound_button_pins>;
+		};
+	};
+
+	fragment@8 {
+		target = <&gpio>;
+		__overlay__ {
+			pinctrl-names = "default";
+			pinctrl-0 = <&pisound_button_pins>;
+
+			pisound_button_pins: pisound_button_pins {
+				brcm,pins = <17>;
+				brcm,function = <0>; // Input
+				brcm,pull = <2>; // Pull-Up
+			};
+		};
+	};
+
+	fragment@9 {
+		target = <&i2s>;
+		__overlay__ {
+			status = "okay";
+		};
+	};
+
+
 };
