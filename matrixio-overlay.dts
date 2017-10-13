@@ -43,6 +43,9 @@
                 __overlay__ {
                         matrixio-uart@0 {
                                 compatible = "matrixio-uart";
+				interrupts = <5 1>; /* low-to-high edge triggered */
+				interrupt-parent = <&gpio>;
+				irq-gpio = <&gpio 5 0>;
 				status = "okay";
                         };
                 };

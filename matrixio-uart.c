@@ -3,6 +3,7 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/of.h>
+#include <linux/of_gpio.h>
 #include <linux/of_address.h>
 #include <linux/of_device.h>
 #include <linux/of_platform.h>
@@ -185,6 +186,8 @@ static struct uart_driver matrixio_uart_driver = {
 static int matrixio_uart_probe(struct platform_device *pdev)
 {
 	int ret;
+	struct device *dev = &pdev->dev;
+	int irq;
 
 	matrixio = dev_get_drvdata(pdev->dev.parent);
 
@@ -211,7 +214,10 @@ static int matrixio_uart_probe(struct platform_device *pdev)
 		dev_err(matrixio->dev, "Failed to add port: %d\n", ret);
 		return ret;
 	}
-	printk(KERN_INFO "MATRIX Creator TTY has been loaded");
+
+	irq = of_get_named_gpio(dev->of_node,  "irq-gpio", 0);
+
+	printk(KERN_INFO "MATRIX Creator TTY has been loaded (IRQ=%d)",irq);
 
 	return ret;
 }
