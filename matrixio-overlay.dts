@@ -43,6 +43,7 @@
                 __overlay__ {
                         matrixio-uart@0 {
                                 compatible = "matrixio-uart";
+				status = "okay";
                         };
                 };
         };
