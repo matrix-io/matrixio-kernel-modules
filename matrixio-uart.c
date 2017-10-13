@@ -2,47 +2,21 @@
 #include <linux/init.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
+#include <linux/of.h>
+#include <linux/of_address.h>
+#include <linux/of_device.h>
+#include <linux/of_platform.h>
 #include <linux/platform_device.h>
 #include <linux/serial.h>
 #include <linux/serial_core.h>
-#include <linux/of.h>
-#include <linux/of_address.h>
-#include <linux/of_device.h>
-#include <linux/of_platform.h>
-
-
-#include <linux/of.h>
-#include <linux/of_address.h>
-#include <linux/of_device.h>
-#include <linux/of_platform.h>
 
 #include "matrixio-core.h"
 
-
-#define FPGA_BASE 0xB5000000
-/*Registros de la UART*/
-#define RHR 0x00
-#define THR 0x00
-#define IER 0x01
-#define FCR 0x02
-#define ISR 0x02
-#define LCR 0x03
-#define MCR 0x04
-#define LSR 0x05
-#define MSR 0x06
-#define SCR 0x07
-/*Registros para la velocidad de transmisión*/
-#define DIVLSB 0x00 // latch de las cifras más significativas
-#define DIVMSB 0x01 // latch de las cifras menos significativas
-
-#define FPGA_IRQ_PIN JZ_GPIO_PORTC(15)
-#define CS2_PIN JZ_GPIO_PORTB(26)
-static struct matrixio* matrixio;
-
+static struct matrixio *matrixio;
 static struct uart_port port;
 
-static const char driver_name[] = "ttyCREATOR";
-static const char tty_dev_name[] = "ttyCREATOR";
+static const char driver_name[] = "ttyMATRIX";
+static const char tty_dev_name[] = "ttyMATRIX";
 
 static void matrixio_uart_putc(struct uart_port *port, unsigned char c)
 {
@@ -61,12 +35,15 @@ static irqreturn_t uart_rxint(int irq, void *dev_id)
 	return IRQ_HANDLED;
 }
 
-static unsigned int matrixio_uart_tx_empty(struct uart_port *port) { 
+static unsigned int matrixio_uart_tx_empty(struct uart_port *port)
+{
 	printk(KERN_INFO "MATRIXIO UART Empty\n");
-	return 1; }
+	return 1;
+}
 
-static void matrixio_uart_set_mctrl(struct uart_port *port, unsigned int mctrl) {
-printk(KERN_INFO "MATRIXIO UART SEt mctrl\n");
+static void matrixio_uart_set_mctrl(struct uart_port *port, unsigned int mctrl)
+{
+	printk(KERN_INFO "MATRIXIO UART SEt mctrl\n");
 }
 
 static unsigned int matrixio_uart_get_mctrl(struct uart_port *port)
@@ -79,11 +56,12 @@ static void matrixio_uart_stop_tx(struct uart_port *port) {}
 
 static void matrixio_uart_start_tx(struct uart_port *port)
 {
-        printk(KERN_INFO "MATRIXIO UART start TX\n");
-       
+	printk(KERN_INFO "MATRIXIO UART start TX\n");
+
 	while (1) {
-		
-	//	fpga_putc(port, port->state->xmit.buf[port->state->xmit.tail]);
+
+		//	fpga_putc(port,
+		//port->state->xmit.buf[port->state->xmit.tail]);
 		printk("enviado: %c\n",
 		       port->state->xmit.buf[port->state->xmit.tail]);
 		// Ajustar la cola de la UART Al buffer
@@ -103,8 +81,7 @@ static void matrixio_uart_break_ctl(struct uart_port *port, int break_state) {}
 static int matrixio_uart_startup(struct uart_port *port)
 {
 
-
-               	printk(KERN_INFO "MATRIXIO UART port open\n");
+	printk(KERN_INFO "MATRIXIO UART port open\n");
 
 	/*
 		int res;
@@ -135,155 +112,126 @@ static void matrixio_uart_shutdown(struct uart_port *port)
 {
 	printk(KERN_INFO "MATRIXIO UART Close port\n");
 
-	//free_irq(port->irq, (void *)port);
+	// free_irq(port->irq, (void *)port);
 }
 
-static void matrixio_uart_set_termios(struct uart_port *port, struct ktermios *termios,
-			     struct ktermios *old)
+static void matrixio_uart_set_termios(struct uart_port *port,
+				      struct ktermios *termios,
+				      struct ktermios *old)
 {
 	printk(KERN_INFO "MATRIXIO UART Termios\n");
-
 }
 
-static const char *matrixio_uart_type(struct uart_port *port) { 
-	
-	printk(KERN_INFO "MATRIXIO UART Type\n");
-	return "matrixio-uart"; }
+static const char *matrixio_uart_type(struct uart_port *port)
+{
 
-static int matrixio_uart_request_port(struct uart_port *port) { 
-	
+	printk(KERN_INFO "MATRIXIO UART Type\n");
+	return "matrixio-uart";
+}
+
+static int matrixio_uart_request_port(struct uart_port *port)
+{
+
 	printk(KERN_INFO "MATRIXIO UART Request\n");
-	return 0; }
+	return 0;
+}
 
 static void matrixio_uart_config_port(struct uart_port *port, int flags)
 {
 	printk(KERN_INFO "MATRIXIO UART Config port\n");
 
-	//if (flags & UART_CONFIG_TYPE)
-//		port->type = PORT_16550A;
+	// if (flags & UART_CONFIG_TYPE)
+	//		port->type = PORT_16550A;
 }
-static void matrixio_uart_release_port(struct uart_port *port) {
-
-printk(KERN_INFO "MATRIXIO UART Realse\n");
-}
-
-static int matrixio_uart_verify_port(struct uart_port *port, struct serial_struct *ser)
+static void matrixio_uart_release_port(struct uart_port *port)
 {
-printk(KERN_INFO "MATRIXIO UART verify port\n");
+	printk(KERN_INFO "MATRIXIO UART Realse\n");
+}
+
+static int matrixio_uart_verify_port(struct uart_port *port,
+				     struct serial_struct *ser)
+{
+	printk(KERN_INFO "MATRIXIO UART verify port\n");
 	return 0;
 }
 
-static struct uart_ops matrixio_uart_ops = {
-    .tx_empty = matrixio_uart_tx_empty,
-    .set_mctrl = matrixio_uart_set_mctrl,
-    .get_mctrl = matrixio_uart_get_mctrl,
-    .stop_tx = matrixio_uart_stop_tx,
-    .start_tx = matrixio_uart_start_tx,
-    .stop_rx = matrixio_uart_stop_rx,
-    .enable_ms = matrixio_uart_enable_ms,
-    .break_ctl = matrixio_uart_break_ctl,
-    .startup = matrixio_uart_startup,
-    .shutdown = matrixio_uart_shutdown,
-    .set_termios = matrixio_uart_set_termios,
-    .type = matrixio_uart_type,
-    .release_port = matrixio_uart_release_port,
-    .request_port = matrixio_uart_request_port,
-    .config_port = matrixio_uart_config_port,
-    .verify_port = matrixio_uart_verify_port,
+static struct uart_ops matrixio_uart_ops = {	
+	.tx_empty =     matrixio_uart_tx_empty,
+	.set_mctrl =    matrixio_uart_set_mctrl,
+	.get_mctrl =    matrixio_uart_get_mctrl,
+	.stop_tx =      matrixio_uart_stop_tx,
+	.start_tx =     matrixio_uart_start_tx,
+	.stop_rx =      matrixio_uart_stop_rx,
+	.enable_ms =    matrixio_uart_enable_ms,
+	.break_ctl =    matrixio_uart_break_ctl,
+	.startup =      matrixio_uart_startup,
+	.shutdown =     matrixio_uart_shutdown,
+	.set_termios =  matrixio_uart_set_termios,
+	.type =         matrixio_uart_type,
+	.release_port = matrixio_uart_release_port,
+	.request_port = matrixio_uart_request_port,
+	.config_port =  matrixio_uart_config_port,
+	.verify_port =  matrixio_uart_verify_port,
 };
 
 static struct uart_driver matrixio_uart_driver = {
-    .owner = THIS_MODULE,
-    .driver_name = driver_name,
-    .dev_name = tty_dev_name,
-    .major = 204,
-    .minor = 209,
-    .nr = 1,
+	.owner = THIS_MODULE,
+	.driver_name = driver_name,
+	.dev_name = tty_dev_name,
+	.major = 204,
+	.minor = 209,
+	.nr = 1,
 };
 
 static int matrixio_uart_probe(struct platform_device *pdev)
 {
- 
 	int ret;
 
-        printk(KERN_INFO "TTY Creator probe"); 
+	printk(KERN_INFO "TTY Creator probe");
 
 	ret = uart_register_driver(&matrixio_uart_driver);
 
-	if(ret != 0){
-          dev_err(matrixio->dev, "Failed to register MATRIXIO UART: %d\n", ret);
-	  return ret;
+	if (ret != 0) {
+		dev_err(matrixio->dev, "Failed to register MATRIXIO UART: %d\n",
+			ret);
+		return ret;
 	}
-        port.irq = 0; 
-        port.fifosize = 16;	
+
+	port.irq = 0;
+	port.fifosize = 16;
 	port.line = 0;
 	port.ops = &matrixio_uart_ops;
 	port.flags = UPF_SKIP_TEST | UPF_BOOT_AUTOCONF;
-        port.dev = &pdev->dev;
+	port.dev = &pdev->dev;
 	port.type = PORT_MAX3100;
-        port.line = 0;
-        
+	port.line = 0;
+
 	ret = uart_add_one_port(&matrixio_uart_driver, &port);
 
-        if(ret != 0){
-          dev_err(matrixio->dev, "Failed to add port: %d\n", ret);
-	  return ret;
+	if (ret != 0) {
+		dev_err(matrixio->dev, "Failed to add port: %d\n", ret);
+		return ret;
 	}
-        printk(KERN_INFO "MATRIX Creator TTY has been loaded");
-        
-	
-	/*	int ret;
-		unsigned int irq;
+	printk(KERN_INFO "MATRIX Creator TTY has been loaded");
 
-		// Set GPIOB26 as part of External Memory Controller
-		jz_gpio_set_function(CS2_PIN, JZ_GPIO_FUNC1);
-
-		// registrar el driver
-		ret = uart_register_driver(&fpga_driver);
-		if (ret) {
-			pr_err("%s: No se pudo registrar la UART!\n",
-	   driver_name);
-			return ret;
-		}
-		// asignar el pin de IRQ al que está conectado a la FPGA (IRQ_F
-	   en el
-		// esquemático)
-		irq = gpio_to_irq(FPGA_IRQ_PIN);
-		// insertar los valores del puerto
-		port.membase = (u8 *)FPGA_BASE;
-		port.line = 0;
-		port.ops = &fpga_uart_ops;
-		port.flags = ASYNC_BOOT_AUTOCONF;
-		port.type = PORT_16550A;
-		port.irq = irq;
-		ret = uart_add_one_port(&fpga_driver, &port);
-		if (ret) {
-			pr_err("%s: No se pudo agregar el puerto ttyFPGA0!\n",
-			       driver_name);
-			uart_remove_one_port(&fpga_driver, &port);
-			uart_unregister_driver(&fpga_driver);
-			return ret;
-		}
-
-		printk("%s: Modulo cargado...\n", driver_name);
-	*/
-	return 0;
+	return ret;
 }
 
 static int matrixio_uart_remove(struct platform_device *pdev)
 {
-	printk( KERN_INFO " 1: %s", pdev->name); 
-        uart_remove_one_port(&matrixio_uart_driver, &port);
+	printk(KERN_INFO " 1: %s", pdev->name);
+	uart_remove_one_port(&matrixio_uart_driver, &port);
 	uart_unregister_driver(&matrixio_uart_driver);
 	return 0;
 }
 
 static struct platform_driver matrixio_uart_platform_driver = {
-	.driver = {
-		.name = "matrixio-uart",
+    .driver =
+	{
+	    .name = "matrixio-uart",
 	},
-	.probe = matrixio_uart_probe,
-	.remove = matrixio_uart_remove,
+    .probe = matrixio_uart_probe,
+    .remove = matrixio_uart_remove,
 
 };
 
@@ -292,5 +240,3 @@ module_platform_driver(matrixio_uart_platform_driver);
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Andres Calderon <andres.calderon@admobilize.com>");
 MODULE_DESCRIPTION("MATRIXIO TTY module");
-
-
