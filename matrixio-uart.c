@@ -59,15 +59,14 @@ static void matrixio_uart_start_tx(struct uart_port *port)
 	printk(KERN_INFO "MATRIXIO UART start TX\n");
 
 	while (1) {
-
-		//	fpga_putc(port,
-		//port->state->xmit.buf[port->state->xmit.tail]);
+		//regmap_write(matrixio->regmap, MATRIXIO_UART_BASE, port->state->xmit.buf[port->state->xmit.tail]);
 		printk("enviado: %c\n",
 		       port->state->xmit.buf[port->state->xmit.tail]);
-		// Ajustar la cola de la UART Al buffer
+		
 		port->state->xmit.tail =
 		    (port->state->xmit.tail + 1) & (UART_XMIT_SIZE - 1);
 		port->icount.tx++;
+		
 		if (uart_circ_empty(&port->state->xmit))
 			break;
 	}
@@ -187,7 +186,7 @@ static int matrixio_uart_probe(struct platform_device *pdev)
 {
 	int ret;
 
-	printk(KERN_INFO "TTY Creator probe");
+	matrixio = dev_get_drvdata(pdev->dev.parent);
 
 	ret = uart_register_driver(&matrixio_uart_driver);
 
