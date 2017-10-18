@@ -63,16 +63,12 @@ static void matrixio_uart_start_tx(struct uart_port *port)
 	printk(KERN_INFO "MATRIXIO UART start TX\n");
 
 	while (1) {
-		//regmap_write(matrixio->regmap, MATRIXIO_UART_BASE, port->state->xmit.buf[port->state->xmit.tail]);
-		printk("enviado: %c\n",
-		       port->state->xmit.buf[port->state->xmit.tail]);
-		
-		port->state->xmit.tail =
-		    (port->state->xmit.tail + 1) & (UART_XMIT_SIZE - 1);
+		regmap_write(matrixio->regmap, MATRIXIO_UART_BASE+1, port->state->xmit.buf[port->state->xmit.tail]);
+		port->state->xmit.tail = (port->state->xmit.tail + 1) & (UART_XMIT_SIZE - 1);
 		port->icount.tx++;
 		
 		if (uart_circ_empty(&port->state->xmit))
-			break;
+		break;
 	}
 }
 static void matrixio_uart_stop_rx(struct uart_port *port) {}
