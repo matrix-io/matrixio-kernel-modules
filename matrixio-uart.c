@@ -3,18 +3,19 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/of.h>
-#include <linux/of_gpio.h>
+#include <linux/of_irq.h>
 #include <linux/of_address.h>
 #include <linux/of_device.h>
 #include <linux/of_platform.h>
 #include <linux/platform_device.h>
 #include <linux/serial.h>
 #include <linux/serial_core.h>
-
+#include <linux/tty_flip.h>
 #include "matrixio-core.h"
 
 static struct matrixio *matrixio;
 static struct uart_port port;
+static int irq;
 
 static const char driver_name[] = "ttyMATRIX";
 static const char tty_dev_name[] = "ttyMATRIX";
@@ -26,12 +27,21 @@ static void matrixio_uart_putc(struct uart_port *port, unsigned char c)
 	// outb(c, FPGA_BASE);
 }
 
-static irqreturn_t uart_rxint(int irq, void *dev_id)
+static irqreturn_t uart_rxint(int irq, void *id)
 {
 	// tty_insert_flip_char(port.state->port.tty, inb(FPGA_BASE),
 	// TTY_NORMAL);
 	// tty_flip_buffer_push(port.state->port.tty);
 	//
+	//
+	//
+	unsigned int val;
+
+	regmap_read(matrixio->regmap, MATRIXIO_UART_BASE+1,&val);
+	
+	tty_insert_flip_char(&port.state->port, val,TTY_NORMAL);
+	tty_flip_buffer_push(&port.state->port);
+
 	printk(KERN_INFO "MATRIXIO UART RX int\n");
 	return IRQ_HANDLED;
 }
@@ -187,9 +197,15 @@ static int matrixio_uart_probe(struct platform_device *pdev)
 {
 	int ret;
 	struct device *dev = &pdev->dev;
-	int irq;
+	struct device_node *np = dev->of_node;
 
 	matrixio = dev_get_drvdata(pdev->dev.parent);
+ 
+	//np = matrixio->spi->dev.of_node;
+
+
+	if (np)
+		dev_dbg(dev, "get of data\n");
 
 	ret = uart_register_driver(&matrixio_uart_driver);
 
@@ -214,10 +230,14 @@ static int matrixio_uart_probe(struct platform_device *pdev)
 		dev_err(matrixio->dev, "Failed to add port: %d\n", ret);
 		return ret;
 	}
+	irq = irq_of_parse_and_map(np, 0);
 
-	irq = of_get_named_gpio(dev->of_node,  "irq-gpio", 0);
+    	ret = request_irq(irq, uart_rxint, 0, driver_name, matrixio);
 
-	printk(KERN_INFO "MATRIX Creator TTY has been loaded (IRQ=%d)",irq);
+        if (unlikely(ret)) {
+		        dev_err(&pdev->dev, "can't request irq %d\n", irq);
+			    }
+	printk(KERN_INFO "MATRIX Creator TTY has been loaded (IRQ=%d,%d)",irq, ret);
 
 	return ret;
 }
@@ -225,15 +245,28 @@ static int matrixio_uart_probe(struct platform_device *pdev)
 static int matrixio_uart_remove(struct platform_device *pdev)
 {
 	printk(KERN_INFO " 1: %s", pdev->name);
+	free_irq(irq, matrixio);
 	uart_remove_one_port(&matrixio_uart_driver, &port);
 	uart_unregister_driver(&matrixio_uart_driver);
 	return 0;
 }
 
+
+static const struct of_device_id matrixio_uart_dt_ids[] = {
+	{ 
+		.compatible = "matrixio-uart", 
+		.data = (void *) 0 
+	}, 
+	{}
+};
+
+MODULE_DEVICE_TABLE(of, matrixio_uart_dt_ids);
+
 static struct platform_driver matrixio_uart_platform_driver = {
     .driver =
 	{
 	    .name = "matrixio-uart",
+	    .of_match_table = of_match_ptr(matrixio_uart_dt_ids),
 	},
     .probe = matrixio_uart_probe,
     .remove = matrixio_uart_remove,

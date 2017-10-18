@@ -157,10 +157,11 @@ static int matrixio_core_probe(struct spi_device *spi)
 {
 	int ret;
 	struct matrixio *matrixio;
-
+        
 	spi->mode = SPI_MODE_3;
 	spi->bits_per_word = 8;
 	ret = spi_setup(spi);
+	
 
 	if(ret<0)
 		return ret;
@@ -173,6 +174,11 @@ static int matrixio_core_probe(struct spi_device *spi)
 	matrixio->dev = &spi->dev;
 	matrixio->spi = spi;
 	matrixio->stamp = 0x1221;
+	
+	if (of_find_property(spi->dev.of_node, "prueba-reg", NULL))
+		dev_err(matrixio->dev, "found prueba-dts");
+	else
+		dev_err(matrixio->dev, "Failed prueba-dts");
 
 	matrixio->regmap = devm_regmap_init(&spi->dev, NULL, matrixio, &matrixio_regmap_config);
 
