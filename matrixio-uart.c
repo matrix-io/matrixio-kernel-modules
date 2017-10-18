@@ -29,12 +29,6 @@ static void matrixio_uart_putc(struct uart_port *port, unsigned char c)
 
 static irqreturn_t uart_rxint(int irq, void *id)
 {
-	// tty_insert_flip_char(port.state->port.tty, inb(FPGA_BASE),
-	// TTY_NORMAL);
-	// tty_flip_buffer_push(port.state->port.tty);
-	//
-	//
-	//
 	unsigned int val;
 
 	regmap_read(matrixio->regmap, MATRIXIO_UART_BASE+1,&val);
@@ -42,7 +36,6 @@ static irqreturn_t uart_rxint(int irq, void *id)
 	tty_insert_flip_char(&port.state->port, val,TTY_NORMAL);
 	tty_flip_buffer_push(&port.state->port);
 
-	printk(KERN_INFO "MATRIXIO UART RX int\n");
 	return IRQ_HANDLED;
 }
 
@@ -201,9 +194,6 @@ static int matrixio_uart_probe(struct platform_device *pdev)
 
 	matrixio = dev_get_drvdata(pdev->dev.parent);
  
-	//np = matrixio->spi->dev.of_node;
-
-
 	if (np)
 		dev_dbg(dev, "get of data\n");
 
