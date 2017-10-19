@@ -23,8 +23,13 @@ static const char tty_dev_name[] = "ttyMATRIX";
 static irqreturn_t uart_rxint(int irq, void *id)
 {
 	unsigned int val;
+	unsigned long flags;
 
+	spin_lock_irqsave(&port.lock, flags);
+	
 	regmap_read(matrixio->regmap, MATRIXIO_UART_BASE + 1, &val);
+
+	spin_unlock_irqrestore(&port.lock, flags);
 
 	tty_insert_flip_char(&port.state->port, val, TTY_NORMAL);
 	tty_flip_buffer_push(&port.state->port);
@@ -167,7 +172,6 @@ static int matrixio_uart_probe(struct platform_device *pdev)
 
 static int matrixio_uart_remove(struct platform_device *pdev)
 {
-	printk(KERN_INFO " 1: %s", pdev->name);
 	free_irq(irq, matrixio);
 	uart_remove_one_port(&matrixio_uart_driver, &port);
 	uart_unregister_driver(&matrixio_uart_driver);
