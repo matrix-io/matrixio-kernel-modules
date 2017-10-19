@@ -42,7 +42,7 @@ static void matrixio_gpio_set(struct gpio_chip *chip, unsigned offset,
 {
 }
 
-static const struct gpio_chip template_chip = {
+static const struct gpio_chip matrixio_gpio_chip = {
     .label = "matrixio-gpio",
     .owner = THIS_MODULE,
     .get_direction = matrixio_gpio_get_direction,
@@ -57,17 +57,32 @@ static const struct gpio_chip template_chip = {
 
 static int matrixio_gpio_probe(struct platform_device *pdev)
 {
-	printk(KERN_INFO "gpio probe");
+	struct matrixio_gpio *gpio;
+	int ret;
 
-	printk(KERN_INFO ": %s", pdev->name);
+	gpio = devm_kzalloc(&pdev->dev, sizeof(*gpio), GFP_KERNEL);
+	if (!gpio)
+		return -ENOMEM;
+
+	platform_set_drvdata(pdev, gpio);
+
+	printk(KERN_INFO "probe : %s", pdev->name);
+
+	gpio->mio = dev_get_drvdata(pdev->dev.parent);
+	gpio->chip = matrixio_gpio_chip;
+	gpio->chip.parent = gpio->mio->dev;
+
+	ret = gpiochip_add_data(&gpio->chip, gpio);
+
+	if (ret < 0) {
+		dev_err(&pdev->dev, "Could not register gpiochip, %d\n", ret);
+		return ret;
+	}
 
 	return 0;
 }
 
-static int matrixio_gpio_remove(struct platform_device *pdev)
-{
-	return 0;
-}
+static int matrixio_gpio_remove(struct platform_device *pdev) { return 0; }
 
 static struct platform_driver matrixio_gpio_driver = {
     .driver =
