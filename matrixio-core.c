@@ -19,7 +19,10 @@
 #include <linux/regmap.h>
 #include <linux/of.h>
 #include <linux/mfd/core.h>
+
 #include "matrixio-core.h"
+
+static DEFINE_MUTEX(matrixio_spi_lock);
 
 struct hardware_address {
 	uint8_t readnwrite : 1;
@@ -37,8 +40,11 @@ static struct regmap_config matrixio_regmap_config = {
 static int matrixio_spi_transfer(struct spi_device *spi, uint8_t *send_buffer,
 				 uint8_t *receive_buffer, unsigned int size)
 {
+	int ret;
 	struct spi_transfer transfer;
 	struct spi_message msg;
+	
+	mutex_lock(&matrixio_spi_lock);
 
 	memset(&transfer, 0, sizeof(transfer));
 
@@ -50,7 +56,11 @@ static int matrixio_spi_transfer(struct spi_device *spi, uint8_t *send_buffer,
 
 	spi_message_add_tail(&transfer, &msg);
 
-	return spi_sync(spi, &msg);
+	ret = spi_sync(spi, &msg);
+
+	mutex_unlock(&matrixio_spi_lock);
+
+	return ret;
 }
 
 int matrixio_hw_reg_read(void *context, unsigned int reg, unsigned int *val)
@@ -110,7 +120,14 @@ static int matrixio_register_devices(struct matrixio *matrixio)
 		 .of_compatible = "matrixio-codec",
 		 .platform_data = matrixio,
 		 .pdata_size = sizeof(*matrixio),
+		},
+		{
+		 .name = "matrixio-uart",
+		 .of_compatible = "matrixio-uart",
+ 		 .platform_data = matrixio,
+		 .pdata_size = sizeof(*matrixio),
 		}
+
         };
 
 	return devm_mfd_add_devices(matrixio->dev, -1, cells, ARRAY_SIZE(cells), NULL, 0, NULL);
@@ -150,10 +167,11 @@ static int matrixio_core_probe(struct spi_device *spi)
 {
 	int ret;
 	struct matrixio *matrixio;
-
+        
 	spi->mode = SPI_MODE_3;
 	spi->bits_per_word = 8;
 	ret = spi_setup(spi);
+	
 
 	if(ret<0)
 		return ret;
@@ -166,7 +184,7 @@ static int matrixio_core_probe(struct spi_device *spi)
 	matrixio->dev = &spi->dev;
 	matrixio->spi = spi;
 	matrixio->stamp = 0x1221;
-
+	
 	matrixio->regmap = devm_regmap_init(&spi->dev, NULL, matrixio, &matrixio_regmap_config);
 
 	if(IS_ERR(matrixio->regmap)) {
