@@ -58,6 +58,16 @@
         };
 
         fragment@6 {
+                target = <&matrixio_core_0>;
+                __overlay__ {
+                        matrixio-gpio@0 {
+                                compatible = "matrixio-gpio";
+                                status = "okay";
+                        };
+                };
+        };
+
+        fragment@7 {
                 target = <&sound>;
                 __overlay__ {
                         matrixio-codec@0 {
