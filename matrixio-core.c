@@ -19,7 +19,10 @@
 #include <linux/regmap.h>
 #include <linux/of.h>
 #include <linux/mfd/core.h>
+
 #include "matrixio-core.h"
+
+static DEFINE_MUTEX(matrixio_spi_lock);
 
 struct hardware_address {
 	uint8_t readnwrite : 1;
@@ -37,8 +40,11 @@ static struct regmap_config matrixio_regmap_config = {
 static int matrixio_spi_transfer(struct spi_device *spi, uint8_t *send_buffer,
 				 uint8_t *receive_buffer, unsigned int size)
 {
+	int ret;
 	struct spi_transfer transfer;
 	struct spi_message msg;
+	
+	mutex_lock(&matrixio_spi_lock);
 
 	memset(&transfer, 0, sizeof(transfer));
 
@@ -50,7 +56,11 @@ static int matrixio_spi_transfer(struct spi_device *spi, uint8_t *send_buffer,
 
 	spi_message_add_tail(&transfer, &msg);
 
-	return spi_sync(spi, &msg);
+	ret = spi_sync(spi, &msg);
+
+	mutex_unlock(&matrixio_spi_lock);
+
+	return ret;
 }
 
 int matrixio_hw_reg_read(void *context, unsigned int reg, unsigned int *val)
