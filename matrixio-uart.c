@@ -17,6 +17,8 @@ static struct matrixio *matrixio;
 static struct uart_port port;
 static int irq;
 
+#define MATRIXIO_UART_BUSY  0x0010
+
 static const char driver_name[] = "ttyMATRIX";
 static const char tty_dev_name[] = "ttyMATRIX";
 
@@ -52,17 +54,25 @@ static void matrixio_uart_stop_tx(struct uart_port *port) {}
 
 static void matrixio_uart_start_tx(struct uart_port *port)
 {
-	while (1) {
-		regmap_write(matrixio->regmap, MATRIXIO_UART_BASE + 1,
-			     port->state->xmit.buf[port->state->xmit.tail]);
-		port->state->xmit.tail =
-		    (port->state->xmit.tail + 1) & (UART_XMIT_SIZE - 1);
+	unsigned int matrixio_UCR;
+
+	while (1){
+		
+		do{ 
+	
+		regmap_read(matrixio->regmap, MATRIXIO_UART_BASE, &matrixio_UCR);
+
+		} while(matrixio_UCR & MATRIXIO_UART_BUSY); 
+
+		regmap_write(matrixio->regmap, MATRIXIO_UART_BASE + 1, port->state->xmit.buf[port->state->xmit.tail]);
+		port->state->xmit.tail = (port->state->xmit.tail + 1) & (UART_XMIT_SIZE - 1);
 		port->icount.tx++;
 
 		if (uart_circ_empty(&port->state->xmit))
-			break;
+		break;
 	}
 }
+
 static void matrixio_uart_stop_rx(struct uart_port *port) {}
 
 static void matrixio_uart_enable_ms(struct uart_port *port) {}
@@ -142,6 +152,7 @@ static int matrixio_uart_probe(struct platform_device *pdev)
 		return ret;
 	}
 
+	spin_lock_init(&port.lock);
 	port.irq = 0;
 	port.fifosize = 16;
 	port.line = 0;
