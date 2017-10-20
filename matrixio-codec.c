@@ -28,6 +28,22 @@
 
 static struct matrixio* matrixio;
 
+static struct snd_soc_dai_link matrixio_snd_soc_dai = {
+	.name		= "matrixio",
+	.stream_name	= "matrixio mic array",
+	.codec_dai_name	= "snd-soc-dummy-dai",
+	.cpu_dai_name	= "snd-soc-dummy-dai",
+	.platform_name	= "rpi-matrixio-pcm",
+	.codec_name	= "snd-soc-dummy",
+};
+
+static struct snd_soc_card matrixio_soc_card = {
+	.name	   = "MATRIXIO_HAT",
+	.owner	   = THIS_MODULE,
+	.dai_link  = &matrixio_snd_soc_dai,
+	.num_links = 1,
+};
+
 static int matrixio_codec_hw_params(struct snd_pcm_substream *substream, struct snd_pcm_hw_params *params, struct snd_soc_dai *dai) {
 
 	printk(KERN_INFO "::rate %d", params_rate(params));
@@ -43,6 +59,10 @@ static const struct snd_kcontrol_new matrixio_snd_controls[] = {
 };
 
 static const struct snd_soc_dapm_widget matrixio_dapm_widgets[] = {
+  SND_SOC_DAPM_INPUT("MIC0"),
+  SND_SOC_DAPM_INPUT("MIC1"),
+  SND_SOC_DAPM_INPUT("MIC2"),
+  SND_SOC_DAPM_INPUT("MIC3"),
 };
 
 static const struct snd_soc_dapm_route matrixio_dapm_routes[] = {
@@ -67,7 +87,6 @@ static int matrixio_add_widgets(struct snd_soc_codec *codec) {
 static int matrixio_probe(struct snd_soc_codec *codec) {
 
 	printk(KERN_INFO "matrixio_probe");
-
 	dev_set_drvdata(codec->dev, matrixio);
 
 	matrixio_add_widgets(codec);
@@ -102,9 +121,19 @@ static  struct snd_soc_dai_driver matrixio_dai_driver = {
 static int matrixio_codec_probe(struct platform_device *pdev)
 {
 	int ret;
-	printk(KERN_INFO "codec probe");
+	struct snd_soc_card *card = &matrixio_soc_card;
+
+	card->dev = &pdev->dev;
+
+	printk(KERN_INFO "matrixio_codec_probe");
 
 	matrixio = dev_get_drvdata(pdev->dev.parent);
+
+        ret = devm_snd_soc_register_card(&pdev->dev, card);
+
+        if (ret != 0) {
+                dev_err(matrixio->dev, "Failed to register MATRIXIO card: %d\n", ret);
+        }
 
 	ret = snd_soc_register_codec(matrixio->dev, 
 			&matrixio_soc_codec_driver, 
@@ -123,9 +152,19 @@ static int matrixio_codec_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static const struct of_device_id snd_matrixio_codec_of_match[] = {
+	{ 
+	  .compatible = "matrixio-codec", 
+        },
+        {},
+};
+MODULE_DEVICE_TABLE(of, snd_matrixio_codec_of_match);
+
 static struct platform_driver matrixio_codec_driver = {
 	.driver = {
 		.name = "matrixio-codec",
+		.owner = THIS_MODULE,
+		.of_match_table = snd_matrixio_codec_of_match
 	},
 	.probe = matrixio_codec_probe,
 	.remove = matrixio_codec_remove,
