@@ -66,6 +66,8 @@ static int matrixio_add_widgets(struct snd_soc_codec *codec) {
 
 static int matrixio_probe(struct snd_soc_codec *codec) {
 
+	printk(KERN_INFO "matrixio_probe");
+
 	dev_set_drvdata(codec->dev, matrixio);
 
 	matrixio_add_widgets(codec);

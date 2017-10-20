@@ -41,6 +41,7 @@
                 __overlay__ {
                         matrixio-everloop@0 {
                                 compatible = "matrixio-everloop";
+
                         };
                 };
         };
@@ -57,12 +58,29 @@
                 };
         };
 
-        fragment@6 {
+	fragment@6 {
+		target = <&matrixio_core_0>;
+		__overlay__ {
+			matrixio_codec_a: matrix_codec@0 {
+				compatible = "matrixio-codec";
+				status = "okay";
+			};
+		};
+	};
+
+        fragment@7 {
                 target = <&sound>;
-                __overlay__ {
-                        matrixio-codec@0 {
-                                compatible = "matrixio-codec";
-                        };
-                };
-        };
+                sound_overlay:__overlay__ {
+			compatible = "simple-audio-card";
+			simple-audio-card,name = "matrixio-codec";
+			simple-audio-card,bitclock-master = <&dailink0_master>;
+			simple-audio-card,frame-master = <&dailink0_master>;
+			status = "okay"; 	
+
+			dailink0_master: simple-audio-card,codec {
+				sound-dai = <&matrixio_codec_a>;
+			};		
+		};
+	};
+
 };
