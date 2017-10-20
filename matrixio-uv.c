@@ -80,7 +80,7 @@ static int matrixio_uv_read_raw(struct iio_dev *indio_dev,
 	struct matrixio_uv_data *data = iio_priv(indio_dev);
 	int ret;
 
-	printk(KERN_INFO "por acá pasó... ");
+	printk(KERN_INFO "por acá pasó %d... ", data->mio->stamp);
 	switch (mask) {
 	case IIO_CHAN_INFO_RAW:
 	case IIO_CHAN_INFO_PROCESSED:
@@ -159,7 +159,4 @@ module_platform_driver(matrixio_gpio_driver);
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Andres Calderon <andres.calderon@admobilize.com>");
 MODULE_DESCRIPTION("MATRIXIO UV module");
-
-
-
 
