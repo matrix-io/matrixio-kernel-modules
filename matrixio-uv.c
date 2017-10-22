@@ -12,19 +12,19 @@
  * TODO: integration time, ACK signal
  */
 
-#include <linux/module.h>
-#include <linux/mutex.h>
-#include <linux/err.h>
 #include <linux/delay.h>
-#include <linux/platform_device.h>
+#include <linux/err.h>
 #include <linux/iio/iio.h>
 #include <linux/iio/sysfs.h>
+#include <linux/module.h>
+#include <linux/mutex.h>
+#include <linux/platform_device.h>
 
 #include "matrixio-core.h"
 
-#define VEML6070_DRV_NAME "matrixio_uv"
+#define MATRIXIO_UV_DRV_NAME "matrixio_uv"
 
-#define VEML6070_FPGA_BASE 0x30    /*VEML6070 Base addr */
+#define MATRIXIO_SRAM_OFFSET_UV 0x0
 
 struct matrixio_uv_data {
 	struct matrixio *mio;
@@ -32,17 +32,15 @@ struct matrixio_uv_data {
 };
 
 static const struct iio_chan_spec matrixio_uv_channels[] = {
-	{
-		.type = IIO_INTENSITY,
-		.modified = 1,
-		.channel2 = IIO_MOD_LIGHT_UV,
-		.info_mask_separate = BIT(IIO_CHAN_INFO_RAW),
-	},
-	{
-		.type = IIO_UVINDEX,
-		.info_mask_separate = BIT(IIO_CHAN_INFO_PROCESSED),
-	}
-};
+    {
+	.type = IIO_INTENSITY,
+	.modified = 1,
+	.channel2 = IIO_MOD_LIGHT_UV,
+	.info_mask_separate = BIT(IIO_CHAN_INFO_RAW),
+    },
+    {
+	.type = IIO_UVINDEX, .info_mask_separate = BIT(IIO_CHAN_INFO_PROCESSED),
+    }};
 
 static int matrixio_uv_to_uv_index(unsigned val)
 {
@@ -51,11 +49,10 @@ static int matrixio_uv_to_uv_index(unsigned val)
 	 * integration time (IT) and value of the resistor connected to
 	 * the RSET pin (default: 270 KOhm)
 	 */
-	unsigned uvi[11] = {
-		187, 373, 560, /* low */
-		746, 933, 1120, /* moderate */
-		1308, 1494, /* high */
-		1681, 1868, 2054}; /* very high */
+	unsigned uvi[11] = {187,  373,  560,   /* low */
+			    746,  933,  1120,  /* moderate */
+			    1308, 1494,	/* high */
+			    1681, 1868, 2054}; /* very high */
 	int i;
 
 	for (i = 0; i < ARRAY_SIZE(uvi); i++)
@@ -66,13 +63,12 @@ static int matrixio_uv_to_uv_index(unsigned val)
 }
 
 static int matrixio_uv_read_raw(struct iio_dev *indio_dev,
-				struct iio_chan_spec const *chan,
-				int *val, int *val2, long mask)
+				struct iio_chan_spec const *chan, int *val,
+				int *val2, long mask)
 {
 	struct matrixio_uv_data *data = iio_priv(indio_dev);
 	int ret;
 
-	printk(KERN_INFO "por acá pasó %d... ", data->mio->stamp);
 	switch (mask) {
 	case IIO_CHAN_INFO_RAW:
 	case IIO_CHAN_INFO_PROCESSED:
@@ -85,9 +81,12 @@ static int matrixio_uv_read_raw(struct iio_dev *indio_dev,
 		else
 			*val = ret;
 			*/
-		regmap_read(data->mio->regmap, MATRIXIO_MCU_BASE + (VEML6070_FPGA_BASE>>1), val);
 
-		//*val = 100;
+		ret = matrixio_hw_buf_read(data->mio,
+					   MATRIXIO_MCU_BASE +
+					       (MATRIXIO_SRAM_OFFSET_UV >> 1),
+					   sizeof(*val), val);
+
 		return IIO_VAL_INT;
 	default:
 		return -EINVAL;
@@ -95,8 +94,7 @@ static int matrixio_uv_read_raw(struct iio_dev *indio_dev,
 }
 
 static const struct iio_info matrixio_uv_info = {
-	.read_raw = matrixio_uv_read_raw,
-	.driver_module = THIS_MODULE,
+    .read_raw = matrixio_uv_read_raw, .driver_module = THIS_MODULE,
 };
 
 static int matrixio_uv_probe(struct platform_device *pdev)
@@ -122,11 +120,11 @@ static int matrixio_uv_probe(struct platform_device *pdev)
 	indio_dev->info = &matrixio_uv_info;
 	indio_dev->channels = matrixio_uv_channels;
 	indio_dev->num_channels = ARRAY_SIZE(matrixio_uv_channels);
-	indio_dev->name = VEML6070_DRV_NAME;
+	indio_dev->name = MATRIXIO_UV_DRV_NAME;
 	indio_dev->modes = INDIO_DIRECT_MODE;
 
 	data->mio = dev_get_drvdata(pdev->dev.parent);
-	       
+
 	return iio_device_register(indio_dev);
 }
 
@@ -140,16 +138,16 @@ static int matrixio_uv_remove(struct platform_device *pdev)
 }
 
 static struct platform_driver matrixio_gpio_driver = {
-	    .driver = {
-            	.name = "matrixio-uv",
-	     },
-	    .probe = matrixio_uv_probe,
-	    .remove = matrixio_uv_remove,
+    .driver =
+	{
+	    .name = "matrixio-uv",
+	},
+    .probe = matrixio_uv_probe,
+    .remove = matrixio_uv_remove,
 };
 
 module_platform_driver(matrixio_gpio_driver);
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Andres Calderon <andres.calderon@admobilize.com>");
-MODULE_DESCRIPTION("MATRIXIO UV module");
-
+MODULE_DESCRIPTION("MATRIXIO IIO UV module");
