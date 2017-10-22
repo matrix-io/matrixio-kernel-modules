@@ -19,10 +19,12 @@
 #include <linux/spi/spi.h>
 #include <linux/mutex.h>
 
-#define MATRIXIO_UART_BASE 0x0800
+#define MATRIXIO_CONF_BASE             0x0000
+#define MATRIXIO_UART_BASE             0x0800
 #define MATRIXIO_MICROPHONE_ARRAY_BASE 0x1800
-#define MATRIXIO_EVERLOOP_BASE 0x2000
-
+#define MATRIXIO_EVERLOOP_BASE         0x2000
+#define MATRIXIO_GPIO_BASE             0x2800
+#define MATRIXIO_MCU_BASE              0x3800
 
 struct matrixio {
 	struct device *dev;

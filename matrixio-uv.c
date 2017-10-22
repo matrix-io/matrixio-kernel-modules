@@ -24,15 +24,6 @@
 
 #define VEML6070_DRV_NAME "matrixio_uv"
 
-#define VEML6070_ADDR_CONFIG_DATA_MSB 0x38 /* read: MSB data, write: config */
-#define VEML6070_ADDR_DATA_LSB	0x39 /* LSB data */
-
-#define VEML6070_COMMAND_ACK	BIT(5) /* raise interrupt when over threshold */
-#define VEML6070_COMMAND_IT	GENMASK(3, 2) /* bit mask integration time */
-#define VEML6070_COMMAND_RSRVD	BIT(1) /* reserved, set to 1 */
-#define VEML6070_COMMAND_SD	BIT(0) /* shutdown mode when set */
-
-#define VEML6070_IT_10	0x04 /* integration time 1x */
 #define VEML6070_FPGA_BASE 0x30    /*VEML6070 Base addr */
 
 struct matrixio_uv_data {
