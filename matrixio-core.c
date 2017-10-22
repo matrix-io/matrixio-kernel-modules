@@ -1,5 +1,5 @@
 /*
- * matrix-core.c -- MATRIX core functions to talk with the FPGA internal 
+ * matrix-core.c -- MATRIX core functions to talk with the FPGA internal
  *                  bus
  *
  * Copyright 2017 MATRIX Labs
@@ -14,11 +14,11 @@
 
 #include <linux/init.h>
 #include <linux/kernel.h>
-#include <linux/module.h>
-#include <linux/spi/spi.h>
-#include <linux/regmap.h>
-#include <linux/of.h>
 #include <linux/mfd/core.h>
+#include <linux/module.h>
+#include <linux/of.h>
+#include <linux/regmap.h>
+#include <linux/spi/spi.h>
 
 #include "matrixio-core.h"
 
@@ -31,10 +31,10 @@ struct hardware_address {
 };
 
 static struct regmap_config matrixio_regmap_config = {
-	.reg_bits  = 16,
-	.val_bits  = 16,
-	.reg_read  = matrixio_hw_reg_read,
-	.reg_write = matrixio_hw_reg_write,
+    .reg_bits = 16,
+    .val_bits = 16,
+    .reg_read = matrixio_hw_reg_read,
+    .reg_write = matrixio_hw_reg_write,
 };
 
 static int matrixio_spi_transfer(struct spi_device *spi, uint8_t *send_buffer,
@@ -43,7 +43,7 @@ static int matrixio_spi_transfer(struct spi_device *spi, uint8_t *send_buffer,
 	int ret;
 	struct spi_transfer transfer;
 	struct spi_message msg;
-	
+
 	mutex_lock(&matrixio_spi_lock);
 
 	memset(&transfer, 0, sizeof(transfer));
@@ -77,7 +77,8 @@ int matrixio_hw_reg_read(void *context, unsigned int reg, unsigned int *val)
 	hw_addr->burst = 0;
 	hw_addr->readnwrite = 1;
 
-	ret = matrixio_spi_transfer(matrixio->spi, send_buf, (uint8_t *)recv_buf, 4);
+	ret = matrixio_spi_transfer(matrixio->spi, send_buf,
+				    (uint8_t *)recv_buf, 4);
 
 	if (ret < 0) {
 		*val = 0;
@@ -103,47 +104,66 @@ int matrixio_hw_reg_write(void *context, unsigned int reg, unsigned int val)
 
 	send_buf[1] = val;
 
-	return matrixio_spi_transfer(matrixio->spi, (uint8_t *)send_buf, (uint8_t *)recv_buf, 4);
+	return matrixio_spi_transfer(matrixio->spi, (uint8_t *)send_buf,
+				     (uint8_t *)recv_buf, 4);
+}
+
+int matrixio_hw_buf_read(struct matrixio *matrixio, unsigned int add,
+			 int length, void *data)
+{
+	int ret;
+	int offset;
+	unsigned int val;
+	uint16_t *words = data;
+
+	for (offset = 0; offset < (length / 2); offset++) {
+		ret = matrixio_hw_reg_read(matrixio, add + offset, &val);
+
+		if (ret)
+			return ret;
+
+		words[offset] = val;
+	}
+	return 0;
 }
 
 static int matrixio_register_devices(struct matrixio *matrixio)
 {
 	const struct mfd_cell cells[] = {
-		{
-               	 .name = "matrixio-everloop",
-                 .of_compatible = "matrixio-everloop",
-		 .platform_data = matrixio,
-		 .pdata_size = sizeof(*matrixio),
-		},
-		{
-		 .name = "matrixio-codec",
-		 .of_compatible = "matrixio-codec",
-		 .platform_data = matrixio,
-		 .pdata_size = sizeof(*matrixio),
-		},
-		{
-		 .name = "matrixio-uart",
-		 .of_compatible = "matrixio-uart",
- 		 .platform_data = matrixio,
-		 .pdata_size = sizeof(*matrixio),
-		},
-		{
-		 .name = "matrixio-gpio",
-		 .of_compatible = "matrixio-gpio",
-		 .platform_data = matrixio,
-		 .pdata_size = sizeof(*matrixio),
-		},
-		{
-		 .name = "matrixio-uv",
-		 .of_compatible = "matrixio-uv",
-		 .platform_data = matrixio,
-		 .pdata_size = sizeof(*matrixio),
-		}
-	};
+	    {
+		.name = "matrixio-everloop",
+		.of_compatible = "matrixio-everloop",
+		.platform_data = matrixio,
+		.pdata_size = sizeof(*matrixio),
+	    },
+	    {
+		.name = "matrixio-codec",
+		.of_compatible = "matrixio-codec",
+		.platform_data = matrixio,
+		.pdata_size = sizeof(*matrixio),
+	    },
+	    {
+		.name = "matrixio-uart",
+		.of_compatible = "matrixio-uart",
+		.platform_data = matrixio,
+		.pdata_size = sizeof(*matrixio),
+	    },
+	    {
+		.name = "matrixio-gpio",
+		.of_compatible = "matrixio-gpio",
+		.platform_data = matrixio,
+		.pdata_size = sizeof(*matrixio),
+	    },
+	    {
+		.name = "matrixio-uv",
+		.of_compatible = "matrixio-uv",
+		.platform_data = matrixio,
+		.pdata_size = sizeof(*matrixio),
+	    }};
 
-	return devm_mfd_add_devices(matrixio->dev, -1, cells, ARRAY_SIZE(cells), NULL, 0, NULL);
+	return devm_mfd_add_devices(matrixio->dev, -1, cells, ARRAY_SIZE(cells),
+				    NULL, 0, NULL);
 }
-
 
 static int matrixio_init(struct matrixio *matrixio,
 			 struct matrixio_platform_data *pdata)
@@ -161,15 +181,16 @@ static int matrixio_init(struct matrixio *matrixio,
 		return ret;
 	}
 
-	if(pdata && pdata->platform_init) {
+	if (pdata && pdata->platform_init) {
 		ret = pdata->platform_init(matrixio->dev);
-		if(ret != 0) {
+		if (ret != 0) {
 			dev_err(matrixio->dev, "Platform init failed: %d\n",
-						ret);
+				ret);
 			return ret;
 		}
 	} else
-		dev_warn(matrixio->dev, "No platform initialization provided\n");
+		dev_warn(matrixio->dev,
+			 "No platform initialization provided\n");
 
 	return 0;
 }
@@ -178,30 +199,30 @@ static int matrixio_core_probe(struct spi_device *spi)
 {
 	int ret;
 	struct matrixio *matrixio;
-        
+
 	spi->mode = SPI_MODE_3;
 	spi->bits_per_word = 8;
 	ret = spi_setup(spi);
-	
 
-	if(ret<0)
+	if (ret < 0)
 		return ret;
 
 	matrixio = devm_kzalloc(&spi->dev, sizeof(struct matrixio), GFP_KERNEL);
-	
-	if(matrixio == NULL)
+
+	if (matrixio == NULL)
 		return -ENOMEM;
 
 	matrixio->dev = &spi->dev;
 	matrixio->spi = spi;
 	matrixio->stamp = 0x1221;
-	
-	matrixio->regmap = devm_regmap_init(&spi->dev, NULL, matrixio, &matrixio_regmap_config);
 
-	if(IS_ERR(matrixio->regmap)) {
+	matrixio->regmap = devm_regmap_init(&spi->dev, NULL, matrixio,
+					    &matrixio_regmap_config);
+
+	if (IS_ERR(matrixio->regmap)) {
 		ret = PTR_ERR(matrixio->regmap);
 		dev_err(matrixio->dev, "Failed to allocate register map: %d\n",
-					ret);
+			ret);
 		return ret;
 	}
 
@@ -209,22 +230,17 @@ static int matrixio_core_probe(struct spi_device *spi)
 }
 
 static const struct of_device_id matrixio_core_dt_ids[] = {
-	{ 
-		.compatible = "matrixio-core", 
-		.data = (void *) 0 
-	}, 
-	{}
-};
+    {.compatible = "matrixio-core", .data = (void *)0}, {}};
 
 MODULE_DEVICE_TABLE(of, matrixio_core_dt_ids);
 
 static struct spi_driver matrixio_core_driver = {
-    .driver = {
-	    .name           = "matrixio-core",
+    .driver =
+	{
+	    .name = "matrixio-core",
 	    .of_match_table = of_match_ptr(matrixio_core_dt_ids),
-    },
-    .probe = matrixio_core_probe
-};
+	},
+    .probe = matrixio_core_probe};
 
 module_spi_driver(matrixio_core_driver);
 
