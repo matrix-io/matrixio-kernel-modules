@@ -33,6 +33,7 @@
 #define VEML6070_COMMAND_SD	BIT(0) /* shutdown mode when set */
 
 #define VEML6070_IT_10	0x04 /* integration time 1x */
+#define VEML6070_FPGA_BASE 0x30    /*VEML6070 Base addr */
 
 struct matrixio_uv_data {
 	struct matrixio *mio;
@@ -93,7 +94,9 @@ static int matrixio_uv_read_raw(struct iio_dev *indio_dev,
 		else
 			*val = ret;
 			*/
-		*val = 100;
+		regmap_read(data->mio->regmap, MATRIXIO_MCU_BASE + (VEML6070_FPGA_BASE>>1), val);
+
+		//*val = 100;
 		return IIO_VAL_INT;
 	default:
 		return -EINVAL;
@@ -146,12 +149,11 @@ static int matrixio_uv_remove(struct platform_device *pdev)
 }
 
 static struct platform_driver matrixio_gpio_driver = {
-	    .driver =
-		            {
-				                .name = "matrixio-uv",
-						        },
-	        .probe = matrixio_uv_probe,
-		    .remove = matrixio_uv_remove,
+	    .driver = {
+            	.name = "matrixio-uv",
+	     },
+	    .probe = matrixio_uv_probe,
+	    .remove = matrixio_uv_remove,
 };
 
 module_platform_driver(matrixio_gpio_driver);
