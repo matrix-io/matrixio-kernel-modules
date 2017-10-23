@@ -14,7 +14,6 @@
 #include <linux/delay.h>
 #include <linux/err.h>
 #include <linux/iio/iio.h>
-#include <linux/iio/sysfs.h>
 #include <linux/module.h>
 #include <linux/mutex.h>
 #include <linux/platform_device.h>
@@ -94,8 +93,6 @@ static int matrixio_uv_probe(struct platform_device *pdev)
 {
 	struct matrixio_uv_data *data;
 	struct iio_dev *indio_dev;
-
-	printk(KERN_INFO "el probe %s", pdev->name);
 
 	indio_dev = devm_iio_device_alloc(&pdev->dev, sizeof(*data));
 	if (!indio_dev)

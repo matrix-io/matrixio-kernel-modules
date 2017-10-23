@@ -77,7 +77,7 @@
         };
 
 	fragment@8 {
-		target-path = "/";
+		target = <&matrixio_core_0>;
 		__overlay__ {
 			matrixio-uv@0 {
 				compatible = "matrixio-uv";
