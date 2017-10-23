@@ -5,6 +5,7 @@ obj-m += matrixio-uart.o
 obj-m += matrixio-everloop.o
 obj-m += matrixio-codec.o
 obj-m += matrixio-gpio.o
+obj-m += matrixio-pwm.o
 obj-m += matrixio-uv.o
 
 all:	matrixio.dtbo

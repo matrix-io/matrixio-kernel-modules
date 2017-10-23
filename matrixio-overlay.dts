@@ -68,6 +68,16 @@
         };
 
         fragment@7 {
+                target = <&matrixio_core_0>;
+                __overlay__ {
+                        matrixio-pwm@0 {
+                                compatible = "matrixio-pwm";
+                                status = "okay";
+                        };
+                };
+        };
+
+        fragment@8 {
                 target = <&sound>;
                 __overlay__ {
                         matrixio-codec@0 {
@@ -76,7 +86,7 @@
                 };
         };
 
-	fragment@8 {
+	fragment@9 {
 		target-path = "/";
 		__overlay__ {
 			matrixio-uv@0 {
