@@ -14,36 +14,29 @@ struct matrixio_gpio {
 
 static int matrixio_gpio_get_direction(struct gpio_chip *chip, unsigned offset)
 {
-	printk(KERN_INFO "get direction");
-	/* This device is output only */
 	return 0;
 }
 
 static int matrixio_gpio_direction_input(struct gpio_chip *chip,
 					 unsigned offset)
 {
-	printk(KERN_INFO "direction input");
-	/* This device is output only */
 	return -EINVAL;
 }
 
 static int matrixio_gpio_direction_output(struct gpio_chip *chip,
 					  unsigned offset, int value)
 {
-	printk(KERN_INFO "direction output");
 	return 0;
 }
 
 static int matrixio_gpio_get(struct gpio_chip *chip, unsigned offset)
 {
-	printk(KERN_INFO "get");
 	return 0;
 }
 
 static void matrixio_gpio_set(struct gpio_chip *chip, unsigned offset,
 			      int value)
 {
-	printk(KERN_INFO "set");
 }
 
 static const struct gpio_chip matrixio_gpio_chip = {
