@@ -82,4 +82,8 @@
 			};		
 		};
 	};
+
+	 __overrides__ {
+		card-name = <&sound_overlay>,"simple-audio-card,name";
+	};
 };
