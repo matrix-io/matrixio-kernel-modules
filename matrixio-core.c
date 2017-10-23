@@ -127,6 +127,8 @@ int matrixio_hw_buf_read(struct matrixio *matrixio, unsigned int add,
 	return 0;
 }
 
+EXPORT_SYMBOL(matrixio_hw_buf_read);
+
 static int matrixio_register_devices(struct matrixio *matrixio)
 {
 	const struct mfd_cell cells[] = {

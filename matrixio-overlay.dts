@@ -81,6 +81,7 @@
 		__overlay__ {
 			matrixio-uv@0 {
 				compatible = "matrixio-uv";
+				status = "okay";
 			};
 		};
 	};
