@@ -126,9 +126,26 @@ static int matrixio_register_devices(struct matrixio *matrixio)
 		 .of_compatible = "matrixio-uart",
  		 .platform_data = matrixio,
 		 .pdata_size = sizeof(*matrixio),
+		},
+		{
+		 .name = "matrixio-gpio",
+		 .of_compatible = "matrixio-gpio",
+		 .platform_data = matrixio,
+		 .pdata_size = sizeof(*matrixio),
+		},
+                {
+                 .name = "matrixio-pwm",
+                 .of_compatible = "matrixio-pwm",
+                 .platform_data = matrixio,
+                 .pdata_size = sizeof(*matrixio),
+                },
+		{
+		 .name = "matrixio-uv",
+		 .of_compatible = "matrixio-uv",
+		 .platform_data = matrixio,
+		 .pdata_size = sizeof(*matrixio),
 		}
-
-        };
+	};
 
 	return devm_mfd_add_devices(matrixio->dev, -1, cells, ARRAY_SIZE(cells), NULL, 0, NULL);
 }
