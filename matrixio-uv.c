@@ -1,15 +1,14 @@
 /*
  * matrixio_uv.c - Support for Vishay VEML6070 UV A light sensor
  *
- * Copyright 2016 Peter Meerwald-Stadler <pmeerw@pmeerw.net>
+ * Copyright 2017 Andres Calderon <andres.calderon@admobilize.com>
  *
  * This file is subject to the terms and conditions of version 2 of
  * the GNU General Public License.  See the file COPYING in the main
  * directory of this archive for more details.
  *
- * IIO driver for VEML6070 (7-bit I2C slave addresses 0x38 and 0x39)
+ * IIO driver for VEML6070 (MATRIX CREATOR UV Sensor)
  *
- * TODO: integration time, ACK signal
  */
 
 #include <linux/delay.h>
@@ -47,7 +46,7 @@ static int matrixio_uv_to_uv_index(unsigned val)
 	/*
 	 * conversion of raw UV intensity values to UV index depends on
 	 * integration time (IT) and value of the resistor connected to
-	 * the RSET pin (default: 270 KOhm)
+	 * the RSET pin (Table for RSET:270 KOhm IT: 1
 	 */
 	unsigned uvi[11] = {187,  373,  560,   /* low */
 			    746,  933,  1120,  /* moderate */
@@ -56,7 +55,7 @@ static int matrixio_uv_to_uv_index(unsigned val)
 	int i;
 
 	for (i = 0; i < ARRAY_SIZE(uvi); i++)
-		if (val <= uvi[i])
+		if (val <= uvi[i] * 4) /* 4T */
 			return i;
 
 	return 11; /* extreme */
@@ -68,25 +67,19 @@ static int matrixio_uv_read_raw(struct iio_dev *indio_dev,
 {
 	struct matrixio_uv_data *data = iio_priv(indio_dev);
 	int ret;
+	int uv;
+
+	ret = matrixio_hw_buf_read(
+	    data->mio, MATRIXIO_MCU_BASE + (MATRIXIO_SRAM_OFFSET_UV >> 1),
+	    sizeof(uv), &uv);
 
 	switch (mask) {
 	case IIO_CHAN_INFO_RAW:
+		*val = uv;
+		return IIO_VAL_INT;
+
 	case IIO_CHAN_INFO_PROCESSED:
-		/*
-		ret = matrixio_uv_read(data);
-		if (ret < 0)
-			return ret;
-		if (mask == IIO_CHAN_INFO_PROCESSED)
-			*val = matrixio_uv_to_uv_index(ret);
-		else
-			*val = ret;
-			*/
-
-		ret = matrixio_hw_buf_read(data->mio,
-					   MATRIXIO_MCU_BASE +
-					       (MATRIXIO_SRAM_OFFSET_UV >> 1),
-					   sizeof(*val), val);
-
+		*val = matrixio_uv_to_uv_index(uv);
 		return IIO_VAL_INT;
 	default:
 		return -EINVAL;
