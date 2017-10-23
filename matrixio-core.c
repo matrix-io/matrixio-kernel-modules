@@ -157,8 +157,8 @@ static int matrixio_register_devices(struct matrixio *matrixio)
 		.pdata_size = sizeof(*matrixio),
 	    },
 	    {
-		.name = "matrixio-uv",
-		.of_compatible = "matrixio-uv",
+		.name = "matrixio-env",
+		.of_compatible = "matrixio-env",
 		.platform_data = matrixio,
 		.pdata_size = sizeof(*matrixio),
 	    }};
