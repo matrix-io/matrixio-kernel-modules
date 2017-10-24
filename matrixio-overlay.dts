@@ -85,4 +85,14 @@
 			};
 		};
 	};
+	fragment@9 {
+		target = <&matrixio_core_0>;
+		__overlay__ {
+			matrixio-imu@0 {
+				compatible = "matrixio-imu";
+				status = "okay";
+			};
+		};
+	};
+
 };

@@ -90,7 +90,7 @@ static const struct iio_chan_spec matrixio_imu_channels[] = {
 	{
 		.type = IIO_MAGN,
 		.modified = 1,
-		.channel2 = IIO_MOD_Y,
+		.channel2 = IIO_MOD_Z,
 		.address = 16,
 		.info_mask_separate = BIT(IIO_CHAN_INFO_RAW),
 	}
@@ -108,15 +108,15 @@ static int matrixio_imu_read_raw(struct iio_dev *indio_dev,
 {
 	struct matrixio_bus *data = iio_priv(indio_dev);
 	int ret;
-	int data;
+	int data_read;
 
 	if(mask == IIO_CHAN_INFO_RAW) {
 
 		ret = matrixio_hw_buf_read(
 	    		data->mio, MATRIXIO_MCU_BASE + (MATRIXIO_SRAM_OFFSET_IMU >> 1) + chan->address,
-	    		sizeof(data), &data);
+	    		sizeof(data_read), &data_read);
 
-		matrixio_to_int_plus_micro (env_data.altitude, val, val2);
+		matrixio_to_int_plus_micro (data_read, val, val2);
 		
 		return  IIO_VAL_INT_PLUS_MICRO;
 	} 
