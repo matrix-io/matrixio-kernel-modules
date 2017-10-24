@@ -42,5 +42,8 @@ int matrixio_hw_reg_read(void *context, unsigned int reg, unsigned int *val);
 int matrixio_hw_reg_write(void *context, unsigned int reg, unsigned int val);
 int matrixio_hw_buf_read(struct matrixio *matrixio, unsigned int add,
 			 int length, void *data);
+int matrixio_hw_buf_write(struct matrixio *matrixio, unsigned int add,
+			 int length, void *data);
+
 
 #endif
