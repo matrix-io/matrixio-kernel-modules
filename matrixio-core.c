@@ -81,6 +81,7 @@ int matrixio_hw_reg_read(void *context, unsigned int reg, unsigned int *val)
 				    (uint8_t *)recv_buf, 4);
 
 	if (ret < 0) {
+		*val = 0;
 		return ret;
 	}
 
@@ -120,6 +121,8 @@ int matrixio_hw_buf_read(struct matrixio *matrixio, unsigned int add,
 
 		if (ret)
 			return ret;
+
+		words[offset] = val;
 	}
 	return 0;
 }
@@ -127,27 +130,24 @@ int matrixio_hw_buf_read(struct matrixio *matrixio, unsigned int add,
 EXPORT_SYMBOL(matrixio_hw_buf_read);
 
 int matrixio_hw_buf_write(struct matrixio *matrixio, unsigned int add,
-			 int length, void *data)
+			  int length, void *data)
 {
 	int ret;
 	int offset;
-	unsigned int val;
 	uint16_t *words = data;
 
 	for (offset = 0; offset < (length / 2); offset++) {
-		ret = matrixio_hw_reg_write(matrixio, add + offset, words[offset]);
+		ret = matrixio_hw_reg_write(matrixio, add + offset,
+					    words[offset]);
 
 		if (ret)
 			return ret;
 
-		words[offset] = val;
 	}
 	return 0;
 }
 
 EXPORT_SYMBOL(matrixio_hw_buf_write);
-
-
 
 static int matrixio_register_devices(struct matrixio *matrixio)
 {
@@ -188,7 +188,7 @@ static int matrixio_register_devices(struct matrixio *matrixio)
 		.platform_data = matrixio,
 		.pdata_size = sizeof(*matrixio),
 	    }
-	
+
 	};
 
 	return devm_mfd_add_devices(matrixio->dev, -1, cells, ARRAY_SIZE(cells),
