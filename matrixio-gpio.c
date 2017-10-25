@@ -13,6 +13,7 @@
 struct matrixio_gpio {
 	struct gpio_chip chip;
 	struct matrixio *mio;
+	struct mutex lock;
 };
 
 static int matrixio_gpio_get_direction(struct gpio_chip *gc, unsigned offset)
@@ -31,12 +32,13 @@ static int matrixio_gpio_direction_input(struct gpio_chip *gc,
 	struct matrixio_gpio *chip = gpiochip_get_data(gc);
 	int gpio_direction;
 
+	mutex_lock(&chip->lock);
 	regmap_read(chip->mio->regmap, MATRIXIO_GPIO_BASE, &gpio_direction);
 	
 	gpio_direction |= BIT(offset);
 
 	regmap_write(chip->mio->regmap, MATRIXIO_GPIO_BASE, gpio_direction);
-
+	mutex_unlock(&chip->lock);
 	return 0;
 
 }
@@ -48,6 +50,7 @@ static int matrixio_gpio_direction_output(struct gpio_chip *gc,
 	int gpio_direction;
 	int gpio_value;
 
+	mutex_lock(&chip->lock);
 	regmap_read(chip->mio->regmap, MATRIXIO_GPIO_BASE, &gpio_direction);
 	regmap_read(chip->mio->regmap, MATRIXIO_GPIO_BASE + 1, &gpio_value);
 	
@@ -58,6 +61,7 @@ static int matrixio_gpio_direction_output(struct gpio_chip *gc,
 
 	regmap_write(chip->mio->regmap, MATRIXIO_GPIO_BASE, gpio_direction);
 	regmap_write(chip->mio->regmap, MATRIXIO_GPIO_BASE + 1, gpio_value);
+	mutex_unlock(&chip->lock);
 
 	return 0;
 }
@@ -66,8 +70,10 @@ static int matrixio_gpio_get(struct gpio_chip *gc, unsigned offset)
 {
 	struct matrixio_gpio *chip = gpiochip_get_data(gc);
 	int gpio_value;
-
+	
+	mutex_lock(&chip->lock);
 	regmap_read(chip->mio->regmap, MATRIXIO_GPIO_BASE + 1, &gpio_value);
+	mutex_unlock(&chip->lock);
 
 	return (gpio_value & BIT(offset));
 }
@@ -78,6 +84,7 @@ static void matrixio_gpio_set(struct gpio_chip *gc, unsigned offset,
 	struct matrixio_gpio *chip = gpiochip_get_data(gc);
 	int gpio_value;
 
+	mutex_lock(&chip->lock);
 	regmap_read(chip->mio->regmap, MATRIXIO_GPIO_BASE + 1, &gpio_value);
 	
 	if(value)
@@ -86,7 +93,7 @@ static void matrixio_gpio_set(struct gpio_chip *gc, unsigned offset,
 		gpio_value &= ~BIT(offset);
 
 	regmap_write(chip->mio->regmap, MATRIXIO_GPIO_BASE + 1, gpio_value);
-
+	mutex_unlock(&chip->lock);
 }
 
 static const struct gpio_chip matrixio_gpio_chip = {
@@ -113,12 +120,12 @@ static int matrixio_gpio_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, gpio);
 
-	printk(KERN_INFO "probe : %s", pdev->name);
-
 	gpio->mio = dev_get_drvdata(pdev->dev.parent);
 	gpio->chip = matrixio_gpio_chip;
 	gpio->chip.parent = gpio->mio->dev;
 
+	mutex_init(&gpio->lock);
+	
 	ret = gpiochip_add_data(&gpio->chip, gpio);
 
 	if (ret < 0) {
@@ -129,7 +136,13 @@ static int matrixio_gpio_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int matrixio_gpio_remove(struct platform_device *pdev) { return 0; }
+static int matrixio_gpio_remove(struct platform_device *pdev) { 
+	
+	struct matrixio_gpio *gpio;
+       	gpio = dev_get_drvdata(&pdev->dev);
+	mutex_destroy(&gpio->lock);
+	return 0; 
+}
 
 static struct platform_driver matrixio_gpio_driver = {
     .driver =
