@@ -85,7 +85,7 @@
                         };
                 };
         };
-	fragment@8 {
+	fragment@9 {
 		target = <&matrixio_core_0>;
 		__overlay__ {
 			matrixio-env@0 {
@@ -94,7 +94,7 @@
 			};
 		};
 	};
-	fragment@9 {
+	fragment@10 {
 		target = <&matrixio_core_0>;
 		__overlay__ {
 			matrixio-imu@0 {
