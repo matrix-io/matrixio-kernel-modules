@@ -129,7 +129,7 @@ static int matrixio_gpio_probe(struct platform_device *pdev)
 	
 	ret = gpiochip_add_data(&gpio->chip, gpio);
 
-	if (ret < 0) {
+	if (ret) {
 		dev_err(&pdev->dev, "Could not register gpiochip, %d\n", ret);
 		return ret;
 	}
