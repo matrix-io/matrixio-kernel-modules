@@ -81,8 +81,7 @@ int matrixio_hw_reg_read(void *context, unsigned int reg, unsigned int *val)
 	ret = matrixio_spi_transfer(matrixio->spi, send_buf,
 				    (uint8_t *)recv_buf, 4);
 
-	if (ret < 0) {
-		*val = 0;
+	if (ret) {
 		return ret;
 	}
 
