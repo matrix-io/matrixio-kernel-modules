@@ -7,7 +7,7 @@
  * the GNU General Public License.  See the file COPYING in the main
  * directory of this archive for more details.
  *
- * IIO driver for VEML6070 (MATRIX CREATOR UV Sensor)
+ * IIO driver for (MATRIX CREATOR Enviromental Sensors)
  *
  */
 
