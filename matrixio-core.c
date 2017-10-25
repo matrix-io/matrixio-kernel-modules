@@ -23,6 +23,7 @@
 #include "matrixio-core.h"
 
 static DEFINE_MUTEX(matrixio_spi_lock);
+static DEFINE_MUTEX(matrixio_buff_lock);
 
 struct hardware_address {
 	uint8_t readnwrite : 1;
@@ -115,6 +116,8 @@ int matrixio_hw_buf_read(struct matrixio *matrixio, unsigned int add,
 	int offset;
 	unsigned int val;
 	uint16_t *words = data;
+	
+	mutex_lock(&matrixio_buff_lock);
 
 	for (offset = 0; offset < (length / 2); offset++) {
 		ret = matrixio_hw_reg_read(matrixio, add + offset, &val);
@@ -124,6 +127,9 @@ int matrixio_hw_buf_read(struct matrixio *matrixio, unsigned int add,
 
 		words[offset] = val;
 	}
+
+	mutex_unlock(&matrixio_buff_lock);
+
 	return 0;
 }
 
@@ -136,6 +142,8 @@ int matrixio_hw_buf_write(struct matrixio *matrixio, unsigned int add,
 	int offset;
 	uint16_t *words = data;
 
+	mutex_lock(&matrixio_buff_lock);
+
 	for (offset = 0; offset < (length / 2); offset++) {
 		ret = matrixio_hw_reg_write(matrixio, add + offset,
 					    words[offset]);
@@ -144,6 +152,9 @@ int matrixio_hw_buf_write(struct matrixio *matrixio, unsigned int add,
 			return ret;
 
 	}
+
+	mutex_unlock(&matrixio_buff_lock);
+
 	return 0;
 }
 
