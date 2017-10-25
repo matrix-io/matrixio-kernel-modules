@@ -22,7 +22,7 @@
 
 #define MATRIXIO_UV_DRV_NAME "matrixio_env"
 
-#define MATRIXIO_SRAM_OFFSET_UV 0x0
+#define MATRIXIO_SRAM_OFFSET_ENV 0x0
 
 struct matrixio_bus {
 	struct matrixio *mio;
@@ -102,10 +102,12 @@ static int matrixio_env_read_raw(struct iio_dev *indio_dev,
 	struct matrixio_bus *data = iio_priv(indio_dev);
 	int ret;
 	struct matrixio_env_data env_data;
-
+	
+	mutex_lock(&indio_dev->mlock);
 	ret = matrixio_hw_buf_read(
-	    data->mio, MATRIXIO_MCU_BASE + (MATRIXIO_SRAM_OFFSET_UV >> 1),
+	    data->mio, MATRIXIO_MCU_BASE + (MATRIXIO_SRAM_OFFSET_ENV >> 1),
 	    sizeof(env_data), &env_data);
+	mutex_unlock(&indio_dev->mlock);
 
 	switch (mask) {
 	case IIO_CHAN_INFO_RAW:
