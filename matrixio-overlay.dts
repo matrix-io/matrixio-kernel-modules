@@ -85,12 +85,21 @@
                         };
                 };
         };
-
 	fragment@9 {
-		target-path = "/";
+		target = <&matrixio_core_0>;
 		__overlay__ {
-			matrixio-uv@0 {
-				compatible = "matrixio-uv";
+			matrixio-env@0 {
+				compatible = "matrixio-env";
+				status = "okay";
+			};
+		};
+	};
+	fragment@10 {
+		target = <&matrixio_core_0>;
+		__overlay__ {
+			matrixio-imu@0 {
+				compatible = "matrixio-imu";
+				status = "okay";
 			};
 		};
 	};
