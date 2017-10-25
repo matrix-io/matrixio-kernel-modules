@@ -217,14 +217,14 @@ static int matrixio_init(struct matrixio *matrixio,
 
 	ret = matrixio_register_devices(matrixio);
 
-	if (ret != 0) {
+	if (ret) {
 		dev_err(matrixio->dev, "Failed to register MATRIX FPGA \n");
 		return ret;
 	}
 
 	if (pdata && pdata->platform_init) {
 		ret = pdata->platform_init(matrixio->dev);
-		if (ret != 0) {
+		if (ret) {
 			dev_err(matrixio->dev, "Platform init failed: %d\n",
 				ret);
 			return ret;
