@@ -72,18 +72,16 @@
                 target = <&sound>;
                 sound_overlay:__overlay__ {
 			compatible = "simple-audio-card";
-			simple-audio-card,name = "matrixio-codec";
-			simple-audio-card,bitclock-master = <&dailink0_master>;
-			simple-audio-card,frame-master = <&dailink0_master>;
+			simple-audio-card,name = "matrixio-audio";
 			status = "okay"; 	
 
-			dailink0_master: simple-audio-card,codec {
+			codec_dai: simple-audio-card,codec {
 				sound-dai = <&matrixio_codec_a>;
 			};		
 		};
 	};
 
 	 __overrides__ {
-		card-name = <&sound_overlay>,"simple-audio-card,name";
+		card-name = <&sound_overlay>,"matrixio-audio,name";
 	};
 };
