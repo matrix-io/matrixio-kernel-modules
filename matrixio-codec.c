@@ -53,6 +53,7 @@ static struct snd_soc_dai_link matrixio_snd_soc_dai = {
     //	.platform_name	= "rpi-matrixio-pcm",
     .codec_name = "snd-soc-dummy",
     .ops = &matrixio_snd_ops,
+
 };
 
 static struct snd_soc_card matrixio_soc_card = {
@@ -85,10 +86,42 @@ static int matrixio_codec_prepare(struct snd_pcm_substream *substream,
 	return 0;
 }
 
+/* codec dai component */
+static int matrixio_codec_dai_startup(struct snd_pcm_substream *substream,
+				      struct snd_soc_dai *codec_dai)
+{
+	printk(KERN_INFO "::DAI STARTUP");
+	return 0;
+}
+
+static int matrixio_codec_dai_digital_mute(struct snd_soc_dai *codec_dai,
+					   int mute)
+{
+	printk(KERN_INFO "::DIGITAL MUTE");
+	return 0;
+}
+
+static int matrixio_codec_dai_trigger(struct snd_pcm_substream *substream,
+				      int cmd, struct snd_soc_dai *codec_dai)
+{
+	printk(KERN_INFO "::trigger");
+	return 0;
+}
+
+static void matrixio_codec_dai_shutdown(struct snd_pcm_substream *substream,
+					    struct snd_soc_dai *codec_dai)
+{
+	printk(KERN_INFO "::shutdown");
+}
+
 static const struct snd_soc_dai_ops matrixio_dai_ops = {
     .hw_params = matrixio_codec_hw_params,
     .prepare = matrixio_codec_prepare,
     .set_fmt = matrixio_codec_set_fmt,
+    .digital_mute = matrixio_codec_dai_digital_mute,
+    .startup = matrixio_codec_dai_startup,
+    .shutdown = matrixio_codec_dai_shutdown,
+    .trigger = matrixio_codec_dai_trigger,
 };
 
 static const DECLARE_TLV_DB_SCALE(inpga_tlv, -1000, 100, 0);
@@ -137,7 +170,6 @@ static const struct snd_soc_codec_driver matrixio_soc_codec_driver = {
 */
 };
 
-
 static struct snd_soc_dai_driver matrixio_dai_driver = {
     .name = "matrixio-dai",
     .capture =
@@ -156,7 +188,7 @@ static int matrixio_codec_probe(struct platform_device *pdev)
 	int ret;
 	struct snd_soc_card *card = &matrixio_soc_card;
 
-        matrixio = dev_get_drvdata(pdev->dev.parent);
+	matrixio = dev_get_drvdata(pdev->dev.parent);
 
 	card->dev = &pdev->dev;
 
@@ -172,12 +204,12 @@ static int matrixio_codec_probe(struct platform_device *pdev)
 
 	printk(KERN_INFO "MATRIXIO codec registered\n");
 
-        ret = devm_snd_soc_register_card(&pdev->dev, card);
+	ret = devm_snd_soc_register_card(&pdev->dev, card);
 
-        if (ret != 0) {
-                dev_err(matrixio->dev, "Failed to register MATRIXIO card: %d\n",
-                        ret);
-        }
+	if (ret != 0) {
+		dev_err(matrixio->dev, "Failed to register MATRIXIO card: %d\n",
+			ret);
+	}
 
 	return ret;
 }
