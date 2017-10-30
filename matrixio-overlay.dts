@@ -63,6 +63,8 @@
 		__overlay__ {
 			matrixio_codec_a: matrix_codec@0 {
 				compatible = "matrixio-codec";
+                                interrupts = <6 0x3>; /* low-to-high edge triggered */
+                                interrupt-parent = <&gpio>;
 				status = "okay";
 			};
 		};

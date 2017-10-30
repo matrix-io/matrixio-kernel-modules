@@ -15,6 +15,7 @@
 #include <linux/module.h>
 #include <linux/moduleparam.h>
 #include <linux/platform_device.h>
+#include <linux/of_irq.h>
 #include <sound/core.h>
 #include <sound/pcm.h>
 #include <sound/pcm_params.h>
@@ -27,7 +28,21 @@
 #define MATRIXIO_RATES SNDRV_PCM_RATE_8000_48000
 #define MATRIXIO_FORMATS SNDRV_PCM_FMTBIT_S16_LE
 
-static struct matrixio *matrixio;
+struct matrixio_substream {
+	struct matrixio* mio;
+	int irq;
+	struct snd_pcm_substream *substream;
+};
+
+struct matrixio_substream *ms;
+
+static irqreturn_t matrixio_dai_interrupt(int irq, void* irq_data)
+{
+	struct matrixio_substream* ms = (struct matrixio_substream*)irq_data;
+
+	return IRQ_HANDLED;
+}
+
 
 static int matrixio_startup(struct snd_pcm_substream *substream)
 {
@@ -137,21 +152,18 @@ static const struct snd_soc_dapm_widget matrixio_dapm_widgets[] = {
 
 static const struct snd_soc_dapm_route matrixio_dapm_routes[] = {};
 
-static int matrixio_probe(struct snd_soc_codec *codec)
+static int matrixio_codec_probe(struct snd_soc_codec *codec)
 {
+//	struct matrixio_substream *ms = snd_soc_codec_get_drvdata(codec);
 
-	printk(KERN_INFO "matrixio_probe");
-
-	dev_set_drvdata(codec->dev, matrixio);
-
-	snd_soc_codec_init_regmap(codec, matrixio->regmap);
-
+	printk(KERN_INFO "matrixio_codec_probe");
+	snd_soc_codec_init_regmap(codec, ms->mio->regmap);
 	return 0;
 }
 
 static const struct snd_soc_codec_driver matrixio_soc_codec_driver = {
 
-    .probe = matrixio_probe,
+    .probe = matrixio_codec_probe,
     .component_driver =
 	{
 	    .controls = matrixio_snd_controls,
@@ -162,44 +174,47 @@ static const struct snd_soc_codec_driver matrixio_soc_codec_driver = {
 	    .num_dapm_routes = ARRAY_SIZE(matrixio_dapm_routes),
 
 	},
-
-    /*
-    .set_bias_level =
-    .read =
-    .write =
-*/
 };
 
 static struct snd_soc_dai_driver matrixio_dai_driver = {
-    .name = "matrixio-dai",
-    .capture =
+	.name = "matrixio-dai",
+	.capture =
 	{
-	    .stream_name = "Micarray Capture",
-	    .channels_min = 1,
-	    .channels_max = MATRIXIO_CHANNELS_MAX,
-	    .rates = MATRIXIO_RATES,
-	    .formats = MATRIXIO_FORMATS,
+		.stream_name = "Micarray Capture",
+		.channels_min = 1,
+		.channels_max = MATRIXIO_CHANNELS_MAX,
+		.rates = MATRIXIO_RATES,
+		.formats = MATRIXIO_FORMATS,
 	},
-    .ops = &matrixio_dai_ops,
+	.ops = &matrixio_dai_ops,
 };
 
-static int matrixio_codec_probe(struct platform_device *pdev)
+static int matrixio_probe(struct platform_device *pdev)
 {
 	int ret;
+	struct device_node *np = pdev->dev.of_node;
 	struct snd_soc_card *card = &matrixio_soc_card;
-
-	matrixio = dev_get_drvdata(pdev->dev.parent);
 
 	card->dev = &pdev->dev;
 
-	printk(KERN_INFO "matrixio_codec_probe");
+	printk(KERN_INFO "matrixio_probe");
 
-	ret = snd_soc_register_codec(matrixio->dev, &matrixio_soc_codec_driver,
+	ms = devm_kzalloc(&pdev->dev, sizeof(struct matrixio_substream), GFP_KERNEL);
+	if(!ms)
+		return -ENOMEM;
+
+	platform_set_drvdata(pdev, ms);
+
+	ms->mio = dev_get_drvdata(pdev->dev.parent);
+
+	ret = snd_soc_register_codec(&pdev->dev, &matrixio_soc_codec_driver,
 				     &matrixio_dai_driver, 1);
 
-	if (ret != 0) {
-		dev_err(matrixio->dev,
+	if (ret) {
+		dev_err(&pdev->dev,
 			"Failed to register MATRIXIO codec: %d\n", ret);
+	
+		return ret;
 	}
 
 	printk(KERN_INFO "MATRIXIO codec registered\n");
@@ -207,9 +222,17 @@ static int matrixio_codec_probe(struct platform_device *pdev)
 	ret = devm_snd_soc_register_card(&pdev->dev, card);
 
 	if (ret != 0) {
-		dev_err(matrixio->dev, "Failed to register MATRIXIO card: %d\n",
+		dev_err(&pdev->dev, "Failed to register MATRIXIO card: %d\n",
 			ret);
+		return ret;
 	}
+
+	ms->irq = irq_of_parse_and_map(np,0);
+
+	ret = devm_request_irq(&pdev->dev, ms->irq, matrixio_dai_interrupt, 0, "matrixio-audio",ms);
+
+	if(ret)
+		dev_err(&pdev->dev,"can't request irq %d\n", ms->irq);
 
 	return ret;
 }
@@ -228,7 +251,7 @@ static struct platform_driver matrixio_codec_driver = {
     .driver = {.name = "matrixio-codec",
 	       .owner = THIS_MODULE,
 	       .of_match_table = snd_matrixio_codec_of_match},
-    .probe = matrixio_codec_probe,
+    .probe = matrixio_probe,
 
     .remove = matrixio_codec_remove,
 };
