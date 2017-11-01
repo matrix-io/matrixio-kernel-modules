@@ -27,26 +27,60 @@
 #define MATRIXIO_CHANNELS_MAX 8
 #define MATRIXIO_RATES SNDRV_PCM_RATE_8000_48000
 #define MATRIXIO_FORMATS SNDRV_PCM_FMTBIT_S16_LE
+#define MATRIXIO_MICARRAY_BASE 0x1800
+#define MATRIXIO_MICARRAY_BUFFER_SIZE 1024
+
+
+
+static int matrixio_pcm_open(struct snd_pcm_substream *substream)
+{
+	printk( KERN_INFO "matrixio_pcm_open");
+	return 0;
+}
+
+static struct snd_pcm_ops matrixio_pcm_ops = {
+		.open		= matrixio_pcm_open,
+};
 
 struct matrixio_substream {
 	struct matrixio* mio;
 	int irq;
+	spinlock_t lock;
 	struct snd_pcm_substream *substream;
 };
 
 struct matrixio_substream *ms;
 
+
+static int16_t raw_data[MATRIXIO_MICARRAY_BUFFER_SIZE];
+
+
 static irqreturn_t matrixio_dai_interrupt(int irq, void* irq_data)
 {
-	struct matrixio_substream* ms = (struct matrixio_substream*)irq_data;
+	unsigned long flags;
 
-	printk(KERN_INFO ".");
+	spin_lock_irqsave(&ms->lock, flags);
+
+	if(ms->substream)
+	{
+		matrixio_hw_read_burst(ms->mio, MATRIXIO_MICARRAY_BASE,
+						MATRIXIO_MICARRAY_BUFFER_SIZE*sizeof(int16_t),
+						raw_data);
+
+		printk(KERN_INFO ".");
+	
+//		snd_pcm_stop_xrun(ms->substream);
+	}
+	spin_unlock_irqrestore(&ms->lock, flags);
+
 	return IRQ_HANDLED;
 }
 
 
 static int matrixio_startup(struct snd_pcm_substream *substream)
 {
+	ms->substream = substream;
+	
 	printk(KERN_INFO "startup");
 	return 0;
 }
@@ -190,6 +224,11 @@ static struct snd_soc_dai_driver matrixio_dai_driver = {
 	.ops = &matrixio_dai_ops,
 };
 
+static struct snd_soc_platform_driver matrixio_snd_soc_platform = {
+	.ops		= &matrixio_pcm_ops,
+	//.pcm_new	= bf5xx_pcm_i2s_new,
+};
+
 static int matrixio_probe(struct platform_device *pdev)
 {
 	int ret;
@@ -203,6 +242,10 @@ static int matrixio_probe(struct platform_device *pdev)
 	ms = devm_kzalloc(&pdev->dev, sizeof(struct matrixio_substream), GFP_KERNEL);
 	if(!ms)
 		return -ENOMEM;
+
+	ms->substream = 0;
+
+	spin_lock_init(&ms->lock);
 
 	platform_set_drvdata(pdev, ms);
 
@@ -235,6 +278,9 @@ static int matrixio_probe(struct platform_device *pdev)
 	if(ret)
 		dev_err(&pdev->dev,"can't request irq %d\n", ms->irq);
 
+	printk(KERN_INFO "MATRIX AUDIO has been loaded (IRQ=%d,%d)", ms->irq, ret);
+
+	ret = devm_snd_soc_register_platform(&pdev->dev, &matrixio_snd_soc_platform);
 	return ret;
 }
 

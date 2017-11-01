@@ -133,14 +133,13 @@ int matrixio_hw_buf_read(struct matrixio *matrixio, unsigned int add,
 }
 EXPORT_SYMBOL(matrixio_hw_buf_read);
 
-static int matrixio_hw_read_burst(struct matrixio *matrixio, unsigned int add,
+static uint8_t rx_buffer[4096];
+static uint8_t tx_buffer[4096];
+
+int matrixio_hw_read_burst(struct matrixio *matrixio, unsigned int add,
 			   int length, void *data)
 {
 	int ret;
-
-	static uint8_t rx_buffer[4096];
-	static uint8_t tx_buffer[4096];
-
 	struct hardware_address *hw_addr;
 
 	mutex_lock(&matrixio_buff_lock);
