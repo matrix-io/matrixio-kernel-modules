@@ -103,7 +103,7 @@
 				status = "okay";
 			};
 		};
-
+	};
 	fragment@10 {
 		target = <&matrixio_core_0>;
 		__overlay__ {
