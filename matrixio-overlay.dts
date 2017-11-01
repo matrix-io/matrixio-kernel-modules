@@ -78,15 +78,7 @@
                 };
         };
 
-        fragment@7 {
-                target = <&sound>;
-                __overlay__ {
-                        matrixio-codec@0 {
-                                compatible = "matrixio-codec";
-                        };
-                };
-        };
-	fragment@8 {
+	fragment@7 {
 		target = <&matrixio_core_0>;
 		__overlay__ {
 			matrixio-env@0 {
@@ -95,7 +87,7 @@
 			};
 		};
 	};
-	fragment@9 {
+	fragment@8 {
 		target = <&matrixio_core_0>;
 		__overlay__ {
 			matrixio-imu@0 {
@@ -104,7 +96,7 @@
 			};
 		};
 	};
-	fragment@10 {
+	fragment@9 {
 		target = <&matrixio_core_0>;
 		__overlay__ {
 			matrixio_codec_a: matrix_codec@0 {
@@ -116,7 +108,7 @@
 		};
 	};
 
-        fragment@11 {
+        fragment@10 {
                 target = <&sound>;
                 sound_overlay:__overlay__ {
 			compatible = "simple-audio-card";
