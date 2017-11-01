@@ -25,7 +25,7 @@
 	};
 
 
-	fragment@3 {
+	fragment@2 {
 		target = <&gpio>;
 		__overlay__ {
 			matrixio_pins: matrixio_pins {
@@ -36,7 +36,7 @@
 	};
 
 
-        fragment@4 {
+        fragment@3 {
                 target-path = "/";
                 __overlay__ {
                         matrixio-everloop@0 {
@@ -46,7 +46,7 @@
                 };
         };
 
-        fragment@5 {
+        fragment@4 {
                 target = <&matrixio_core_0>;
                 __overlay__ {
                         matrixio-uart@0 {
@@ -58,7 +58,53 @@
                 };
         };
 
-	fragment@6 {
+        fragment@5 {
+                target = <&matrixio_core_0>;
+                __overlay__ {
+                        matrixio-gpio@0 {
+                                compatible = "matrixio-gpio";
+                                status = "okay";
+                        };
+                };
+        };
+
+        fragment@6 {
+                target = <&matrixio_core_0>;
+                __overlay__ {
+                        matrixio-pwm@0 {
+                                compatible = "matrixio-pwm";
+                                status = "okay";
+                        };
+                };
+        };
+
+        fragment@7 {
+                target = <&sound>;
+                __overlay__ {
+                        matrixio-codec@0 {
+                                compatible = "matrixio-codec";
+                        };
+                };
+        };
+	fragment@8 {
+		target = <&matrixio_core_0>;
+		__overlay__ {
+			matrixio-env@0 {
+				compatible = "matrixio-env";
+				status = "okay";
+			};
+		};
+	};
+	fragment@9 {
+		target = <&matrixio_core_0>;
+		__overlay__ {
+			matrixio-imu@0 {
+				compatible = "matrixio-imu";
+				status = "okay";
+			};
+		};
+
+	fragment@10 {
 		target = <&matrixio_core_0>;
 		__overlay__ {
 			matrixio_codec_a: matrix_codec@0 {
@@ -70,7 +116,7 @@
 		};
 	};
 
-        fragment@7 {
+        fragment@11 {
                 target = <&sound>;
                 sound_overlay:__overlay__ {
 			compatible = "simple-audio-card";
@@ -85,5 +131,6 @@
 
 	 __overrides__ {
 		card-name = <&sound_overlay>,"matrixio-audio,name";
+
 	};
 };
