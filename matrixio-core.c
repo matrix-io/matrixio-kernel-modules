@@ -313,3 +313,4 @@ module_spi_driver(matrixio_core_driver);
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Andres Calderon <andres.calderon@admobilize.com>");
 MODULE_DESCRIPTION("MATRIXIO core module");
+

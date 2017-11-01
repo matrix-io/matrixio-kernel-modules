@@ -40,6 +40,7 @@ static irqreturn_t matrixio_dai_interrupt(int irq, void* irq_data)
 {
 	struct matrixio_substream* ms = (struct matrixio_substream*)irq_data;
 
+	printk(KERN_INFO ".");
 	return IRQ_HANDLED;
 }
 

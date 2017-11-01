@@ -52,3 +52,4 @@ static int matrixio_hw_read_burst(struct matrixio *matrixio, unsigned int add,
 			   int length, void *data);
 
 #endif
+
