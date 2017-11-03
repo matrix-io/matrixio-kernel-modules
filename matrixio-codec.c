@@ -14,8 +14,8 @@
 #include <linux/init.h>
 #include <linux/module.h>
 #include <linux/moduleparam.h>
-#include <linux/platform_device.h>
 #include <linux/of_irq.h>
+#include <linux/platform_device.h>
 #include <sound/core.h>
 #include <sound/pcm.h>
 #include <sound/pcm_params.h>
@@ -30,20 +30,103 @@
 #define MATRIXIO_MICARRAY_BASE 0x1800
 #define MATRIXIO_MICARRAY_BUFFER_SIZE 1024
 
-
-
 static int matrixio_pcm_open(struct snd_pcm_substream *substream)
 {
-	printk( KERN_INFO "matrixio_pcm_open");
+	printk(KERN_INFO "matrixio_pcm_open");
 	return 0;
 }
 
+/* close callback */
+static int matrixio_pcm_close(struct snd_pcm_substream *substream)
+{
+	printk(KERN_INFO "matrixio_pcm_close");
+	//	struct mychip *chip = snd_pcm_substream_chip(substream);
+	/* the hardware-specific codes will be here */
+	return 0;
+}
+
+/* hw_params callback */
+static int matrixio_pcm_hw_params(struct snd_pcm_substream *substream,
+				    struct snd_pcm_hw_params *hw_params)
+{
+	printk(KERN_INFO "matrixio_pcm_hw_params");
+	return snd_pcm_lib_malloc_pages(substream,
+					params_buffer_bytes(hw_params));
+}
+
+/* hw_free callback */
+static int matrixio_pcm_hw_free(struct snd_pcm_substream *substream)
+{
+	printk(KERN_INFO "matrixio_pcm_hw_free");
+	return snd_pcm_lib_free_pages(substream);
+}
+
+/* prepare callback */
+static int matrixio_pcm_prepare(struct snd_pcm_substream *substream)
+{
+	printk(KERN_INFO "matrixio_pcm_prepare");
+	/* irqreturn_t 
+	struct mychip *chip = snd_pcm_substream_chip(substream);
+	struct snd_pcm_runtime *runtime = substream->runtime;
+
+	/* set up the hardware with the current configuration
+	 *            * for example...
+	 *                       */
+/*
+	mychip_set_sample_format(chip, runtime->format);
+	mychip_set_sample_rate(chip, runtime->rate);
+	mychip_set_channels(chip, runtime->channels);
+	mychip_set_dma_setup(chip, runtime->dma_addr, chip->buffer_size,
+			     chip->period_size);
+*/
+	return 0;
+}
+
+/* trigger callback */
+static int matrixio_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
+{
+	printk(KERN_INFO "matrixio_pcm_trigger");
+	return 0;
+#if 0
+	switch (cmd) {
+	case SNDRV_PCM_TRIGGER_START:
+		/* do something to start the PCM engine */
+		....break;
+	case SNDRV_PCM_TRIGGER_STOP:
+		/* do something to stop the PCM engine */
+		....break;
+	default:
+		return -EINVAL;
+	}
+#endif
+}
+
+/* pointer callback */
+static snd_pcm_uframes_t
+matrixio_pcm_pointer(struct snd_pcm_substream *substream)
+{
+	//struct mychip *chip = snd_pcm_substream_chip(substream);
+	unsigned int current_ptr;
+
+	printk(KERN_INFO "matrixio_pcm_pointer");
+	/* get the current hardware pointer */
+	//current_ptr = mychip_get_hw_pointer(chip);
+	return 0;//current_ptr;
+}
+
 static struct snd_pcm_ops matrixio_pcm_ops = {
-		.open		= matrixio_pcm_open,
+    .open = matrixio_pcm_open,
+    .close = matrixio_pcm_close,
+    .ioctl = snd_pcm_lib_ioctl,
+    .hw_params = matrixio_pcm_hw_params,
+    .hw_free = matrixio_pcm_hw_free,
+    .prepare = matrixio_pcm_prepare,
+    .trigger = matrixio_pcm_trigger,
+    .pointer = matrixio_pcm_pointer,
 };
 
 struct matrixio_substream {
-	struct matrixio* mio;
+	struct matrixio *mio;
 	int irq;
 	spinlock_t lock;
 	struct snd_pcm_substream *substream;
@@ -51,36 +134,32 @@ struct matrixio_substream {
 
 struct matrixio_substream *ms;
 
-
 static int16_t raw_data[MATRIXIO_MICARRAY_BUFFER_SIZE];
 
-
-static irqreturn_t matrixio_dai_interrupt(int irq, void* irq_data)
+static irqreturn_t matrixio_dai_interrupt(int irq, void *irq_data)
 {
 	unsigned long flags;
 
 	spin_lock_irqsave(&ms->lock, flags);
 
-	if(ms->substream)
-	{
-		matrixio_hw_read_burst(ms->mio, MATRIXIO_MICARRAY_BASE,
-						MATRIXIO_MICARRAY_BUFFER_SIZE*sizeof(int16_t),
-						raw_data);
+	if (ms->substream) {
+		matrixio_hw_read_burst(
+		    ms->mio, MATRIXIO_MICARRAY_BASE,
+		    MATRIXIO_MICARRAY_BUFFER_SIZE * sizeof(int16_t), raw_data);
 
-		printk(KERN_INFO ".");
-	
-//		snd_pcm_stop_xrun(ms->substream);
+		//		printk(KERN_INFO ".");
+
+		//		snd_pcm_stop_xrun(ms->substream);
 	}
 	spin_unlock_irqrestore(&ms->lock, flags);
 
 	return IRQ_HANDLED;
 }
 
-
 static int matrixio_startup(struct snd_pcm_substream *substream)
 {
 	ms->substream = substream;
-	
+
 	printk(KERN_INFO "startup");
 	return 0;
 }
@@ -141,6 +220,10 @@ static int matrixio_codec_dai_startup(struct snd_pcm_substream *substream,
 				      struct snd_soc_dai *codec_dai)
 {
 	printk(KERN_INFO "::DAI STARTUP");
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct snd_pcm *pcm = rtd->pcm;
+
+	snd_pcm_set_ops(pcm, SNDRV_PCM_STREAM_CAPTURE, &matrixio_pcm_ops);
 	return 0;
 }
 
@@ -159,7 +242,7 @@ static int matrixio_codec_dai_trigger(struct snd_pcm_substream *substream,
 }
 
 static void matrixio_codec_dai_shutdown(struct snd_pcm_substream *substream,
-					    struct snd_soc_dai *codec_dai)
+					struct snd_soc_dai *codec_dai)
 {
 	printk(KERN_INFO "::shutdown");
 }
@@ -189,7 +272,8 @@ static const struct snd_soc_dapm_route matrixio_dapm_routes[] = {};
 
 static int matrixio_codec_probe(struct snd_soc_codec *codec)
 {
-//	struct matrixio_substream *ms = snd_soc_codec_get_drvdata(codec);
+	//	struct matrixio_substream *ms =
+	// snd_soc_codec_get_drvdata(codec);
 
 	printk(KERN_INFO "matrixio_codec_probe");
 	snd_soc_codec_init_regmap(codec, ms->mio->regmap);
@@ -212,21 +296,21 @@ static const struct snd_soc_codec_driver matrixio_soc_codec_driver = {
 };
 
 static struct snd_soc_dai_driver matrixio_dai_driver = {
-	.name = "matrixio-dai",
-	.capture =
+    .name = "matrixio-dai",
+    .capture =
 	{
-		.stream_name = "Micarray Capture",
-		.channels_min = 1,
-		.channels_max = MATRIXIO_CHANNELS_MAX,
-		.rates = MATRIXIO_RATES,
-		.formats = MATRIXIO_FORMATS,
+	    .stream_name = "Micarray Capture",
+	    .channels_min = 1,
+	    .channels_max = MATRIXIO_CHANNELS_MAX,
+	    .rates = MATRIXIO_RATES,
+	    .formats = MATRIXIO_FORMATS,
 	},
-	.ops = &matrixio_dai_ops,
+    .ops = &matrixio_dai_ops,
 };
 
 static struct snd_soc_platform_driver matrixio_snd_soc_platform = {
-	.ops		= &matrixio_pcm_ops,
-	//.pcm_new	= bf5xx_pcm_i2s_new,
+    .ops = &matrixio_pcm_ops,
+    //.pcm_new	= bf5xx_pcm_i2s_new,
 };
 
 static int matrixio_probe(struct platform_device *pdev)
@@ -239,8 +323,9 @@ static int matrixio_probe(struct platform_device *pdev)
 
 	printk(KERN_INFO "matrixio_probe");
 
-	ms = devm_kzalloc(&pdev->dev, sizeof(struct matrixio_substream), GFP_KERNEL);
-	if(!ms)
+	ms = devm_kzalloc(&pdev->dev, sizeof(struct matrixio_substream),
+			  GFP_KERNEL);
+	if (!ms)
 		return -ENOMEM;
 
 	ms->substream = 0;
@@ -255,9 +340,9 @@ static int matrixio_probe(struct platform_device *pdev)
 				     &matrixio_dai_driver, 1);
 
 	if (ret) {
-		dev_err(&pdev->dev,
-			"Failed to register MATRIXIO codec: %d\n", ret);
-	
+		dev_err(&pdev->dev, "Failed to register MATRIXIO codec: %d\n",
+			ret);
+
 		return ret;
 	}
 
@@ -271,16 +356,17 @@ static int matrixio_probe(struct platform_device *pdev)
 		return ret;
 	}
 
-	ms->irq = irq_of_parse_and_map(np,0);
+	ms->irq = irq_of_parse_and_map(np, 0);
 
-	ret = devm_request_irq(&pdev->dev, ms->irq, matrixio_dai_interrupt, 0, "matrixio-audio",ms);
+	ret = devm_request_irq(&pdev->dev, ms->irq, matrixio_dai_interrupt, 0,
+			       "matrixio-audio", ms);
 
-	if(ret)
-		dev_err(&pdev->dev,"can't request irq %d\n", ms->irq);
+	if (ret)
+		dev_err(&pdev->dev, "can't request irq %d\n", ms->irq);
 
-	printk(KERN_INFO "MATRIX AUDIO has been loaded (IRQ=%d,%d)", ms->irq, ret);
-
-	ret = devm_snd_soc_register_platform(&pdev->dev, &matrixio_snd_soc_platform);
+	printk(KERN_INFO "MATRIX AUDIO has been loaded (IRQ=%d,%d)", ms->irq,
+	       ret);
+	
 	return ret;
 }
 

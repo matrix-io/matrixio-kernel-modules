@@ -119,6 +119,7 @@
 				sound-dai = <&matrixio_codec_a>;
 			};		
 		};
+
 	};
 
 	 __overrides__ {

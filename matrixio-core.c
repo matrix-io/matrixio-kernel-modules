@@ -149,12 +149,12 @@ int matrixio_hw_read_burst(struct matrixio *matrixio, unsigned int add,
 	hw_addr->burst = 1;
 	hw_addr->readnwrite = 1;
 
-	ret = matrixio_spi_transfer(matrixio->spi, tx_buffer,
-				    rx_buffer, length+2);
+	ret = matrixio_spi_transfer(matrixio->spi, tx_buffer, rx_buffer,
+				    length + 2);
 
-	if (ret==0) 
+	if (ret == 0)
 		memcpy(data, &rx_buffer[2], length);
-	
+
 	mutex_unlock(&matrixio_buff_lock);
 
 	return ret;
@@ -312,4 +312,3 @@ module_spi_driver(matrixio_core_driver);
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Andres Calderon <andres.calderon@admobilize.com>");
 MODULE_DESCRIPTION("MATRIXIO core module");
-
