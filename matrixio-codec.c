@@ -30,9 +30,35 @@
 #define MATRIXIO_MICARRAY_BASE 0x1800
 #define MATRIXIO_MICARRAY_BUFFER_SIZE 1024
 
+static struct snd_pcm_hardware matrixio_hw_capture = {
+    .info = SNDRV_PCM_INFO_INTERLEAVED,
+    .formats = MATRIXIO_FORMATS,
+    .rates = MATRIXIO_RATES,
+    .rate_min = 8000,
+    .rate_max = 48000,
+    .channels_min = 1,
+    .channels_max = 1,
+    .buffer_bytes_max = 128*8*2,
+    .period_bytes_min = 128*8*2,
+    .period_bytes_max = 128*8*2,
+    .periods_min = 1,
+    .periods_max = 1,
+    .fifo_size = 128*8*2,
+};
+
 static int matrixio_pcm_open(struct snd_pcm_substream *substream)
 {
+	int ret;
 	printk(KERN_INFO "matrixio_pcm_open");
+	struct snd_pcm_runtime *runtime = substream->runtime;
+	// runtime->hw = matrixio_hw_capture;
+
+	ret = snd_pcm_limit_hw_rates(runtime);
+	if (ret)
+		return ret;
+
+	snd_soc_set_runtime_hwparams(substream, &matrixio_hw_capture);
+
 	return 0;
 }
 
@@ -47,7 +73,7 @@ static int matrixio_pcm_close(struct snd_pcm_substream *substream)
 
 /* hw_params callback */
 static int matrixio_pcm_hw_params(struct snd_pcm_substream *substream,
-				    struct snd_pcm_hw_params *hw_params)
+				  struct snd_pcm_hw_params *hw_params)
 {
 	printk(KERN_INFO "matrixio_pcm_hw_params");
 	return snd_pcm_lib_malloc_pages(substream,
@@ -65,20 +91,20 @@ static int matrixio_pcm_hw_free(struct snd_pcm_substream *substream)
 static int matrixio_pcm_prepare(struct snd_pcm_substream *substream)
 {
 	printk(KERN_INFO "matrixio_pcm_prepare");
-	/* irqreturn_t 
+	/* irqreturn_t
 	struct mychip *chip = snd_pcm_substream_chip(substream);
 	struct snd_pcm_runtime *runtime = substream->runtime;
 
 	/* set up the hardware with the current configuration
 	 *            * for example...
 	 *                       */
-/*
-	mychip_set_sample_format(chip, runtime->format);
-	mychip_set_sample_rate(chip, runtime->rate);
-	mychip_set_channels(chip, runtime->channels);
-	mychip_set_dma_setup(chip, runtime->dma_addr, chip->buffer_size,
-			     chip->period_size);
-*/
+	/*
+		mychip_set_sample_format(chip, runtime->format);
+		mychip_set_sample_rate(chip, runtime->rate);
+		mychip_set_channels(chip, runtime->channels);
+		mychip_set_dma_setup(chip, runtime->dma_addr, chip->buffer_size,
+				     chip->period_size);
+	*/
 	return 0;
 }
 
@@ -105,13 +131,13 @@ static int matrixio_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 static snd_pcm_uframes_t
 matrixio_pcm_pointer(struct snd_pcm_substream *substream)
 {
-	//struct mychip *chip = snd_pcm_substream_chip(substream);
+	// struct mychip *chip = snd_pcm_substream_chip(substream);
 	unsigned int current_ptr;
 
 	printk(KERN_INFO "matrixio_pcm_pointer");
 	/* get the current hardware pointer */
-	//current_ptr = mychip_get_hw_pointer(chip);
-	return 0;//current_ptr;
+	// current_ptr = mychip_get_hw_pointer(chip);
+	return 0; // current_ptr;
 }
 
 static struct snd_pcm_ops matrixio_pcm_ops = {
@@ -223,7 +249,9 @@ static int matrixio_codec_dai_startup(struct snd_pcm_substream *substream,
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct snd_pcm *pcm = rtd->pcm;
 
-	snd_pcm_set_ops(pcm, SNDRV_PCM_STREAM_CAPTURE, &matrixio_pcm_ops);
+//snd_pcm_set_ops(pcm, SNDRV_PCM_STREAM_CAPTURE, &matrixio_pcm_ops);
+
+	pcm->info_flags = 0;
 	return 0;
 }
 
@@ -301,8 +329,10 @@ static struct snd_soc_dai_driver matrixio_dai_driver = {
 	{
 	    .stream_name = "Micarray Capture",
 	    .channels_min = 1,
-	    .channels_max = MATRIXIO_CHANNELS_MAX,
+	    .channels_max = 1,
 	    .rates = MATRIXIO_RATES,
+	    .rate_min = 8000,
+	    .rate_max = 48000,
 	    .formats = MATRIXIO_FORMATS,
 	},
     .ops = &matrixio_dai_ops,
@@ -366,7 +396,7 @@ static int matrixio_probe(struct platform_device *pdev)
 
 	printk(KERN_INFO "MATRIX AUDIO has been loaded (IRQ=%d,%d)", ms->irq,
 	       ret);
-	
+
 	return ret;
 }
 
