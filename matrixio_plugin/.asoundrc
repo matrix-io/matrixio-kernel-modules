@@ -1,0 +1,22 @@
+
+pcm.!default {
+    type asym
+    playback.pcm "playback"
+    capture.pcm "matrixio_0"
+}
+
+pcm.matrixio_0 {
+        type matrixio
+        slavepcm "hw:2,0"
+	channel 0
+	channels 1
+}
+
+pcm.matrixio_1 {
+	type matrixio
+	slavepcm "hw:2,1"
+	channel 1
+	channels 1
+}
+
+

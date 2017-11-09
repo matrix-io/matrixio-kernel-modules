@@ -16,6 +16,7 @@ struct matrixio_t {
 	unsigned int ptr;
 	unsigned int latency;    // Delay in usec
 	unsigned int bufferSize; // Size of sample buffer
+	unsigned int channel;
 };
 static unsigned char capture_buf[MATRIXIO_FRAME_SIZE];
 /* set up the fixed parameters of pcm PCM hw_parmas */
@@ -149,6 +150,7 @@ matrixio_transfer(snd_pcm_ioplug_t *io, const snd_pcm_channel_area_t *dst_areas,
 	unsigned char src_data[4][4];
 
 	printf("%s:\n", __func__);
+	printf(" channel = %d \n", capture->channel);
 	printf(" rate = %d \n", io->rate);
 	printf(" period_size = %d \n", io->period_size);
 	printf(" buffer_size = %d \n", io->buffer_size);
@@ -465,6 +467,7 @@ SND_PCM_PLUGIN_DEFINE_FUNC(matrixio)
 	int err;
 	const char *pcm_string = NULL;
 	struct matrixio_t *capture;
+	int channel;
 	int channels;
 	if (stream != SND_PCM_STREAM_CAPTURE) {
 		SNDERR("matrixio is only for capture");
@@ -489,6 +492,15 @@ SND_PCM_PLUGIN_DEFINE_FUNC(matrixio)
 			continue;
 		}
 
+		if (strcmp(id, "channel") == 0) {
+			long val;
+			if (snd_config_get_integer(n, &val) < 0) {
+				SNDERR("Invalid type for %s", id);
+				return -EINVAL;
+			}
+			channel = val;
+			continue;
+		}
 		if (strcmp(id, "channels") == 0) {
 			long val;
 			if (snd_config_get_integer(n, &val) < 0) {
@@ -519,6 +531,7 @@ SND_PCM_PLUGIN_DEFINE_FUNC(matrixio)
 	capture->io.mmap_rw = 0;
 	capture->io.callback = &matrixio_ops;
 	capture->io.private_data = capture;
+	capture->channel = channel;
 
 	err = snd_pcm_ioplug_create(&capture->io, name, stream, mode);
 	if (err < 0)
