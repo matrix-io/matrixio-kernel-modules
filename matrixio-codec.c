@@ -11,7 +11,10 @@
  *  option) any later version.
  */
 
+#include <linux/cdev.h>
+#include <linux/fs.h>
 #include <linux/init.h>
+#include <linux/kfifo.h>
 #include <linux/module.h>
 #include <linux/moduleparam.h>
 #include <linux/of_irq.h>
@@ -28,7 +31,8 @@
 #define MATRIXIO_RATES SNDRV_PCM_RATE_8000_48000
 #define MATRIXIO_FORMATS SNDRV_PCM_FMTBIT_S16_LE
 #define MATRIXIO_MICARRAY_BASE 0x1800
-#define MATRIXIO_MICARRAY_BUFFER_SIZE 1024
+#define MATRIXIO_MICARRAY_BUFFER_SIZE (128 * 2 * 8)
+#define MATRIXIO_FIFO_SIZE (MATRIXIO_MICARRAY_BUFFER_SIZE * 4)
 
 struct matrixio_substream {
 	struct matrixio *mio;
@@ -37,9 +41,19 @@ struct matrixio_substream {
 	struct snd_pcm_substream *substream;
 };
 
+struct kfifo_rec_ptr_2 pcm_fifo;
+
 struct matrixio_substream *ms;
 
+static struct class *cl;
+
+static struct cdev matrixio_pcm_cdev;
+
 static int16_t raw_data[MATRIXIO_MICARRAY_BUFFER_SIZE];
+
+static DEFINE_MUTEX(read_lock);
+
+static DECLARE_WAIT_QUEUE_HEAD(wq);
 
 static irqreturn_t matrixio_dai_interrupt(int irq, void *irq_data)
 {
@@ -47,19 +61,58 @@ static irqreturn_t matrixio_dai_interrupt(int irq, void *irq_data)
 
 	spin_lock_irqsave(&ms->lock, flags);
 
-	if (ms->substream) {
-		matrixio_hw_read_burst(
-		    ms->mio, MATRIXIO_MICARRAY_BASE,
-		    MATRIXIO_MICARRAY_BUFFER_SIZE * sizeof(int16_t), raw_data);
+	matrixio_hw_read_burst(ms->mio, MATRIXIO_MICARRAY_BASE,
+			       MATRIXIO_MICARRAY_BUFFER_SIZE / 2, raw_data);
 
-		//		printk(KERN_INFO ".");
+	kfifo_in(&pcm_fifo, raw_data, MATRIXIO_MICARRAY_BUFFER_SIZE);
 
-		//		snd_pcm_stop_xrun(ms->substream);
-	}
 	spin_unlock_irqrestore(&ms->lock, flags);
+
+	wake_up_interruptible(&wq);
 
 	return IRQ_HANDLED;
 }
+
+static int pcm_fifo_open(struct inode *inode, struct file *file)
+{
+	kfifo_reset(&pcm_fifo);
+
+	return 0;
+}
+
+static ssize_t pcm_fifo_read(struct file *file, char __user *buf, size_t count,
+			     loff_t *ppos)
+{
+	int ret;
+	unsigned int chunks, copied;
+
+	if (count > MATRIXIO_FIFO_SIZE)
+		return -EIO;
+
+	if (mutex_lock_interruptible(&read_lock))
+		return -ERESTARTSYS;
+
+	if (wait_event_interruptible(wq, kfifo_len(&pcm_fifo) != 0))
+		goto erestartsys;
+
+	chunks = count / MATRIXIO_MICARRAY_BUFFER_SIZE;
+
+	ret = kfifo_to_user(&pcm_fifo, buf,
+			    chunks * MATRIXIO_MICARRAY_BUFFER_SIZE, &copied);
+
+	mutex_unlock(&read_lock);
+
+	return ret ? ret : copied;
+
+erestartsys:
+	mutex_unlock(&read_lock);
+	return -ERESTARTSYS;
+}
+
+struct file_operations matrixio_pcm_file_ops = {.owner = THIS_MODULE,
+						.read = pcm_fifo_read,
+						.open = pcm_fifo_open,
+						.llseek = noop_llseek};
 
 static int matrixio_startup(struct snd_pcm_substream *substream)
 {
@@ -287,94 +340,95 @@ static struct snd_soc_dai_driver matrixio_dai_driver[] = {
 	.ops = &matrixio_dai_ops,
     },
     {
-        .name = "matrixio-dai.2",
-        .capture =
-            {
-                .stream_name = "matrixio.mic.2",
-                .channels_min = 1,
-                .channels_max = 1,
-                .rates = MATRIXIO_RATES,
-                .rate_min = 8000,
-                .rate_max = 48000,
-                .formats = MATRIXIO_FORMATS,
-            },
-        .ops = &matrixio_dai_ops,
+	.name = "matrixio-dai.2",
+	.capture =
+	    {
+		.stream_name = "matrixio.mic.2",
+		.channels_min = 1,
+		.channels_max = 1,
+		.rates = MATRIXIO_RATES,
+		.rate_min = 8000,
+		.rate_max = 48000,
+		.formats = MATRIXIO_FORMATS,
+	    },
+	.ops = &matrixio_dai_ops,
     },
     {
-        .name = "matrixio-dai.3",
-        .capture =
-            {
-                .stream_name = "matrixio.mic.3",
-                .channels_min = 1,
-                .channels_max = 1,
-                .rates = MATRIXIO_RATES,
-                .rate_min = 8000,
-                .rate_max = 48000,
-                .formats = MATRIXIO_FORMATS,
-            },
-        .ops = &matrixio_dai_ops,
+	.name = "matrixio-dai.3",
+	.capture =
+	    {
+		.stream_name = "matrixio.mic.3",
+		.channels_min = 1,
+		.channels_max = 1,
+		.rates = MATRIXIO_RATES,
+		.rate_min = 8000,
+		.rate_max = 48000,
+		.formats = MATRIXIO_FORMATS,
+	    },
+	.ops = &matrixio_dai_ops,
     },
     {
-        .name = "matrixio-dai.4",
-        .capture =
-            {
-                .stream_name = "matrixio.mic.4",
-                .channels_min = 1,
-                .channels_max = 1,
-                .rates = MATRIXIO_RATES,
-                .rate_min = 8000,
-                .rate_max = 48000,
-                .formats = MATRIXIO_FORMATS,
-            },
-        .ops = &matrixio_dai_ops,
+	.name = "matrixio-dai.4",
+	.capture =
+	    {
+		.stream_name = "matrixio.mic.4",
+		.channels_min = 1,
+		.channels_max = 1,
+		.rates = MATRIXIO_RATES,
+		.rate_min = 8000,
+		.rate_max = 48000,
+		.formats = MATRIXIO_FORMATS,
+	    },
+	.ops = &matrixio_dai_ops,
     },
     {
-        .name = "matrixio-dai.5",
-        .capture =
-            {
-                .stream_name = "matrixio.mic.5",
-                .channels_min = 1,
-                .channels_max = 1,
-                .rates = MATRIXIO_RATES,
-                .rate_min = 8000,
-                .rate_max = 48000,
-                .formats = MATRIXIO_FORMATS,
-            },
-        .ops = &matrixio_dai_ops,
+	.name = "matrixio-dai.5",
+	.capture =
+	    {
+		.stream_name = "matrixio.mic.5",
+		.channels_min = 1,
+		.channels_max = 1,
+		.rates = MATRIXIO_RATES,
+		.rate_min = 8000,
+		.rate_max = 48000,
+		.formats = MATRIXIO_FORMATS,
+	    },
+	.ops = &matrixio_dai_ops,
     },
     {
-        .name = "matrixio-dai.6",
-        .capture =
-            {
-                .stream_name = "matrixio.mic.6",
-                .channels_min = 1,
-                .channels_max = 1,
-                .rates = MATRIXIO_RATES,
-                .rate_min = 8000,
-                .rate_max = 48000,
-                .formats = MATRIXIO_FORMATS,
-            },
-        .ops = &matrixio_dai_ops,
+	.name = "matrixio-dai.6",
+	.capture =
+	    {
+		.stream_name = "matrixio.mic.6",
+		.channels_min = 1,
+		.channels_max = 1,
+		.rates = MATRIXIO_RATES,
+		.rate_min = 8000,
+		.rate_max = 48000,
+		.formats = MATRIXIO_FORMATS,
+	    },
+	.ops = &matrixio_dai_ops,
     },
     {
-        .name = "matrixio-dai.7",
-        .capture =
-            {
-                .stream_name = "matrixio.mic.7",
-                .channels_min = 1,
-                .channels_max = 1,
-                .rates = MATRIXIO_RATES,
-                .rate_min = 8000,
-                .rate_max = 48000,
-                .formats = MATRIXIO_FORMATS,
-            },
-        .ops = &matrixio_dai_ops,
-    }
-};
+	.name = "matrixio-dai.7",
+	.capture =
+	    {
+		.stream_name = "matrixio.mic.7",
+		.channels_min = 1,
+		.channels_max = 1,
+		.rates = MATRIXIO_RATES,
+		.rate_min = 8000,
+		.rate_max = 48000,
+		.formats = MATRIXIO_FORMATS,
+	    },
+	.ops = &matrixio_dai_ops,
+    }};
 
 static int matrixio_probe(struct platform_device *pdev)
 {
 	int ret;
+	int major;
+	dev_t devt;
 	struct device_node *np = pdev->dev.of_node;
 	struct snd_soc_card *card = &matrixio_soc_card;
 
@@ -410,7 +464,7 @@ static int matrixio_probe(struct platform_device *pdev)
 
 	ret = devm_snd_soc_register_card(&pdev->dev, card);
 
-	if (ret != 0) {
+	if (ret) {
 		dev_err(&pdev->dev, "Failed to register MATRIXIO card: %d\n",
 			ret);
 		return ret;
@@ -426,6 +480,19 @@ static int matrixio_probe(struct platform_device *pdev)
 
 	printk(KERN_INFO "MATRIX AUDIO has been loaded (IRQ=%d,%d)", ms->irq,
 	       ret);
+
+	ret = kfifo_alloc(&pcm_fifo, MATRIXIO_FIFO_SIZE, GFP_KERNEL);
+
+	if (ret)
+		dev_err(&pdev->dev, "error PCM kfifo allocation");
+
+	alloc_chrdev_region(&devt, 0, 1, "matrixio_pcm");
+	cl = class_create(THIS_MODULE, "chardrv");
+
+	device_create(cl, NULL, devt, NULL, "matrixio_pcm");
+
+	cdev_init(&matrixio_pcm_cdev, &matrixio_pcm_file_ops);
+	cdev_add(&matrixio_pcm_cdev, devt, 1);
 
 	return ret;
 }

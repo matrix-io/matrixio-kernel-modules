@@ -59,6 +59,37 @@ static int matrixio_spi_transfer(struct spi_device *spi, uint8_t *send_buffer,
 
 	ret = spi_sync(spi, &msg);
 
+	printk(KERN_INFO "spi transfer %d", ret);
+	mutex_unlock(&matrixio_spi_lock);
+
+	return ret;
+}
+
+static int matrixio_spi_transfer_burst(struct spi_device *spi,
+				       uint8_t *send_buffer,
+				       unsigned int send_size,
+				       uint8_t *receive_buffer,
+				       unsigned int receive_size)
+{
+	int ret;
+	struct spi_transfer t[2];
+	struct spi_message m;
+
+	mutex_lock(&matrixio_spi_lock);
+
+	memset(&t, 0, sizeof(t));
+
+	t[0].tx_buf = send_buffer;
+	t[0].len = send_size;
+
+	t[1].rx_buf = receive_buffer;
+	t[1].len = 128; // receive_size;
+
+	spi_message_init_with_transfers(&m, t, 2);
+
+	ret = spi_sync(spi, &m);
+
+	printk(KERN_INFO "spi transfer %d %d", ret, t[1].len);
 	mutex_unlock(&matrixio_spi_lock);
 
 	return ret;
@@ -133,15 +164,14 @@ int matrixio_hw_buf_read(struct matrixio *matrixio, unsigned int add,
 }
 EXPORT_SYMBOL(matrixio_hw_buf_read);
 
-static uint8_t rx_buffer[4096];
-static uint8_t tx_buffer[4096];
-
 int matrixio_hw_read_burst(struct matrixio *matrixio, unsigned int add,
 			   int length, void *data)
 {
 	int ret;
 	struct hardware_address *hw_addr;
 
+	static uint8_t rx_buffer[4096];
+	static uint8_t tx_buffer[4096];
 	mutex_lock(&matrixio_buff_lock);
 
 	hw_addr = (struct hardware_address *)tx_buffer;
@@ -149,8 +179,9 @@ int matrixio_hw_read_burst(struct matrixio *matrixio, unsigned int add,
 	hw_addr->burst = 1;
 	hw_addr->readnwrite = 1;
 
-	ret = matrixio_spi_transfer(matrixio->spi, tx_buffer, rx_buffer,
-				    length + 2);
+	ret = matrixio_spi_transfer_burst(matrixio->spi, tx_buffer,
+					  sizeof(struct hardware_address),
+					  rx_buffer, length);
 
 	if (ret == 0)
 		memcpy(data, &rx_buffer[2], length);
