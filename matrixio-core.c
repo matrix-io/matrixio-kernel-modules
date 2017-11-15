@@ -65,31 +65,31 @@ static int matrixio_spi_transfer(struct spi_device *spi, uint8_t *send_buffer,
 	return ret;
 }
 
-static int matrixio_spi_transfer_burst(struct spi_device *spi,
+static int matrixio_spi_transfer_burst(struct matrixio *matrixio,
 				       uint8_t *send_buffer,
 				       unsigned int send_size,
 				       uint8_t *receive_buffer,
 				       unsigned int receive_size)
 {
 	int ret;
-	struct spi_transfer t[2];
-	struct spi_message m;
+	struct spi_transfer* xfer = matrixio->xfer;
 
 	mutex_lock(&matrixio_spi_lock);
 
-	memset(&t, 0, sizeof(t));
+	//memset(&t, 0, sizeof(t));
 
-	t[0].tx_buf = send_buffer;
-	t[0].len = send_size;
+	xfer[0].tx_buf = send_buffer;
+	xfer[0].rx_buf = NULL;
+	xfer[0].len = send_size;
 
-	t[1].rx_buf = receive_buffer;
-	t[1].len = 128; // receive_size;
+	xfer[1].rx_buf = receive_buffer;
+	xfer[1].tx_buf = NULL;
+	xfer[1].len = receive_size;
 
-	spi_message_init_with_transfers(&m, t, 2);
+	ret = spi_sync(matrixio->spi, &matrixio->msg);
 
-	ret = spi_sync(spi, &m);
+	printk(KERN_INFO "spi transfer %d %d", ret, xfer[1].len);
 
-	printk(KERN_INFO "spi transfer %d %d", ret, t[1].len);
 	mutex_unlock(&matrixio_spi_lock);
 
 	return ret;
@@ -179,7 +179,7 @@ int matrixio_hw_read_burst(struct matrixio *matrixio, unsigned int add,
 	hw_addr->burst = 1;
 	hw_addr->readnwrite = 1;
 
-	ret = matrixio_spi_transfer_burst(matrixio->spi, tx_buffer,
+	ret = matrixio_spi_transfer_burst(matrixio, tx_buffer,
 					  sizeof(struct hardware_address),
 					  rx_buffer, length);
 
@@ -310,7 +310,11 @@ static int matrixio_core_probe(struct spi_device *spi)
 
 	matrixio->dev = &spi->dev;
 	matrixio->spi = spi;
-	matrixio->stamp = 0x1221;
+
+	/* initialise pre-made spi transfer messages */
+	spi_message_init(&matrixio->msg);
+	spi_message_add_tail(&matrixio->xfer[0], &matrixio->msg);
+	spi_message_add_tail(&matrixio->xfer[1], &matrixio->msg);
 
 	matrixio->regmap = devm_regmap_init(&spi->dev, NULL, matrixio,
 					    &matrixio_regmap_config);

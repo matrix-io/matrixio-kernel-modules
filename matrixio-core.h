@@ -27,11 +27,12 @@
 #define MATRIXIO_MCU_BASE 0x3800
 
 struct matrixio {
-	struct device *dev;
-	struct spi_device *spi;
-	struct regmap *regmap;
-	struct mutex lock;
-	int stamp;
+	struct device       *dev;
+	struct regmap       *regmap;
+	struct mutex        lock;
+	struct spi_device   *spi;
+	struct spi_message  msg;
+	struct spi_transfer xfer[2];
 };
 
 struct matrixio_platform_data {
