@@ -62,7 +62,7 @@ static irqreturn_t matrixio_dai_interrupt(int irq, void *irq_data)
 	spin_lock_irqsave(&ms->lock, flags);
 
 	matrixio_hw_read_burst(ms->mio, MATRIXIO_MICARRAY_BASE,
-			       MATRIXIO_MICARRAY_BUFFER_SIZE / 2, raw_data);
+			       MATRIXIO_MICARRAY_BUFFER_SIZE, raw_data);
 
 	kfifo_in(&pcm_fifo, raw_data, MATRIXIO_MICARRAY_BUFFER_SIZE);
 

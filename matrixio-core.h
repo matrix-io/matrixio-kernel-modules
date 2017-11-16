@@ -29,10 +29,12 @@
 struct matrixio {
 	struct device       *dev;
 	struct regmap       *regmap;
-	struct mutex        lock;
+	struct mutex        buf_lock;
+	spinlock_t          spi_lock;
 	struct spi_device   *spi;
-	struct spi_message  msg;
-	struct spi_transfer xfer[2];
+	u8                  *tx_buffer;
+	u8                  *rx_buffer;
+	u32                 speed_hz;
 };
 
 struct matrixio_platform_data {
