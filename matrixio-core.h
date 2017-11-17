@@ -27,14 +27,14 @@
 #define MATRIXIO_MCU_BASE 0x3800
 
 struct matrixio {
-	struct device       *dev;
-	struct regmap       *regmap;
-	struct mutex        buf_lock;
-	spinlock_t          spi_lock;
-	struct spi_device   *spi;
-	u8                  *tx_buffer;
-	u8                  *rx_buffer;
-	u32                 speed_hz;
+	struct device *dev;
+	struct regmap *regmap;
+	struct mutex buf_lock;
+	spinlock_t spi_lock;
+	struct spi_device *spi;
+	u8 *tx_buffer;
+	u8 *rx_buffer;
+	u32 speed_hz;
 };
 
 struct matrixio_platform_data {
@@ -52,7 +52,6 @@ int matrixio_hw_buf_write(struct matrixio *matrixio, unsigned int add,
 			  int length, void *data);
 
 int matrixio_hw_read_burst(struct matrixio *matrixio, unsigned int add,
-                           int length, void *data);
+			   void *data, int length);
 
 #endif
-

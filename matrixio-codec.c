@@ -31,7 +31,7 @@
 #define MATRIXIO_RATES SNDRV_PCM_RATE_8000_48000
 #define MATRIXIO_FORMATS SNDRV_PCM_FMTBIT_S16_LE
 #define MATRIXIO_MICARRAY_BASE 0x1800
-#define MATRIXIO_MICARRAY_BUFFER_SIZE (128 * 2 * 8)
+#define MATRIXIO_MICARRAY_BUFFER_SIZE (128 * 8)
 #define MATRIXIO_FIFO_SIZE (MATRIXIO_MICARRAY_BUFFER_SIZE * 4)
 
 struct matrixio_substream {
@@ -39,6 +39,9 @@ struct matrixio_substream {
 	int irq;
 	spinlock_t lock;
 	struct snd_pcm_substream *substream;
+	struct workqueue_struct *workqueue;
+	struct work_struct work;
+	int force_end_work;
 };
 
 struct kfifo_rec_ptr_2 pcm_fifo;
@@ -57,20 +60,24 @@ static DECLARE_WAIT_QUEUE_HEAD(wq);
 
 static irqreturn_t matrixio_dai_interrupt(int irq, void *irq_data)
 {
+	queue_work(ms->workqueue, &ms->work);
+	return IRQ_HANDLED;
+}
+
+static void matrixio_pcm_work(struct work_struct *w)
+{
 	unsigned long flags;
 
 	spin_lock_irqsave(&ms->lock, flags);
 
-	matrixio_hw_read_burst(ms->mio, MATRIXIO_MICARRAY_BASE,
-			       MATRIXIO_MICARRAY_BUFFER_SIZE, raw_data);
+	matrixio_hw_read_burst(ms->mio, MATRIXIO_MICARRAY_BASE, raw_data,
+			       sizeof(raw_data));
 
 	kfifo_in(&pcm_fifo, raw_data, MATRIXIO_MICARRAY_BUFFER_SIZE);
 
 	spin_unlock_irqrestore(&ms->lock, flags);
 
 	wake_up_interruptible(&wq);
-
-	return IRQ_HANDLED;
 }
 
 static int pcm_fifo_open(struct inode *inode, struct file *file)
@@ -132,71 +139,14 @@ static struct snd_soc_ops matrixio_snd_ops = {
     .startup = matrixio_startup, .hw_params = matrixio_hw_params,
 };
 
-static struct snd_soc_dai_link matrixio_snd_soc_dai[] = {
-    {
-	.name = "matrixio.0",
-	.stream_name = "matrixio.0",
-	.codec_dai_name = "snd-soc-dummy-dai",
-	.cpu_dai_name = "matrixio-dai.0",
-	.codec_name = "snd-soc-dummy",
-	.ops = &matrixio_snd_ops,
-    },
-    {
-	.name = "matrixio.1",
-	.stream_name = "matrixio.1",
-	.codec_dai_name = "snd-soc-dummy-dai",
-	.cpu_dai_name = "matrixio-dai.1",
-	.codec_name = "snd-soc-dummy",
-	.ops = &matrixio_snd_ops,
-    },
-    {
-	.name = "matrixio.2",
-	.stream_name = "matrixio.2",
-	.codec_dai_name = "snd-soc-dummy-dai",
-	.cpu_dai_name = "matrixio-dai.2",
-	.codec_name = "snd-soc-dummy",
-	.ops = &matrixio_snd_ops,
-    },
-    {
-	.name = "matrixio.3",
-	.stream_name = "matrixio.3",
-	.codec_dai_name = "snd-soc-dummy-dai",
-	.cpu_dai_name = "matrixio-dai.3",
-	.codec_name = "snd-soc-dummy",
-	.ops = &matrixio_snd_ops,
-    },
-    {
-	.name = "matrixio.4",
-	.stream_name = "matrixio.4",
-	.codec_dai_name = "snd-soc-dummy-dai",
-	.cpu_dai_name = "matrixio-dai.4",
-	.codec_name = "snd-soc-dummy",
-	.ops = &matrixio_snd_ops,
-    },
-    {
-	.name = "matrixio.5",
-	.stream_name = "matrixio.5",
-	.codec_dai_name = "snd-soc-dummy-dai",
-	.cpu_dai_name = "matrixio-dai.5",
-	.codec_name = "snd-soc-dummy",
-	.ops = &matrixio_snd_ops,
-    },
-    {
-	.name = "matrixio.6",
-	.stream_name = "matrixio.6",
-	.codec_dai_name = "snd-soc-dummy-dai",
-	.cpu_dai_name = "matrixio-dai.6",
-	.codec_name = "snd-soc-dummy",
-	.ops = &matrixio_snd_ops,
-    },
-    {
-	.name = "matrixio.7",
-	.stream_name = "matrixio.7",
-	.codec_dai_name = "snd-soc-dummy-dai",
-	.cpu_dai_name = "matrixio-dai.7",
-	.codec_name = "snd-soc-dummy",
-	.ops = &matrixio_snd_ops,
-    }};
+static struct snd_soc_dai_link matrixio_snd_soc_dai[] = {{
+    .name = "matrixio.0",
+    .stream_name = "matrixio.0",
+    .codec_dai_name = "snd-soc-dummy-dai",
+    .cpu_dai_name = "matrixio-dai.0",
+    .codec_name = "snd-soc-dummy",
+    .ops = &matrixio_snd_ops,
+}};
 
 static struct snd_soc_card matrixio_soc_card = {
     .name = "MATRIXIO_HAT",
@@ -310,124 +260,25 @@ static const struct snd_soc_codec_driver matrixio_soc_codec_driver = {
 	},
 };
 
-static struct snd_soc_dai_driver matrixio_dai_driver[] = {
-    {
-	.name = "matrixio-dai.0",
-	.capture =
-	    {
-		.stream_name = "matrixio.mic.0",
-		.channels_min = 1,
-		.channels_max = 1,
-		.rates = MATRIXIO_RATES,
-		.rate_min = 8000,
-		.rate_max = 48000,
-		.formats = MATRIXIO_FORMATS,
-	    },
-	.ops = &matrixio_dai_ops,
-    },
-    {
-	.name = "matrixio-dai.1",
-	.capture =
-	    {
-		.stream_name = "matrixio.mic.1",
-		.channels_min = 1,
-		.channels_max = 1,
-		.rates = MATRIXIO_RATES,
-		.rate_min = 8000,
-		.rate_max = 48000,
-		.formats = MATRIXIO_FORMATS,
-	    },
-	.ops = &matrixio_dai_ops,
-    },
-    {
-	.name = "matrixio-dai.2",
-	.capture =
-	    {
-		.stream_name = "matrixio.mic.2",
-		.channels_min = 1,
-		.channels_max = 1,
-		.rates = MATRIXIO_RATES,
-		.rate_min = 8000,
-		.rate_max = 48000,
-		.formats = MATRIXIO_FORMATS,
-	    },
-	.ops = &matrixio_dai_ops,
-    },
-    {
-	.name = "matrixio-dai.3",
-	.capture =
-	    {
-		.stream_name = "matrixio.mic.3",
-		.channels_min = 1,
-		.channels_max = 1,
-		.rates = MATRIXIO_RATES,
-		.rate_min = 8000,
-		.rate_max = 48000,
-		.formats = MATRIXIO_FORMATS,
-	    },
-	.ops = &matrixio_dai_ops,
-    },
-    {
-	.name = "matrixio-dai.4",
-	.capture =
-	    {
-		.stream_name = "matrixio.mic.4",
-		.channels_min = 1,
-		.channels_max = 1,
-		.rates = MATRIXIO_RATES,
-		.rate_min = 8000,
-		.rate_max = 48000,
-		.formats = MATRIXIO_FORMATS,
-	    },
-	.ops = &matrixio_dai_ops,
-    },
-    {
-	.name = "matrixio-dai.5",
-	.capture =
-	    {
-		.stream_name = "matrixio.mic.5",
-		.channels_min = 1,
-		.channels_max = 1,
-		.rates = MATRIXIO_RATES,
-		.rate_min = 8000,
-		.rate_max = 48000,
-		.formats = MATRIXIO_FORMATS,
-	    },
-	.ops = &matrixio_dai_ops,
-    },
-    {
-	.name = "matrixio-dai.6",
-	.capture =
-	    {
-		.stream_name = "matrixio.mic.6",
-		.channels_min = 1,
-		.channels_max = 1,
-		.rates = MATRIXIO_RATES,
-		.rate_min = 8000,
-		.rate_max = 48000,
-		.formats = MATRIXIO_FORMATS,
-	    },
-	.ops = &matrixio_dai_ops,
-    },
-    {
-	.name = "matrixio-dai.7",
-	.capture =
-	    {
-		.stream_name = "matrixio.mic.7",
-		.channels_min = 1,
-		.channels_max = 1,
-		.rates = MATRIXIO_RATES,
-		.rate_min = 8000,
-		.rate_max = 48000,
-		.formats = MATRIXIO_FORMATS,
-	    },
-	.ops = &matrixio_dai_ops,
-    }};
+static struct snd_soc_dai_driver matrixio_dai_driver[] = {{
+    .name = "matrixio-dai.0",
+    .capture =
+	{
+	    .stream_name = "matrixio.mic.0",
+	    .channels_min = 1,
+	    .channels_max = 1,
+	    .rates = MATRIXIO_RATES,
+	    .rate_min = 8000,
+	    .rate_max = 48000,
+	    .formats = MATRIXIO_FORMATS,
+	},
+    .ops = &matrixio_dai_ops,
+}};
 
 static int matrixio_probe(struct platform_device *pdev)
 {
 	int ret;
-	int major;
+	char workqueue_name[12];
 	dev_t devt;
 	struct device_node *np = pdev->dev.of_node;
 	struct snd_soc_card *card = &matrixio_soc_card;
@@ -470,13 +321,29 @@ static int matrixio_probe(struct platform_device *pdev)
 		return ret;
 	}
 
+	sprintf(workqueue_name, "matrixio_pcm");
+
+	ms->workqueue = create_freezable_workqueue(workqueue_name);
+
+	if (!ms->workqueue) {
+		dev_err(&pdev->dev, "cannot create workqueue");
+		return -EBUSY;
+	}
+
+	ms->force_end_work = 0;
+
+	INIT_WORK(&ms->work, matrixio_pcm_work);
+
 	ms->irq = irq_of_parse_and_map(np, 0);
 
 	ret = devm_request_irq(&pdev->dev, ms->irq, matrixio_dai_interrupt, 0,
 			       "matrixio-audio", ms);
 
-	if (ret)
+	if (ret) {
 		dev_err(&pdev->dev, "can't request irq %d\n", ms->irq);
+		destroy_workqueue(ms->workqueue);
+		return -EBUSY;
+	}
 
 	printk(KERN_INFO "MATRIX AUDIO has been loaded (IRQ=%d,%d)", ms->irq,
 	       ret);
