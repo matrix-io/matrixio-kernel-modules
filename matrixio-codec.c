@@ -73,7 +73,7 @@ static void matrixio_pcm_work(struct work_struct *w)
 	matrixio_hw_read_burst(ms->mio, MATRIXIO_MICARRAY_BASE, raw_data,
 			       sizeof(raw_data));
 
-	kfifo_in(&pcm_fifo, raw_data, MATRIXIO_MICARRAY_BUFFER_SIZE);
+	kfifo_in(&pcm_fifo, raw_data, sizeof(raw_data));
 
 	spin_unlock_irqrestore(&ms->lock, flags);
 

@@ -38,19 +38,20 @@ static struct regmap_config matrixio_regmap_config = {
 static ssize_t matrixio_spi_sync(struct matrixio *matrixio,
 				 struct spi_message *message)
 {
-	// DECLARE_COMPLETION_ONSTACK(done);
+	DECLARE_COMPLETION_ONSTACK(done);
 	int status;
 	struct spi_device *spi;
 
-//	spin_lock_irq(&matrixio->spi_lock);
+	spin_lock_irq(&matrixio->spi_lock);
 	spi = matrixio->spi;
+	spin_unlock_irq(&matrixio->spi_lock);
 
 	status = spi_sync(spi, message);
 
 	if (status == 0)
 		status = message->actual_length;
 
-//	spin_unlock_irq(&matrixio->spi_lock);
+	// printk(KERN_INFO "SYNC = %d", status);
 	return status;
 }
 
@@ -83,14 +84,14 @@ static int matrixio_spi_transfer_burst(struct matrixio *matrixio,
 				 .speed_hz = matrixio->speed_hz};
 	struct spi_message m;
 
-//	mutex_lock(&matrixio->buf_lock);
+	// mutex_lock(&matrixio->buf_lock);
 
 	spi_message_init(&m);
 	spi_message_add_tail(&t, &m);
-	
+
 	status = matrixio_spi_sync(matrixio, &m);
 
-//	mutex_unlock(&matrixio->buf_lock);
+	// mutex_unlock(&matrixio->buf_lock);
 
 	return status;
 }
@@ -169,7 +170,7 @@ int matrixio_hw_read_burst(struct matrixio *matrixio, unsigned int add,
 	int ret;
 	struct hardware_address *hw_addr;
 
-	mutex_lock(&matrixio->buf_lock);
+	// mutex_lock(&matrixio->buf_lock);
 
 	hw_addr = (struct hardware_address *)matrixio->tx_buffer;
 	hw_addr->reg = add;
@@ -177,12 +178,12 @@ int matrixio_hw_read_burst(struct matrixio *matrixio, unsigned int add,
 	hw_addr->readnwrite = 1;
 
 	ret = matrixio_spi_transfer_burst(
-	    matrixio, sizeof(struct hardware_address), length);
+	    matrixio, sizeof(struct hardware_address), length + 2);
 
 	if (ret >= 0)
-		memcpy(data, matrixio->rx_buffer, length);
+		memcpy(data, &matrixio->rx_buffer[2], length);
 
-	mutex_unlock(&matrixio->buf_lock);
+	// mutex_unlock(&matrixio->buf_lock);
 
 	return ret;
 }
