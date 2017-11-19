@@ -15,6 +15,7 @@
 #ifndef __MATRIXIO_CORE_H__
 #define __MATRIXIO_CORE_H__
 
+#include <linux/kfifo.h>
 #include <linux/mutex.h>
 #include <linux/regmap.h>
 #include <linux/spi/spi.h>
@@ -51,7 +52,7 @@ int matrixio_hw_buf_read(struct matrixio *matrixio, unsigned int add,
 int matrixio_hw_buf_write(struct matrixio *matrixio, unsigned int add,
 			  int length, void *data);
 
-int matrixio_hw_read_burst(struct matrixio *matrixio, unsigned int add,
-			   void *data, int length);
+int matrixio_hw_read_enqueue(struct matrixio *matrixio, unsigned int add,
+			     int length, struct kfifo_rec_ptr_2 *fifo);
 
 #endif

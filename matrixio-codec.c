@@ -31,7 +31,7 @@
 #define MATRIXIO_RATES SNDRV_PCM_RATE_8000_48000
 #define MATRIXIO_FORMATS SNDRV_PCM_FMTBIT_S16_LE
 #define MATRIXIO_MICARRAY_BASE 0x1800
-#define MATRIXIO_MICARRAY_BUFFER_SIZE (128 * 8)
+#define MATRIXIO_MICARRAY_BUFFER_SIZE (128 * 8 * 2)
 #define MATRIXIO_FIFO_SIZE (MATRIXIO_MICARRAY_BUFFER_SIZE * 4)
 
 struct matrixio_substream {
@@ -52,8 +52,6 @@ static struct class *cl;
 
 static struct cdev matrixio_pcm_cdev;
 
-static int16_t raw_data[MATRIXIO_MICARRAY_BUFFER_SIZE];
-
 static DEFINE_MUTEX(read_lock);
 
 static DECLARE_WAIT_QUEUE_HEAD(wq);
@@ -70,10 +68,8 @@ static void matrixio_pcm_work(struct work_struct *w)
 
 	spin_lock_irqsave(&ms->lock, flags);
 
-	matrixio_hw_read_burst(ms->mio, MATRIXIO_MICARRAY_BASE, raw_data,
-			       sizeof(raw_data));
-
-	kfifo_in(&pcm_fifo, raw_data, sizeof(raw_data));
+	matrixio_hw_read_enqueue(ms->mio, MATRIXIO_MICARRAY_BASE,
+				 MATRIXIO_MICARRAY_BUFFER_SIZE, &pcm_fifo);
 
 	spin_unlock_irqrestore(&ms->lock, flags);
 
@@ -285,8 +281,6 @@ static int matrixio_probe(struct platform_device *pdev)
 
 	card->dev = &pdev->dev;
 
-	printk(KERN_INFO "matrixio_probe");
-
 	ms = devm_kzalloc(&pdev->dev, sizeof(struct matrixio_substream),
 			  GFP_KERNEL);
 	if (!ms)
@@ -307,11 +301,8 @@ static int matrixio_probe(struct platform_device *pdev)
 	if (ret) {
 		dev_err(&pdev->dev, "Failed to register MATRIXIO codec: %d\n",
 			ret);
-
 		return ret;
 	}
-
-	printk(KERN_INFO "MATRIXIO codec registered\n");
 
 	ret = devm_snd_soc_register_card(&pdev->dev, card);
 
@@ -345,8 +336,7 @@ static int matrixio_probe(struct platform_device *pdev)
 		return -EBUSY;
 	}
 
-	printk(KERN_INFO "MATRIX AUDIO has been loaded (IRQ=%d,%d)", ms->irq,
-	       ret);
+	dev_notice(&pdev->dev, "MATRIXIO audio drive loaded (IRQ=%d)", ms->irq);
 
 	ret = kfifo_alloc(&pcm_fifo, MATRIXIO_FIFO_SIZE, GFP_KERNEL);
 

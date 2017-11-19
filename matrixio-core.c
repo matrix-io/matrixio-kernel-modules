@@ -51,7 +51,6 @@ static ssize_t matrixio_spi_sync(struct matrixio *matrixio,
 	if (status == 0)
 		status = message->actual_length;
 
-	// printk(KERN_INFO "SYNC = %d", status);
 	return status;
 }
 
@@ -77,23 +76,16 @@ static int matrixio_spi_transfer_burst(struct matrixio *matrixio,
 				       unsigned int send_size,
 				       unsigned int receive_size)
 {
-	int status;
 	struct spi_transfer t = {.rx_buf = matrixio->rx_buffer,
 				 .tx_buf = matrixio->tx_buffer,
 				 .len = receive_size,
 				 .speed_hz = matrixio->speed_hz};
 	struct spi_message m;
 
-	// mutex_lock(&matrixio->buf_lock);
-
 	spi_message_init(&m);
 	spi_message_add_tail(&t, &m);
 
-	status = matrixio_spi_sync(matrixio, &m);
-
-	// mutex_unlock(&matrixio->buf_lock);
-
-	return status;
+	return matrixio_spi_sync(matrixio, &m);
 }
 
 int matrixio_hw_reg_read(void *context, unsigned int reg, unsigned int *val)
@@ -164,30 +156,30 @@ int matrixio_hw_buf_read(struct matrixio *matrixio, unsigned int add,
 }
 EXPORT_SYMBOL(matrixio_hw_buf_read);
 
-int matrixio_hw_read_burst(struct matrixio *matrixio, unsigned int add,
-			   void *data, int length)
+int matrixio_hw_read_enqueue(struct matrixio *matrixio, unsigned int add,
+			     int length, struct kfifo_rec_ptr_2 *fifo)
 {
-	int ret;
+	int status;
 	struct hardware_address *hw_addr;
 
-	// mutex_lock(&matrixio->buf_lock);
+	mutex_lock(&matrixio->buf_lock);
 
 	hw_addr = (struct hardware_address *)matrixio->tx_buffer;
 	hw_addr->reg = add;
 	hw_addr->burst = 1;
 	hw_addr->readnwrite = 1;
 
-	ret = matrixio_spi_transfer_burst(
+	status = matrixio_spi_transfer_burst(
 	    matrixio, sizeof(struct hardware_address), length + 2);
 
-	if (ret >= 0)
-		memcpy(data, &matrixio->rx_buffer[2], length);
+	if (status >= 0)
+		kfifo_in(fifo, &matrixio->rx_buffer[2], length);
 
-	// mutex_unlock(&matrixio->buf_lock);
+	mutex_unlock(&matrixio->buf_lock);
 
-	return ret;
+	return status;
 }
-EXPORT_SYMBOL(matrixio_hw_read_burst);
+EXPORT_SYMBOL(matrixio_hw_read_enqueue);
 
 int matrixio_hw_buf_write(struct matrixio *matrixio, unsigned int add,
 			  int length, void *data)
