@@ -31,7 +31,7 @@
 #define MATRIXIO_RATES SNDRV_PCM_RATE_8000_48000
 #define MATRIXIO_FORMATS SNDRV_PCM_FMTBIT_S16_LE
 #define MATRIXIO_MICARRAY_BASE 0x1800
-#define MATRIXIO_MICARRAY_BUFFER_SIZE (128 * 8 * 2)
+#define MATRIXIO_MICARRAY_BUFFER_SIZE (128 * MATRIXIO_CHANNELS_MAX * 2)
 #define MATRIXIO_FIFO_SIZE (MATRIXIO_MICARRAY_BUFFER_SIZE * 4)
 
 struct matrixio_substream {
@@ -236,7 +236,6 @@ static int matrixio_codec_probe(struct snd_soc_codec *codec)
 	//	struct matrixio_substream *ms =
 	// snd_soc_codec_get_drvdata(codec);
 
-	printk(KERN_INFO "matrixio_codec_probe");
 	snd_soc_codec_init_regmap(codec, ms->mio->regmap);
 	return 0;
 }
