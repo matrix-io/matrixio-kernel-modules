@@ -7,18 +7,21 @@
 #include <unistd.h>
 
 #define ARRAY_SIZE(ary) (sizeof(ary) / sizeof(ary[0]))
-#define MATRIXIO_FRAME_SIZE 40960
+
+#define MATRIXIO_MICARRAY_BUFFER_SIZE (128 * 2 * 8)
+
 struct matrixio_t {
 	snd_pcm_ioplug_t io;
 	snd_pcm_t *pcm;
 	snd_pcm_hw_params_t *hw_params;
+	int pcm_file;
+	char buf[MATRIXIO_MICARRAY_BUFFER_SIZE];
 	unsigned int last_size;
 	unsigned int ptr;
 	unsigned int latency;    // Delay in usec
 	unsigned int bufferSize; // Size of sample buffer
 	unsigned int channel;
 };
-static unsigned char capture_buf[MATRIXIO_FRAME_SIZE];
 /* set up the fixed parameters of pcm PCM hw_parmas */
 static int matrixio_slave_hw_params_half(struct matrixio_t *capture,
 					 unsigned int rate,
@@ -97,12 +100,15 @@ static int matrixio_start(snd_pcm_ioplug_t *io)
 		SNDERR("pcm is lost\n");
 	}
 
+	capture->pcm_file = open("/dev/matrixio_pcm", O_RDONLY);
+
 	return snd_pcm_start(capture->pcm);
 }
 
 static int matrixio_stop(snd_pcm_ioplug_t *io)
 {
 	struct matrixio_t *capture = io->private_data;
+	close(capture->pcm_file);
 
 	return snd_pcm_drop(capture->pcm);
 }
@@ -111,26 +117,9 @@ static snd_pcm_sframes_t matrixio_pointer(snd_pcm_ioplug_t *io)
 {
 
 	struct matrixio_t *capture = io->private_data;
-	int size;
-
 	assert(capture);
 
-	size = 128;
-	// size = snd_pcm_avail(capture->pcm);
-	if (size < 0)
-		return size;
-
-	if (size > capture->last_size) {
-		capture->ptr += size - capture->last_size;
-		capture->ptr %= io->buffer_size;
-	}
-
-	fprintf(stderr, "%s :%d %d %d %d %d %d\n", __func__, capture->ptr,
-		capture->last_size, size, io->buffer_size, io->appl_ptr,
-		io->hw_ptr);
-	capture->last_size++;
-
-	capture->ptr += 128 * 2 * 8;
+	capture->ptr += 128;
 	return capture->ptr;
 }
 
@@ -140,92 +129,30 @@ matrixio_transfer(snd_pcm_ioplug_t *io, const snd_pcm_channel_area_t *dst_areas,
 {
 	struct matrixio_t *capture = io->private_data;
 	int chn;
-	unsigned char *dst_samples[io->channels];
+	unsigned short *dst_samples[io->channels];
+	unsigned short *buf16 = capture->buf;
 	int dst_steps[io->channels];
 	int bps = snd_pcm_format_width(io->format) / 8; /* bytes per sample */
-	int i;
-	int count = 0;
-	int err = 0;
-	unsigned char *src_buf;
-	unsigned char src_data[4][4];
-
+/*
 	printf("%s:\n", __func__);
 	printf(" channel = %d \n", capture->channel);
 	printf(" rate = %d \n", io->rate);
+	printf(" size = %d \n", size);
 	printf(" period_size = %d \n", io->period_size);
 	printf(" buffer_size = %d \n", io->buffer_size);
+*/
+	read(capture->pcm_file, buf16, MATRIXIO_MICARRAY_BUFFER_SIZE);
 
 	for (chn = 0; chn < io->channels; chn++) {
-		printf(" f:%d s:%d %p \n", dst_areas[chn].first,
-		       dst_areas[chn].step, dst_areas[chn].addr);
-	}
-	memset(capture_buf, 0, MATRIXIO_FRAME_SIZE);
-
-	if (snd_pcm_avail(capture->pcm) > size * 2) {
-		if ((err = snd_pcm_readi(capture->pcm, capture_buf,
-					 size * 2)) != size * 2) {
-			SNDERR("read from audio interface failed %ld %d  %s!\n",
-			       size, err, snd_strerror(err));
-			exit(EXIT_FAILURE);
-			size = 0;
-		}
-	} else {
-		size = 0;
-	}
-#if 1
-	/* verify and prepare the contents of areas */
-	for (chn = 0; chn < io->channels; chn++) {
-		if ((dst_areas[chn].first % 8) != 0) {
-			SNDERR("dst_areas[%i].first == %i, aborting...\n", chn,
-			       dst_areas[chn].first);
-			exit(EXIT_FAILURE);
-		}
-		dst_samples[chn] = /*(signed short *)*/ (
-		    ((unsigned char *)dst_areas[chn].addr) +
-		    (dst_areas[chn].first / 8));
-		if ((dst_areas[chn].step % 16) != 0) {
-			SNDERR("dst_areas[%i].step == %i, aborting...\n", chn,
-			       dst_areas[chn].step);
-			exit(EXIT_FAILURE);
-		}
-		dst_steps[chn] = dst_areas[chn].step / 8;
-		dst_samples[chn] += dst_offset * dst_steps[chn];
-	}
-#endif
-	//  for(i = 0; i < size*2*bps;i++){
-	// 	fprintf(stderr,"%x ",capture_buf[i]);
-	// 	if(i%4 == 0)
-	// 		fprintf(stderr,"\n");
-	// }
-
-	src_buf = capture_buf;
-#if 1
-	while (count < size) {
-		for (chn = 0; chn < 4; chn++) {
-			for (i = 0; i < bps; i++) {
-				src_data[chn][i] = src_buf[i];
-			}
-			src_buf += bps;
-		}
-
-		for (chn = 0; chn < io->channels; chn++) {
-			for (i = 0; i < bps; i++) {
-				*(dst_samples[chn] + i) = src_data[chn][i];
-				// fprintf(stderr,"%x ",*(dst_samples[chn] +
-				// i));
-			}
-			// fprintf(stderr,"\n");
-			dst_samples[chn] += dst_steps[chn];
-		}
-		count++;
+		dst_samples[chn] = (unsigned short*)dst_areas[chn].addr;
 	}
 
-#endif
+	for (int j = 0; j < 8; j++)
+		for (int chn = 0; chn < io->channels; chn++) {
+			dst_samples[chn][j] = buf16[j * 8 + chn];
+		}
 
-	capture->last_size -= size;
-
-	printf(" size = %d\n", size);
-	return 128 * 8;
+	return 128;
 }
 
 /*
