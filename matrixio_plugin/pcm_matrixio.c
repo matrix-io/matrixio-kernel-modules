@@ -101,8 +101,8 @@ static int matrixio_start(snd_pcm_ioplug_t *io)
 	}
 
 	capture->pcm_file = open("/dev/matrixio_pcm", O_RDONLY);
-
-	return snd_pcm_start(capture->pcm);
+	capture->ptr = 0;
+	return 0; //snd_pcm_start(capture->pcm);
 }
 
 static int matrixio_stop(snd_pcm_ioplug_t *io)
@@ -110,7 +110,7 @@ static int matrixio_stop(snd_pcm_ioplug_t *io)
 	struct matrixio_t *capture = io->private_data;
 	close(capture->pcm_file);
 
-	return snd_pcm_drop(capture->pcm);
+	return 0;//snd_pcm_drop(capture->pcm);
 }
 
 static snd_pcm_sframes_t matrixio_pointer(snd_pcm_ioplug_t *io)
@@ -138,13 +138,16 @@ matrixio_transfer(snd_pcm_ioplug_t *io, const snd_pcm_channel_area_t *dst_areas,
 	printf(" channel = %d \n", capture->channel);
 	printf(" rate = %d \n", io->rate);
 	printf(" size = %d \n", size);
+	
 	printf(" period_size = %d \n", io->period_size);
 	printf(" buffer_size = %d \n", io->buffer_size);
+
+	printf(" offset = %d \n", dst_offset);
 */
 	read(capture->pcm_file, buf16, MATRIXIO_MICARRAY_BUFFER_SIZE);
 
 	for (chn = 0; chn < io->channels; chn++) {
-		dst_samples[chn] = (unsigned short*)dst_areas[chn].addr;
+		dst_samples[chn] = (unsigned short*)(dst_areas[chn].addr + dst_offset);
 	}
 
 	for (int j = 0; j < 8; j++)
@@ -152,7 +155,7 @@ matrixio_transfer(snd_pcm_ioplug_t *io, const snd_pcm_channel_area_t *dst_areas,
 			dst_samples[chn][j] = buf16[j * 8 + chn];
 		}
 
-	return 128;
+	return size*2;
 }
 
 /*
@@ -324,15 +327,15 @@ static snd_pcm_ioplug_callback_t matrixio_ops = {
     .stop = matrixio_stop,
     .pointer = matrixio_pointer,
     .transfer = matrixio_transfer,
-    .poll_descriptors_count = matrixio_poll_descriptors_count,
-    .poll_descriptors = matrixio_poll_descriptors,
-    .poll_revents = matrixio_poll_revents,
+//    .poll_descriptors_count = matrixio_poll_descriptors_count,
+//    .poll_descriptors = matrixio_poll_descriptors,
+//    .poll_revents = matrixio_poll_revents,
     .close = matrixio_close,
     .hw_params = matrixio_hw_params,
     .hw_free = matrixio_hw_free,
     .prepare = matrixio_prepare,
-    .drain = matrixio_drain,
-    .delay = matrixio_delay,
+//    .drain = matrixio_drain,
+//    .delay = matrixio_delay,
 };
 
 static int matrixio_set_hw_constraint(struct matrixio_t *capture)
