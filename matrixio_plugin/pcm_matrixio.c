@@ -14,12 +14,9 @@ struct matrixio_t {
 	snd_pcm_ioplug_t io;
 	snd_pcm_t *pcm;
 	snd_pcm_hw_params_t *hw_params;
-	int pcm_file;
+	int pcm_fd;
 	char buf[MATRIXIO_MICARRAY_BUFFER_SIZE];
-	unsigned int last_size;
 	unsigned int ptr;
-	unsigned int latency;    // Delay in usec
-	unsigned int bufferSize; // Size of sample buffer
 	unsigned int channel;
 };
 /* set up the fixed parameters of pcm PCM hw_parmas */
@@ -28,8 +25,6 @@ static int matrixio_slave_hw_params_half(struct matrixio_t *capture,
 					 snd_pcm_format_t format)
 {
 	int err;
-	snd_pcm_uframes_t bufferSize = capture->bufferSize;
-	unsigned int latency = capture->latency;
 
 	unsigned int buffer_time = 0;
 	unsigned int period_time = 0;
@@ -82,9 +77,6 @@ static int matrixio_slave_hw_params_half(struct matrixio_t *capture,
 		goto out;
 	}
 
-	capture->bufferSize = bufferSize;
-	capture->latency = latency;
-
 	return 0;
 
 out:
@@ -100,17 +92,17 @@ static int matrixio_start(snd_pcm_ioplug_t *io)
 		SNDERR("pcm is lost\n");
 	}
 
-	capture->pcm_file = open("/dev/matrixio_pcm", O_RDONLY);
+	capture->pcm_fd = open("/dev/matrixio_pcm", O_RDONLY);
 	capture->ptr = 0;
-	return 0; //snd_pcm_start(capture->pcm);
+	return 0; // snd_pcm_start(capture->pcm);
 }
 
 static int matrixio_stop(snd_pcm_ioplug_t *io)
 {
-	struct matrixio_t *capture = io->private_data;
-	close(capture->pcm_file);
+	//struct matrixio_t *capture = io->private_data;
+	// close(capture->pcm_fd);
 
-	return 0;//snd_pcm_drop(capture->pcm);
+	return 0;
 }
 
 static snd_pcm_sframes_t matrixio_pointer(snd_pcm_ioplug_t *io)
@@ -123,31 +115,32 @@ static snd_pcm_sframes_t matrixio_pointer(snd_pcm_ioplug_t *io)
 	return capture->ptr;
 }
 
-static snd_pcm_sframes_t
-matrixio_transfer(snd_pcm_ioplug_t *io, const snd_pcm_channel_area_t *dst_areas,
-		  snd_pcm_uframes_t dst_offset, snd_pcm_uframes_t size)
+static snd_pcm_sframes_t matrixio_transfer(snd_pcm_ioplug_t *io,
+					   const snd_pcm_channel_area_t *areas,
+					   snd_pcm_uframes_t offset,
+					   snd_pcm_uframes_t size)
 {
 	struct matrixio_t *capture = io->private_data;
 	int chn;
 	unsigned short *dst_samples[io->channels];
-	unsigned short *buf16 = capture->buf;
-	int dst_steps[io->channels];
-	int bps = snd_pcm_format_width(io->format) / 8; /* bytes per sample */
-/*
-	printf("%s:\n", __func__);
-	printf(" channel = %d \n", capture->channel);
-	printf(" rate = %d \n", io->rate);
-	printf(" size = %d \n", size);
-	
-	printf(" period_size = %d \n", io->period_size);
-	printf(" buffer_size = %d \n", io->buffer_size);
+	unsigned short *buf16 = (unsigned short *)capture->buf;
+	/*
+		printf("%s:\n", __func__);
+		printf(" channel = %d \n", capture->channel);
+		printf(" rate = %d \n", io->rate);
+		printf(" size = %d \n", size);
 
-	printf(" offset = %d \n", dst_offset);
-*/
-	read(capture->pcm_file, buf16, MATRIXIO_MICARRAY_BUFFER_SIZE);
+		printf(" period_size = %d \n", io->period_size);
+		printf(" buffer_size = %d \n", io->buffer_size);
+
+		printf(" offset = %d \n", offset);
+	*/
+	read(capture->pcm_fd, buf16, MATRIXIO_MICARRAY_BUFFER_SIZE);
 
 	for (chn = 0; chn < io->channels; chn++) {
-		dst_samples[chn] = (unsigned short*)(dst_areas[chn].addr + dst_offset);
+		dst_samples[chn] =
+		    (unsigned short *)areas[chn].addr +
+		    (areas[chn].first + areas[chn].step * offset) / 8;
 	}
 
 	for (int j = 0; j < 8; j++)
@@ -155,34 +148,35 @@ matrixio_transfer(snd_pcm_ioplug_t *io, const snd_pcm_channel_area_t *dst_areas,
 			dst_samples[chn][j] = buf16[j * 8 + chn];
 		}
 
-	return size*2;
+	return size;
 }
 
 /*
  * poll-related callbacks - just pass to pcm PCM
  */
-static int matrixio_poll_descriptors_count(snd_pcm_ioplug_t *io)
-{
-	struct matrixio_t *capture = io->private_data;
-
-	return snd_pcm_poll_descriptors_count(capture->pcm);
-}
+static int matrixio_poll_descriptors_count(snd_pcm_ioplug_t *io) { return 1; }
 
 static int matrixio_poll_descriptors(snd_pcm_ioplug_t *io, struct pollfd *pfd,
 				     unsigned int space)
 {
 	struct matrixio_t *capture = io->private_data;
 
-	return snd_pcm_poll_descriptors(capture->pcm, pfd, space);
+	if (space < 1)
+		return 0;
+
+	pfd[0].fd = capture->pcm_fd;
+	pfd[0].events = POLLIN;
+	pfd[0].revents = 0;
+
+	return 1;
 }
 
 static int matrixio_poll_revents(snd_pcm_ioplug_t *io, struct pollfd *pfd,
 				 unsigned int nfds, unsigned short *revents)
 {
-	struct matrixio_t *capture = io->private_data;
+	*revents = pfd[0].revents;
 
-	return snd_pcm_poll_descriptors_revents(capture->pcm, pfd, nfds,
-						revents);
+	return 0;
 }
 
 /*
@@ -191,6 +185,7 @@ static int matrixio_poll_revents(snd_pcm_ioplug_t *io, struct pollfd *pfd,
 static int matrixio_close(snd_pcm_ioplug_t *io)
 {
 	struct matrixio_t *capture = io->private_data;
+
 	if (capture->pcm)
 		snd_pcm_close(capture->pcm);
 
@@ -305,21 +300,9 @@ static int matrixio_hw_free(snd_pcm_ioplug_t *io)
 static int matrixio_prepare(snd_pcm_ioplug_t *io)
 {
 	struct matrixio_t *capture = io->private_data;
+	capture->pcm_fd = -1;
 	capture->ptr = 0;
-	capture->last_size = 0;
 	return snd_pcm_prepare(capture->pcm);
-}
-static int matrixio_drain(snd_pcm_ioplug_t *io)
-{
-	struct matrixio_t *capture = io->private_data;
-
-	return snd_pcm_drain(capture->pcm);
-}
-
-static int matrixio_delay(snd_pcm_ioplug_t *io, snd_pcm_sframes_t *delayp)
-{
-
-	return 0;
 }
 
 static snd_pcm_ioplug_callback_t matrixio_ops = {
@@ -327,15 +310,13 @@ static snd_pcm_ioplug_callback_t matrixio_ops = {
     .stop = matrixio_stop,
     .pointer = matrixio_pointer,
     .transfer = matrixio_transfer,
-//    .poll_descriptors_count = matrixio_poll_descriptors_count,
-//    .poll_descriptors = matrixio_poll_descriptors,
-//    .poll_revents = matrixio_poll_revents,
+    .poll_descriptors_count = matrixio_poll_descriptors_count,
+    .poll_descriptors = matrixio_poll_descriptors,
+    .poll_revents = matrixio_poll_revents,
     .close = matrixio_close,
     .hw_params = matrixio_hw_params,
     .hw_free = matrixio_hw_free,
     .prepare = matrixio_prepare,
-//    .drain = matrixio_drain,
-//    .delay = matrixio_delay,
 };
 
 static int matrixio_set_hw_constraint(struct matrixio_t *capture)
