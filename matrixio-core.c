@@ -55,13 +55,12 @@ static ssize_t matrixio_spi_sync(struct matrixio *matrixio,
 	return status;
 }
 
-static int matrixio_spi_transfer(struct matrixio *matrixio,
-				 unsigned int send_size,
-				 unsigned int receive_size)
+static int matrixio_spi_transfer(struct matrixio *matrixio, 
+				 unsigned int size)
 {
 	struct spi_transfer t = {.rx_buf = matrixio->rx_buffer,
 				 .tx_buf = matrixio->tx_buffer,
-				 .len = receive_size,
+				 .len = size,
 				 .speed_hz = matrixio->speed_hz};
 	struct spi_message m;
 
@@ -86,8 +85,9 @@ int matrixio_hw_reg_read(void *context, unsigned int reg, unsigned int *val)
 	hw_addr->reg = reg;
 	hw_addr->burst = 0;
 	hw_addr->readnwrite = 1;
+	hw_addr->value = 0;
 
-	ret = matrixio_spi_transfer(matrixio, 4, 4);
+	ret = matrixio_spi_transfer(matrixio, 4);
 
 	if (!ret)
 		*val = recv_buf[1];
@@ -112,7 +112,7 @@ int matrixio_hw_reg_write(void *context, unsigned int reg, unsigned int val)
 	hw_cmd->readnwrite = 0;
 	hw_cmd->value = val;
 
-	ret = matrixio_spi_transfer(matrixio, 4, 4);
+	ret = matrixio_spi_transfer(matrixio, 4);
 
 	mutex_unlock(&matrixio->reg_lock);
 
@@ -158,7 +158,7 @@ int matrixio_hw_read_enqueue(struct matrixio *matrixio, unsigned int add,
 	hw_addr->burst = 1;
 	hw_addr->readnwrite = 1;
 
-	ret = matrixio_spi_transfer(matrixio, sizeof(struct hardware_cmd),
+	ret = matrixio_spi_transfer(matrixio,
 				    length + 2);
 
 	if (ret >= 0)
