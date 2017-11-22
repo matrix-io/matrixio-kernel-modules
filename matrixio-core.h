@@ -30,6 +30,7 @@
 struct matrixio {
 	struct device *dev;
 	struct regmap *regmap;
+	struct mutex reg_lock;
 	struct mutex buf_lock;
 	spinlock_t spi_lock;
 	struct spi_device *spi;

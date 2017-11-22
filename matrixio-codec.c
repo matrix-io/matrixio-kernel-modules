@@ -343,7 +343,7 @@ static int matrixio_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "error PCM kfifo allocation");
 
 	alloc_chrdev_region(&devt, 0, 1, "matrixio_pcm");
-	cl = class_create(THIS_MODULE, "chardrv");
+	cl = class_create(THIS_MODULE, "matrixio_pcm");
 
 	device_create(cl, NULL, devt, NULL, "matrixio_pcm");
 

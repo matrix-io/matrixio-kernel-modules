@@ -22,10 +22,11 @@
 
 #include "matrixio-core.h"
 
-struct hardware_address {
+struct hardware_cmd {
 	uint8_t readnwrite : 1;
 	uint8_t burst : 1;
 	uint16_t reg : 14;
+	uint16_t value;
 };
 
 static struct regmap_config matrixio_regmap_config = {
@@ -55,26 +56,8 @@ static ssize_t matrixio_spi_sync(struct matrixio *matrixio,
 }
 
 static int matrixio_spi_transfer(struct matrixio *matrixio,
-				 uint8_t *send_buffer, uint8_t *receive_buffer,
-				 unsigned int size)
-{
-	struct spi_transfer t = {
-	    .tx_buf = send_buffer,
-	    .rx_buf = receive_buffer,
-	    .len = size,
-	    .speed_hz = matrixio->speed_hz,
-	};
-	struct spi_message m;
-
-	spi_message_init(&m);
-	spi_message_add_tail(&t, &m);
-
-	return matrixio_spi_sync(matrixio, &m);
-}
-
-static int matrixio_spi_transfer_burst(struct matrixio *matrixio,
-				       unsigned int send_size,
-				       unsigned int receive_size)
+				 unsigned int send_size,
+				 unsigned int receive_size)
 {
 	struct spi_transfer t = {.rx_buf = matrixio->rx_buffer,
 				 .tx_buf = matrixio->tx_buffer,
@@ -91,44 +74,55 @@ static int matrixio_spi_transfer_burst(struct matrixio *matrixio,
 int matrixio_hw_reg_read(void *context, unsigned int reg, unsigned int *val)
 {
 	int ret;
+	struct matrixio *matrixio;
+	uint16_t *recv_buf;
+	struct hardware_cmd *hw_addr;
 
-	struct matrixio *matrixio = context;
-	struct hardware_address *hw_addr;
-	uint8_t send_buf[4];
-	uint16_t recv_buf[2];
+	mutex_lock(&matrixio->buf_lock);
 
-	hw_addr = (struct hardware_address *)send_buf;
+	matrixio = context;
+	recv_buf = (uint16_t *)matrixio->rx_buffer;
+	hw_addr = (struct hardware_cmd *)matrixio->tx_buffer;
+
 	hw_addr->reg = reg;
 	hw_addr->burst = 0;
 	hw_addr->readnwrite = 1;
 
-	ret = matrixio_spi_transfer(matrixio, send_buf, (uint8_t *)recv_buf, 4);
+	ret = matrixio_spi_transfer(matrixio, 4, 4);
 
-	if (ret) {
-		return ret;
-	}
+	if (ret)
+		goto reg_read_done;
 
 	*val = recv_buf[1];
-	return 0;
+
+reg_read_done:
+	mutex_unlock(&matrixio->buf_lock);
+
+	return ret;
 }
 
 int matrixio_hw_reg_write(void *context, unsigned int reg, unsigned int val)
 {
+	int ret;
 	struct matrixio *matrixio = context;
+	struct hardware_cmd *hw_cmd =
+	    (struct hardware_cmd *)matrixio->tx_buffer;
 
-	struct hardware_address *hw_addr;
-	uint16_t send_buf[2];
-	uint8_t recv_buf[4];
+	mutex_unlock(&matrixio->buf_lock);
 
-	hw_addr = (struct hardware_address *)send_buf;
-	hw_addr->reg = reg;
-	hw_addr->burst = 0;
-	hw_addr->readnwrite = 0;
+	matrixio = context;
+	hw_cmd = (struct hardware_cmd *)matrixio->tx_buffer;
 
-	send_buf[1] = val;
+	hw_cmd->reg = reg;
+	hw_cmd->burst = 0;
+	hw_cmd->readnwrite = 0;
+	hw_cmd->value = val;
 
-	return matrixio_spi_transfer(matrixio, (uint8_t *)send_buf,
-				     (uint8_t *)recv_buf, 4);
+	ret = matrixio_spi_transfer(matrixio, 4, 4);
+
+	mutex_unlock(&matrixio->buf_lock);
+
+	return ret;
 }
 
 int matrixio_hw_buf_read(struct matrixio *matrixio, unsigned int add,
@@ -160,17 +154,17 @@ int matrixio_hw_read_enqueue(struct matrixio *matrixio, unsigned int add,
 			     int length, struct kfifo_rec_ptr_2 *fifo)
 {
 	int status;
-	struct hardware_address *hw_addr;
+	struct hardware_cmd *hw_addr;
 
 	mutex_lock(&matrixio->buf_lock);
 
-	hw_addr = (struct hardware_address *)matrixio->tx_buffer;
+	hw_addr = (struct hardware_cmd *)matrixio->tx_buffer;
 	hw_addr->reg = add;
 	hw_addr->burst = 1;
 	hw_addr->readnwrite = 1;
 
-	status = matrixio_spi_transfer_burst(
-	    matrixio, sizeof(struct hardware_address), length + 2);
+	status = matrixio_spi_transfer(matrixio, sizeof(struct hardware_cmd),
+				       length + 2);
 
 	if (status >= 0)
 		kfifo_in(fifo, &matrixio->rx_buffer[2], length);

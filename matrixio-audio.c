@@ -18,24 +18,24 @@
  * MA  02110-1301, USA.
  */
 
-#include <linux/init.h>
-#include <linux/module.h>
-#include <linux/platform_device.h>
-#include <linux/gpio.h>
-#include <linux/kobject.h>
-#include <linux/sysfs.h>
 #include <linux/delay.h>
-#include <linux/spi/spi.h>
+#include <linux/gpio.h>
+#include <linux/init.h>
 #include <linux/interrupt.h>
 #include <linux/kfifo.h>
+#include <linux/kobject.h>
+#include <linux/module.h>
+#include <linux/platform_device.h>
+#include <linux/spi/spi.h>
+#include <linux/sysfs.h>
 
+#include <sound/asequencer.h>
+#include <sound/control.h>
 #include <sound/core.h>
+#include <sound/jack.h>
 #include <sound/pcm.h>
 #include <sound/pcm_params.h>
 #include <sound/soc.h>
-#include <sound/jack.h>
-#include <sound/asequencer.h>
-#include <sound/control.h>
 /*
 static int pisnd_spi_init(struct device *dev);
 static void pisnd_spi_uninit(void);
@@ -53,19 +53,18 @@ static const char *pisnd_spi_get_version(void);
 #define PISOUND_LOG_PREFIX "pisound: "
 
 #ifdef DEBUG
-#	define printd(...) pr_alert(PISOUND_LOG_PREFIX __VA_ARGS__)
+#define printd(...) pr_alert(PISOUND_LOG_PREFIX __VA_ARGS__)
 #else
-#	define printd(...) do {} while (0)
+#define printd(...)                                                            \
+	do {                                                                   \
+	} while (0)
 #endif
 
 #define printe(...) pr_err(PISOUND_LOG_PREFIX __VA_ARGS__)
 #define printi(...) pr_info(PISOUND_LOG_PREFIX __VA_ARGS__)
 
-
-
-
 static void *g_recvData;
-//static pisnd_spi_recv_cb g_recvCallback;
+// static pisnd_spi_recv_cb g_recvCallback;
 
 #define FIFO_SIZE 512
 
@@ -74,9 +73,9 @@ static char g_id[25];
 static char g_version[5];
 
 static uint8_t g_ledFlashDuration;
-static bool    g_ledFlashDurationChanged;
+static bool g_ledFlashDurationChanged;
 
-DEFINE_KFIFO(spi_fifo_in,  uint8_t, FIFO_SIZE);
+DEFINE_KFIFO(spi_fifo_in, uint8_t, FIFO_SIZE);
 DEFINE_KFIFO(spi_fifo_out, uint8_t, FIFO_SIZE);
 
 static struct gpio_desc *data_available;
@@ -89,7 +88,7 @@ static struct work_struct pisnd_work_process;
 
 static void pisnd_work_handler(struct work_struct *work);
 
-//static uint16_t spi_transfer16(uint16_t val);
+// static uint16_t spi_transfer16(uint16_t val);
 
 static int pisnd_init_workqueues(void)
 {
@@ -253,41 +252,41 @@ static void pisnd_work_handler(struct work_struct *work)
 	uint16_t rx;
 	uint16_t tx;
 	uint8_t val;
-/*
-	if (work == &pisnd_work_process) {
-		if (pisnd_spi_device == NULL)
-			return;
+	/*
+		if (work == &pisnd_work_process) {
+			if (pisnd_spi_device == NULL)
+				return;
 
-		do {
-			val = 0;
-			tx = 0;
+			do {
+				val = 0;
+				tx = 0;
 
-			if (g_ledFlashDurationChanged) {
-				tx = 0xf000 | g_ledFlashDuration;
-				g_ledFlashDuration = 0;
-				g_ledFlashDurationChanged = false;
-			} else if (kfifo_get(&spi_fifo_out, &val)) {
-				tx = 0x0f00 | val;
-			}
+				if (g_ledFlashDurationChanged) {
+					tx = 0xf000 | g_ledFlashDuration;
+					g_ledFlashDuration = 0;
+					g_ledFlashDurationChanged = false;
+				} else if (kfifo_get(&spi_fifo_out, &val)) {
+					tx = 0x0f00 | val;
+				}
 
-			rx = spi_transfer16(tx);
+				rx = spi_transfer16(tx);
 
-			if (rx & 0xff00) {
-				kfifo_put(&spi_fifo_in, rx & 0xff);
-				if (kfifo_len(&spi_fifo_in) > 16
-					&& g_recvCallback)
-					g_recvCallback(g_recvData);
-			}
-		} while (rx != 0
-			|| !kfifo_is_empty(&spi_fifo_out)
-			|| pisnd_spi_has_more()
-			|| g_ledFlashDurationChanged
-			);
+				if (rx & 0xff00) {
+					kfifo_put(&spi_fifo_in, rx & 0xff);
+					if (kfifo_len(&spi_fifo_in) > 16
+						&& g_recvCallback)
+						g_recvCallback(g_recvData);
+				}
+			} while (rx != 0
+				|| !kfifo_is_empty(&spi_fifo_out)
+				|| pisnd_spi_has_more()
+				|| g_ledFlashDurationChanged
+				);
 
-		if (!kfifo_is_empty(&spi_fifo_in) && g_recvCallback)
-			g_recvCallback(g_recvData);
-	}
-*/
+			if (!kfifo_is_empty(&spi_fifo_in) && g_recvCallback)
+				g_recvCallback(g_recvData);
+		}
+	*/
 }
 
 #if 0
@@ -536,18 +535,21 @@ static const char *pisnd_spi_get_version(void)
 #endif
 
 static const struct of_device_id pisound_of_match[] = {
-	{ .compatible = "blokaslabs,pisound", },
-	{ .compatible = "blokaslabs,pisound-spi", },
-	{},
+    {
+	.compatible = "blokaslabs,pisound",
+    },
+    {
+	.compatible = "blokaslabs,pisound-spi",
+    },
+    {},
 };
 
-enum {
-	SWITCH = 0,
-	VOLUME = 1,
+enum { SWITCH = 0,
+       VOLUME = 1,
 };
 
 static int pisnd_ctl_info(struct snd_kcontrol *kcontrol,
-	struct snd_ctl_elem_info *uinfo)
+			  struct snd_ctl_elem_info *uinfo)
 {
 	if (kcontrol->private_value == SWITCH) {
 		uinfo->type = SNDRV_CTL_ELEM_TYPE_BOOLEAN;
@@ -566,7 +568,7 @@ static int pisnd_ctl_info(struct snd_kcontrol *kcontrol,
 }
 
 static int pisnd_ctl_get(struct snd_kcontrol *kcontrol,
-	struct snd_ctl_elem_value *ucontrol)
+			 struct snd_ctl_elem_value *ucontrol)
 {
 	if (kcontrol->private_value == SWITCH) {
 		ucontrol->value.integer.value[0] = 1;
@@ -580,24 +582,24 @@ static int pisnd_ctl_get(struct snd_kcontrol *kcontrol,
 }
 
 static struct snd_kcontrol_new pisnd_ctl[] = {
-	{
-		.iface = SNDRV_CTL_ELEM_IFACE_MIXER,
-		.name = "PCM Playback Switch",
-		.index = 0,
-		.private_value = SWITCH,
-		.access = SNDRV_CTL_ELEM_ACCESS_READ,
-		.info = pisnd_ctl_info,
-		.get = pisnd_ctl_get,
-	},
-	{
-		.iface = SNDRV_CTL_ELEM_IFACE_MIXER,
-		.name = "PCM Playback Volume",
-		.index = 0,
-		.private_value = VOLUME,
-		.access = SNDRV_CTL_ELEM_ACCESS_READ,
-		.info = pisnd_ctl_info,
-		.get = pisnd_ctl_get,
-	},
+    {
+	.iface = SNDRV_CTL_ELEM_IFACE_MIXER,
+	.name = "PCM Playback Switch",
+	.index = 0,
+	.private_value = SWITCH,
+	.access = SNDRV_CTL_ELEM_ACCESS_READ,
+	.info = pisnd_ctl_info,
+	.get = pisnd_ctl_get,
+    },
+    {
+	.iface = SNDRV_CTL_ELEM_IFACE_MIXER,
+	.name = "PCM Playback Volume",
+	.index = 0,
+	.private_value = VOLUME,
+	.access = SNDRV_CTL_ELEM_ACCESS_READ,
+	.info = pisnd_ctl_info,
+	.get = pisnd_ctl_get,
+    },
 };
 
 static int pisnd_ctl_init(struct snd_card *card)
@@ -613,19 +615,14 @@ static int pisnd_ctl_init(struct snd_card *card)
 	return 0;
 }
 
-static int pisnd_ctl_uninit(void)
-{
-	return 0;
-}
+static int pisnd_ctl_uninit(void) { return 0; }
 
 static struct gpio_desc *osr0, *osr1, *osr2;
 static struct gpio_desc *reset;
 static struct gpio_desc *button;
 
-static int pisnd_hw_params(
-	struct snd_pcm_substream *substream,
-	struct snd_pcm_hw_params *params
-	)
+static int pisnd_hw_params(struct snd_pcm_substream *substream,
+			   struct snd_pcm_hw_params *params)
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
@@ -633,12 +630,12 @@ static int pisnd_hw_params(
 	/* pisound runs on fixed 32 clock counts per channel,
 	 * as generated by the master ADC.
 	 */
-	snd_soc_dai_set_bclk_ratio(cpu_dai, 32*2);
+	snd_soc_dai_set_bclk_ratio(cpu_dai, 32 * 2);
 
 	printd("rate   = %d\n", params_rate(params));
 	printd("ch     = %d\n", params_channels(params));
 	printd("bits   = %u\n",
-		snd_pcm_format_physical_width(params_format(params)));
+	       snd_pcm_format_physical_width(params_format(params)));
 	printd("format = %d\n", params_format(params));
 
 	gpiod_set_value(reset, false);
@@ -669,44 +666,30 @@ static int pisnd_hw_params(
 	return 0;
 }
 
-static unsigned int rates[3] = {
-	48000, 96000, 192000
-};
+static unsigned int rates[3] = {48000, 96000, 192000};
 
 static struct snd_pcm_hw_constraint_list constraints_rates = {
-	.count = ARRAY_SIZE(rates),
-	.list = rates,
-	.mask = 0,
+    .count = ARRAY_SIZE(rates), .list = rates, .mask = 0,
 };
 
 static int pisnd_startup(struct snd_pcm_substream *substream)
 {
 	int err = snd_pcm_hw_constraint_list(
-		substream->runtime,
-		0,
-		SNDRV_PCM_HW_PARAM_RATE,
-		&constraints_rates
-		);
+	    substream->runtime, 0, SNDRV_PCM_HW_PARAM_RATE, &constraints_rates);
 
 	if (err < 0)
 		return err;
 
-	err = snd_pcm_hw_constraint_single(
-		substream->runtime,
-		SNDRV_PCM_HW_PARAM_CHANNELS,
-		2
-		);
+	err = snd_pcm_hw_constraint_single(substream->runtime,
+					   SNDRV_PCM_HW_PARAM_CHANNELS, 2);
 
 	if (err < 0)
 		return err;
 
 	err = snd_pcm_hw_constraint_mask64(
-		substream->runtime,
-		SNDRV_PCM_HW_PARAM_FORMAT,
-		SNDRV_PCM_FMTBIT_S16_LE |
-		SNDRV_PCM_FMTBIT_S24_LE |
-		SNDRV_PCM_FMTBIT_S32_LE
-		);
+	    substream->runtime, SNDRV_PCM_HW_PARAM_FORMAT,
+	    SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE |
+		SNDRV_PCM_FMTBIT_S32_LE);
 
 	if (err < 0)
 		return err;
@@ -715,24 +698,21 @@ static int pisnd_startup(struct snd_pcm_substream *substream)
 }
 
 static struct snd_soc_ops pisnd_ops = {
-	.startup = pisnd_startup,
-	.hw_params = pisnd_hw_params,
+    .startup = pisnd_startup, .hw_params = pisnd_hw_params,
 };
 
 static struct snd_soc_dai_link pisnd_dai[] = {
-	{
-		.name           = "pisound",
-		.stream_name    = "pisound",
-		.cpu_dai_name   = "bcm2708-i2s.0",
-		.codec_dai_name = "snd-soc-dummy-dai",
-		.platform_name  = "bcm2708-i2s.0",
-		.codec_name     = "snd-soc-dummy",
-		.dai_fmt        =
-			SND_SOC_DAIFMT_I2S |
-			SND_SOC_DAIFMT_NB_NF |
-			SND_SOC_DAIFMT_CBM_CFM,
-		.ops            = &pisnd_ops,
-	},
+    {
+	.name = "pisound",
+	.stream_name = "pisound",
+	.cpu_dai_name = "bcm2708-i2s.0",
+	.codec_dai_name = "snd-soc-dummy-dai",
+	.platform_name = "bcm2708-i2s.0",
+	.codec_name = "snd-soc-dummy",
+	.dai_fmt =
+	    SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_NF | SND_SOC_DAIFMT_CBM_CFM,
+	.ops = &pisnd_ops,
+    },
 };
 
 static int pisnd_card_probe(struct snd_soc_card *card)
@@ -755,12 +735,12 @@ static int pisnd_card_remove(struct snd_soc_card *card)
 }
 
 static struct snd_soc_card pisnd_card = {
-	.name         = "pisound",
-	.owner        = THIS_MODULE,
-	.dai_link     = pisnd_dai,
-	.num_links    = ARRAY_SIZE(pisnd_dai),
-	.probe        = pisnd_card_probe,
-	.remove       = pisnd_card_remove,
+    .name = "pisound",
+    .owner = THIS_MODULE,
+    .dai_link = pisnd_dai,
+    .num_links = ARRAY_SIZE(pisnd_dai),
+    .probe = pisnd_card_probe,
+    .remove = pisnd_card_remove,
 };
 
 static int pisnd_init_gpio(struct device *dev)
@@ -773,16 +753,16 @@ static int pisnd_init_gpio(struct device *dev)
 
 	button = gpiod_get_index(dev, "button", 0, GPIOD_ASIS);
 
-	gpiod_direction_output(osr0,  1);
-	gpiod_direction_output(osr1,  1);
-	gpiod_direction_output(osr2,  1);
+	gpiod_direction_output(osr0, 1);
+	gpiod_direction_output(osr1, 1);
+	gpiod_direction_output(osr2, 1);
 	gpiod_direction_output(reset, 1);
 
 	gpiod_set_value(reset, false);
-	gpiod_set_value(osr0,   true);
-	gpiod_set_value(osr1,  false);
-	gpiod_set_value(osr2,  false);
-	gpiod_set_value(reset,  true);
+	gpiod_set_value(osr0, true);
+	gpiod_set_value(osr1, false);
+	gpiod_set_value(osr2, false);
+	gpiod_set_value(reset, true);
 
 	gpiod_export(button, false);
 
@@ -794,7 +774,7 @@ static int pisnd_uninit_gpio(void)
 	int i;
 
 	struct gpio_desc **gpios[] = {
-		&osr0, &osr1, &osr2, &reset, &button,
+	    &osr0, &osr1, &osr2, &reset, &button,
 	};
 
 	gpiod_unexport(button);
@@ -814,95 +794,79 @@ static int pisnd_uninit_gpio(void)
 
 static struct kobject *pisnd_kobj;
 
-static ssize_t pisnd_serial_show(
-	struct kobject *kobj,
-	struct kobj_attribute *attr,
-	char *buf
-	)
+static ssize_t pisnd_serial_show(struct kobject *kobj,
+				 struct kobj_attribute *attr, char *buf)
 {
 	return sprintf(buf, "%s\n", "serial");
 }
 
-static ssize_t pisnd_id_show(
-	struct kobject *kobj,
-	struct kobj_attribute *attr,
-	char *buf
-	)
+static ssize_t pisnd_id_show(struct kobject *kobj, struct kobj_attribute *attr,
+			     char *buf)
 {
 	return sprintf(buf, "%s\n", "ïd");
 }
 
-static ssize_t pisnd_version_show(
-	struct kobject *kobj,
-	struct kobj_attribute *attr,
-	char *buf
-	)
+static ssize_t pisnd_version_show(struct kobject *kobj,
+				  struct kobj_attribute *attr, char *buf)
 {
 	return sprintf(buf, "%s\n", "version");
 }
 
-static ssize_t pisnd_led_store(
-	struct kobject *kobj,
-	struct kobj_attribute *attr,
-	const char *buf,
-	size_t length
-	)
+static ssize_t pisnd_led_store(struct kobject *kobj,
+			       struct kobj_attribute *attr, const char *buf,
+			       size_t length)
 {
 	uint32_t timeout;
 	int err;
-/*
-	err = kstrtou32(buf, 10, &timeout);
+	/*
+		err = kstrtou32(buf, 10, &timeout);
 
-	if (err == 0 && timeout <= 255)
-		pisnd_spi_flash_leds(timeout);
-i*/
+		if (err == 0 && timeout <= 255)
+			pisnd_spi_flash_leds(timeout);
+	i*/
 	return length;
 }
 
 static struct kobj_attribute pisnd_serial_attribute =
-	__ATTR(serial, 0444, pisnd_serial_show, NULL);
+    __ATTR(serial, 0444, pisnd_serial_show, NULL);
 static struct kobj_attribute pisnd_id_attribute =
-	__ATTR(id, 0444, pisnd_id_show, NULL);
+    __ATTR(id, 0444, pisnd_id_show, NULL);
 static struct kobj_attribute pisnd_version_attribute =
-	__ATTR(version, 0444, pisnd_version_show, NULL);
+    __ATTR(version, 0444, pisnd_version_show, NULL);
 static struct kobj_attribute pisnd_led_attribute =
-	__ATTR(led, 0644, NULL, pisnd_led_store);
+    __ATTR(led, 0644, NULL, pisnd_led_store);
 
 static struct attribute *attrs[] = {
-	&pisnd_serial_attribute.attr,
-	&pisnd_id_attribute.attr,
-	&pisnd_version_attribute.attr,
-	&pisnd_led_attribute.attr,
-	NULL
-};
+    &pisnd_serial_attribute.attr, &pisnd_id_attribute.attr,
+    &pisnd_version_attribute.attr, &pisnd_led_attribute.attr, NULL};
 
-static struct attribute_group attr_group = { .attrs = attrs };
+static struct attribute_group attr_group = {.attrs = attrs};
 
 static int pisnd_probe(struct platform_device *pdev)
 {
 	int ret = 0;
 	int i;
 
-//	ret = pisnd_spi_init(&pdev->dev);
+	//	ret = pisnd_spi_init(&pdev->dev);
 	if (ret < 0) {
 		printe("pisnd_spi_init failed: %d\n", ret);
 		return ret;
 	}
-/*
-	printi("Detected pisound card:\n");
-	printi("\tSerial:  %s\n", pisnd_spi_get_serial());
-	printi("\tVersion: %s\n", pisnd_spi_get_version());
-	printi("\tId:      %s\n", pisnd_spi_get_id());
-*/
+	/*
+		printi("Detected pisound card:\n");
+		printi("\tSerial:  %s\n", pisnd_spi_get_serial());
+		printi("\tVersion: %s\n", pisnd_spi_get_version());
+		printi("\tId:      %s\n", pisnd_spi_get_id());
+	*/
 	pisnd_kobj = kobject_create_and_add("pisound", kernel_kobj);
 	if (!pisnd_kobj) {
-		//pisnd_spi_uninit();
+		// pisnd_spi_uninit();
 		return -ENOMEM;
 	}
 
 	ret = sysfs_create_group(pisnd_kobj, &attr_group);
 	if (ret < 0) {
-		//pisnd_spi_uninit();
+		// pisnd_spi_uninit();
 		kobject_put(pisnd_kobj);
 		return -ENOMEM;
 	}
@@ -913,11 +877,8 @@ static int pisnd_probe(struct platform_device *pdev)
 	if (pdev->dev.of_node) {
 		struct device_node *i2s_node;
 
-		i2s_node = of_parse_phandle(
-			pdev->dev.of_node,
-			"i2s-controller",
-			0
-			);
+		i2s_node =
+		    of_parse_phandle(pdev->dev.of_node, "i2s-controller", 0);
 
 		for (i = 0; i < pisnd_card.num_links; ++i) {
 			struct snd_soc_dai_link *dai = &pisnd_dai[i];
@@ -927,7 +888,7 @@ static int pisnd_probe(struct platform_device *pdev)
 				dai->cpu_of_node = i2s_node;
 				dai->platform_name = NULL;
 				dai->platform_of_node = i2s_node;
-				//dai->stream_name = pisnd_spi_get_serial();
+				// dai->stream_name = pisnd_spi_get_serial();
 			}
 		}
 	}
@@ -939,7 +900,7 @@ static int pisnd_probe(struct platform_device *pdev)
 			printe("snd_soc_register_card() failed: %d\n", ret);
 		pisnd_uninit_gpio();
 		kobject_put(pisnd_kobj);
-		//pisnd_spi_uninit();
+		// pisnd_spi_uninit();
 	}
 
 	return ret;
@@ -954,7 +915,7 @@ static int pisnd_remove(struct platform_device *pdev)
 		pisnd_kobj = NULL;
 	}
 
-	//pisnd_spi_uninit();
+	// pisnd_spi_uninit();
 
 	/* Turn off */
 	gpiod_set_value(reset, false);
@@ -966,13 +927,14 @@ static int pisnd_remove(struct platform_device *pdev)
 MODULE_DEVICE_TABLE(of, pisound_of_match);
 
 static struct platform_driver pisnd_driver = {
-	.driver = {
-		.name           = "snd-matrixio-audio",
-		.owner          = THIS_MODULE,
-		.of_match_table = pisound_of_match,
+    .driver =
+	{
+	    .name = "snd-matrixio-audio",
+	    .owner = THIS_MODULE,
+	    .of_match_table = pisound_of_match,
 	},
-	.probe              = pisnd_probe,
-	.remove             = pisnd_remove,
+    .probe = pisnd_probe,
+    .remove = pisnd_remove,
 };
 
 module_platform_driver(pisnd_driver);

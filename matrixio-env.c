@@ -39,35 +39,31 @@ struct matrixio_env_data {
 };
 
 static const struct iio_chan_spec matrixio_env_channels[] = {
-	{
-		.type = IIO_INTENSITY,
-		.modified = 1,
-		.channel2 = IIO_MOD_LIGHT_UV,
-		.info_mask_separate = BIT(IIO_CHAN_INFO_RAW),
-	},
-	{
-		.type = IIO_UVINDEX, 
-		.info_mask_separate = BIT(IIO_CHAN_INFO_PROCESSED),
-	},
-	{	
-		.type = IIO_TEMP,
-		.modified = 1,
-		.channel2 = IIO_MOD_TEMP_OBJECT,
-		.info_mask_separate = BIT(IIO_CHAN_INFO_RAW),
-	},
-	{
-		.type = IIO_PRESSURE, 
-		.info_mask_separate = BIT(IIO_CHAN_INFO_RAW),
-	},
-		{
-		.type = IIO_HUMIDITYRELATIVE, 
-		.info_mask_separate = BIT(IIO_CHAN_INFO_RAW),
-	},
-	{
-		.type = IIO_DISTANCE, 
-		.info_mask_separate = BIT(IIO_CHAN_INFO_RAW),
-	}
-};
+    {
+	.type = IIO_INTENSITY,
+	.modified = 1,
+	.channel2 = IIO_MOD_LIGHT_UV,
+	.info_mask_separate = BIT(IIO_CHAN_INFO_RAW),
+    },
+    {
+	.type = IIO_UVINDEX, .info_mask_separate = BIT(IIO_CHAN_INFO_PROCESSED),
+    },
+    {
+	.type = IIO_TEMP,
+	.modified = 1,
+	.channel2 = IIO_MOD_TEMP_OBJECT,
+	.info_mask_separate = BIT(IIO_CHAN_INFO_RAW),
+    },
+    {
+	.type = IIO_PRESSURE, .info_mask_separate = BIT(IIO_CHAN_INFO_RAW),
+    },
+    {
+	.type = IIO_HUMIDITYRELATIVE,
+	.info_mask_separate = BIT(IIO_CHAN_INFO_RAW),
+    },
+    {
+	.type = IIO_DISTANCE, .info_mask_separate = BIT(IIO_CHAN_INFO_RAW),
+    }};
 
 static int matrixio_env_to_uv_index(unsigned val)
 {
@@ -89,20 +85,20 @@ static int matrixio_env_to_uv_index(unsigned val)
 	return 11; /* extreme */
 }
 
-static void matrixio_to_int_plus_micro (int data, int *val, int *val2)
+static void matrixio_to_int_plus_micro(int data, int *val, int *val2)
 {
 	*val = data / 1000;
-	*val2 = (data % 1000)*1000;
+	*val2 = (data % 1000) * 1000;
 }
 
 static int matrixio_env_read_raw(struct iio_dev *indio_dev,
-				struct iio_chan_spec const *chan, int *val,
-				int *val2, long mask)
+				 struct iio_chan_spec const *chan, int *val,
+				 int *val2, long mask)
 {
 	struct matrixio_bus *data = iio_priv(indio_dev);
 	int ret;
 	struct matrixio_env_data env_data;
-	
+
 	mutex_lock(&indio_dev->mlock);
 	ret = matrixio_hw_buf_read(
 	    data->mio, MATRIXIO_MCU_BASE + (MATRIXIO_SRAM_OFFSET_ENV >> 1),
@@ -111,24 +107,28 @@ static int matrixio_env_read_raw(struct iio_dev *indio_dev,
 
 	switch (mask) {
 	case IIO_CHAN_INFO_RAW:
-		switch(chan->type){
-			case IIO_INTENSITY:
-				*val = env_data.UV;
-				return IIO_VAL_INT;
-			case IIO_TEMP:
-				matrixio_to_int_plus_micro (env_data.temperature_hts, val, val2);
-				return IIO_VAL_INT_PLUS_MICRO;
-			case IIO_PRESSURE:
-				matrixio_to_int_plus_micro (env_data.pressure, val, val2);
-				return IIO_VAL_INT_PLUS_MICRO;
-			case IIO_HUMIDITYRELATIVE:
-				matrixio_to_int_plus_micro (env_data.humidity, val, val2);
-				return IIO_VAL_INT_PLUS_MICRO;
-			case IIO_DISTANCE:
-				matrixio_to_int_plus_micro (env_data.altitude, val, val2);
-				return  IIO_VAL_INT_PLUS_MICRO;
-			default:
-				return -EINVAL;
+		switch (chan->type) {
+		case IIO_INTENSITY:
+			*val = env_data.UV;
+			return IIO_VAL_INT;
+		case IIO_TEMP:
+			matrixio_to_int_plus_micro(env_data.temperature_hts,
+						   val, val2);
+			return IIO_VAL_INT_PLUS_MICRO;
+		case IIO_PRESSURE:
+			matrixio_to_int_plus_micro(env_data.pressure, val,
+						   val2);
+			return IIO_VAL_INT_PLUS_MICRO;
+		case IIO_HUMIDITYRELATIVE:
+			matrixio_to_int_plus_micro(env_data.humidity, val,
+						   val2);
+			return IIO_VAL_INT_PLUS_MICRO;
+		case IIO_DISTANCE:
+			matrixio_to_int_plus_micro(env_data.altitude, val,
+						   val2);
+			return IIO_VAL_INT_PLUS_MICRO;
+		default:
+			return -EINVAL;
 		}
 	case IIO_CHAN_INFO_PROCESSED:
 		*val = matrixio_env_to_uv_index(env_data.UV);
@@ -139,8 +139,7 @@ static int matrixio_env_read_raw(struct iio_dev *indio_dev,
 }
 
 static const struct iio_info matrixio_env_info = {
-	.read_raw = matrixio_env_read_raw, 
-	.driver_module = THIS_MODULE,
+    .read_raw = matrixio_env_read_raw, .driver_module = THIS_MODULE,
 };
 
 static int matrixio_env_probe(struct platform_device *pdev)
