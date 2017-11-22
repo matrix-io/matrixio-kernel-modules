@@ -74,13 +74,12 @@ static int matrixio_spi_transfer(struct matrixio *matrixio,
 int matrixio_hw_reg_read(void *context, unsigned int reg, unsigned int *val)
 {
 	int ret;
-	struct matrixio *matrixio;
+	struct matrixio *matrixio = context;
 	uint16_t *recv_buf;
 	struct hardware_cmd *hw_addr;
 
-	mutex_lock(&matrixio->buf_lock);
+	mutex_lock(&matrixio->reg_lock);
 
-	matrixio = context;
 	recv_buf = (uint16_t *)matrixio->rx_buffer;
 	hw_addr = (struct hardware_cmd *)matrixio->tx_buffer;
 
@@ -90,13 +89,10 @@ int matrixio_hw_reg_read(void *context, unsigned int reg, unsigned int *val)
 
 	ret = matrixio_spi_transfer(matrixio, 4, 4);
 
-	if (ret)
-		goto reg_read_done;
+	if (!ret)
+		*val = recv_buf[1];
 
-	*val = recv_buf[1];
-
-reg_read_done:
-	mutex_unlock(&matrixio->buf_lock);
+	mutex_unlock(&matrixio->reg_lock);
 
 	return ret;
 }
@@ -105,12 +101,10 @@ int matrixio_hw_reg_write(void *context, unsigned int reg, unsigned int val)
 {
 	int ret;
 	struct matrixio *matrixio = context;
-	struct hardware_cmd *hw_cmd =
-	    (struct hardware_cmd *)matrixio->tx_buffer;
+	struct hardware_cmd *hw_cmd;
 
-	mutex_unlock(&matrixio->buf_lock);
+	mutex_lock(&matrixio->reg_lock);
 
-	matrixio = context;
 	hw_cmd = (struct hardware_cmd *)matrixio->tx_buffer;
 
 	hw_cmd->reg = reg;
@@ -120,7 +114,7 @@ int matrixio_hw_reg_write(void *context, unsigned int reg, unsigned int val)
 
 	ret = matrixio_spi_transfer(matrixio, 4, 4);
 
-	mutex_unlock(&matrixio->buf_lock);
+	mutex_unlock(&matrixio->reg_lock);
 
 	return ret;
 }
@@ -131,29 +125,30 @@ int matrixio_hw_buf_read(struct matrixio *matrixio, unsigned int add,
 	int ret;
 	int offset;
 	unsigned int val;
-	uint16_t *words = data;
+	uint16_t *words;
 
 	mutex_lock(&matrixio->buf_lock);
 
+	words = (uint16_t *)data;
 	for (offset = 0; offset < (length / 2); offset++) {
 		ret = matrixio_hw_reg_read(matrixio, add + offset, &val);
 
 		if (ret)
-			return ret;
+			break;
 
 		words[offset] = val;
 	}
 
 	mutex_unlock(&matrixio->buf_lock);
 
-	return 0;
+	return ret;
 }
 EXPORT_SYMBOL(matrixio_hw_buf_read);
 
 int matrixio_hw_read_enqueue(struct matrixio *matrixio, unsigned int add,
 			     int length, struct kfifo_rec_ptr_2 *fifo)
 {
-	int status;
+	int ret;
 	struct hardware_cmd *hw_addr;
 
 	mutex_lock(&matrixio->buf_lock);
@@ -163,15 +158,15 @@ int matrixio_hw_read_enqueue(struct matrixio *matrixio, unsigned int add,
 	hw_addr->burst = 1;
 	hw_addr->readnwrite = 1;
 
-	status = matrixio_spi_transfer(matrixio, sizeof(struct hardware_cmd),
-				       length + 2);
+	ret = matrixio_spi_transfer(matrixio, sizeof(struct hardware_cmd),
+				    length + 2);
 
-	if (status >= 0)
+	if (ret >= 0)
 		kfifo_in(fifo, &matrixio->rx_buffer[2], length);
 
 	mutex_unlock(&matrixio->buf_lock);
 
-	return status;
+	return ret;
 }
 EXPORT_SYMBOL(matrixio_hw_read_enqueue);
 
@@ -180,21 +175,23 @@ int matrixio_hw_buf_write(struct matrixio *matrixio, unsigned int add,
 {
 	int ret;
 	int offset;
-	uint16_t *words = data;
+	uint16_t *words;
 
 	mutex_lock(&matrixio->buf_lock);
+
+	words = (uint16_t *)data;
 
 	for (offset = 0; offset < (length / 2); offset++) {
 		ret = matrixio_hw_reg_write(matrixio, add + offset,
 					    words[offset]);
 
 		if (ret)
-			return ret;
+			break;
 	}
 
 	mutex_unlock(&matrixio->buf_lock);
 
-	return 0;
+	return ret;
 }
 
 EXPORT_SYMBOL(matrixio_hw_buf_write);
@@ -272,7 +269,7 @@ static int matrixio_core_probe(struct spi_device *spi)
 	spi->bits_per_word = 8;
 	ret = spi_setup(spi);
 
-	if (ret < 0)
+	if (ret)
 		return ret;
 
 	matrixio = devm_kzalloc(&spi->dev, sizeof(struct matrixio), GFP_KERNEL);
@@ -283,7 +280,11 @@ static int matrixio_core_probe(struct spi_device *spi)
 	matrixio->dev = &spi->dev;
 
 	matrixio->spi = spi;
+
 	spin_lock_init(&matrixio->spi_lock);
+
+	mutex_init(&matrixio->reg_lock);
+
 	mutex_init(&matrixio->buf_lock);
 
 	matrixio->speed_hz = spi->max_speed_hz;
