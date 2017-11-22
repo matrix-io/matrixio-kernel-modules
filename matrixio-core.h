@@ -15,6 +15,7 @@
 #ifndef __MATRIXIO_CORE_H__
 #define __MATRIXIO_CORE_H__
 
+#include <linux/kfifo.h>
 #include <linux/mutex.h>
 #include <linux/regmap.h>
 #include <linux/spi/spi.h>
@@ -28,10 +29,13 @@
 
 struct matrixio {
 	struct device *dev;
-	struct spi_device *spi;
 	struct regmap *regmap;
-	struct mutex lock;
-	int stamp;
+	struct mutex buf_lock;
+	spinlock_t spi_lock;
+	struct spi_device *spi;
+	u8 *tx_buffer;
+	u8 *rx_buffer;
+	u32 speed_hz;
 };
 
 struct matrixio_platform_data {
@@ -39,11 +43,16 @@ struct matrixio_platform_data {
 };
 
 int matrixio_hw_reg_read(void *context, unsigned int reg, unsigned int *val);
+
 int matrixio_hw_reg_write(void *context, unsigned int reg, unsigned int val);
+
 int matrixio_hw_buf_read(struct matrixio *matrixio, unsigned int add,
 			 int length, void *data);
-int matrixio_hw_buf_write(struct matrixio *matrixio, unsigned int add,
-			 int length, void *data);
 
+int matrixio_hw_buf_write(struct matrixio *matrixio, unsigned int add,
+			  int length, void *data);
+
+int matrixio_hw_read_enqueue(struct matrixio *matrixio, unsigned int add,
+			     int length, struct kfifo_rec_ptr_2 *fifo);
 
 #endif

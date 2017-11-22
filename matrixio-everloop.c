@@ -57,8 +57,6 @@ static int matrixio_everloop_probe(struct platform_device *pdev)
 
 	matrixio = dev_get_drvdata(pdev->dev.parent);
 
-	printk(KERN_INFO ": %x", matrixio->stamp);
-
 	register_chrdev(301, "matrixio-everloop",
 			&matrixio_everloop_file_operations);
 	return 0;

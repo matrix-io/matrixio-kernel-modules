@@ -25,7 +25,7 @@
 	};
 
 
-	fragment@3 {
+	fragment@2 {
 		target = <&gpio>;
 		__overlay__ {
 			matrixio_pins: matrixio_pins {
@@ -36,16 +36,17 @@
 	};
 
 
-        fragment@4 {
+        fragment@3 {
                 target-path = "/";
                 __overlay__ {
                         matrixio-everloop@0 {
                                 compatible = "matrixio-everloop";
+
                         };
                 };
         };
 
-        fragment@5 {
+        fragment@4 {
                 target = <&matrixio_core_0>;
                 __overlay__ {
                         matrixio-uart@0 {
@@ -57,7 +58,7 @@
                 };
         };
 
-        fragment@6 {
+        fragment@5 {
                 target = <&matrixio_core_0>;
                 __overlay__ {
                         matrixio-gpio@0 {
@@ -67,7 +68,7 @@
                 };
         };
 
-        fragment@7 {
+        fragment@6 {
                 target = <&matrixio_core_0>;
                 __overlay__ {
                         matrixio-pwm@0 {
@@ -77,15 +78,7 @@
                 };
         };
 
-        fragment@8 {
-                target = <&sound>;
-                __overlay__ {
-                        matrixio-codec@0 {
-                                compatible = "matrixio-codec";
-                        };
-                };
-        };
-	fragment@9 {
+	fragment@7 {
 		target = <&matrixio_core_0>;
 		__overlay__ {
 			matrixio-env@0 {
@@ -94,7 +87,7 @@
 			};
 		};
 	};
-	fragment@10 {
+	fragment@8 {
 		target = <&matrixio_core_0>;
 		__overlay__ {
 			matrixio-imu@0 {
@@ -103,4 +96,16 @@
 			};
 		};
 	};
+	fragment@9 {
+		target = <&matrixio_core_0>;
+		__overlay__ {
+			matrixio_codec_a: matrix_codec@0 {
+				compatible = "matrixio-codec";
+                                interrupts = <6 0x3>; /* both edge triggered */
+                                interrupt-parent = <&gpio>;
+				status = "okay";
+			};
+		};
+	};
 };
+

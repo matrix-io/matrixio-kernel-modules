@@ -22,9 +22,6 @@
 
 #include "matrixio-core.h"
 
-static DEFINE_MUTEX(matrixio_spi_lock);
-static DEFINE_MUTEX(matrixio_buff_lock);
-
 struct hardware_address {
 	uint8_t readnwrite : 1;
 	uint8_t burst : 1;
@@ -38,30 +35,57 @@ static struct regmap_config matrixio_regmap_config = {
     .reg_write = matrixio_hw_reg_write,
 };
 
-static int matrixio_spi_transfer(struct spi_device *spi, uint8_t *send_buffer,
-				 uint8_t *receive_buffer, unsigned int size)
+static ssize_t matrixio_spi_sync(struct matrixio *matrixio,
+				 struct spi_message *message)
 {
-	int ret;
-	struct spi_transfer transfer;
-	struct spi_message msg;
+	DECLARE_COMPLETION_ONSTACK(done);
+	int status;
+	struct spi_device *spi;
 
-	mutex_lock(&matrixio_spi_lock);
+	spin_lock_irq(&matrixio->spi_lock);
+	spi = matrixio->spi;
+	spin_unlock_irq(&matrixio->spi_lock);
 
-	memset(&transfer, 0, sizeof(transfer));
+	status = spi_sync(spi, message);
 
-	spi_message_init(&msg);
+	if (status == 0)
+		status = message->actual_length;
 
-	transfer.tx_buf = send_buffer;
-	transfer.rx_buf = receive_buffer;
-	transfer.len = size;
+	return status;
+}
 
-	spi_message_add_tail(&transfer, &msg);
+static int matrixio_spi_transfer(struct matrixio *matrixio,
+				 uint8_t *send_buffer, uint8_t *receive_buffer,
+				 unsigned int size)
+{
+	struct spi_transfer t = {
+	    .tx_buf = send_buffer,
+	    .rx_buf = receive_buffer,
+	    .len = size,
+	    .speed_hz = matrixio->speed_hz,
+	};
+	struct spi_message m;
 
-	ret = spi_sync(spi, &msg);
+	spi_message_init(&m);
+	spi_message_add_tail(&t, &m);
 
-	mutex_unlock(&matrixio_spi_lock);
+	return matrixio_spi_sync(matrixio, &m);
+}
 
-	return ret;
+static int matrixio_spi_transfer_burst(struct matrixio *matrixio,
+				       unsigned int send_size,
+				       unsigned int receive_size)
+{
+	struct spi_transfer t = {.rx_buf = matrixio->rx_buffer,
+				 .tx_buf = matrixio->tx_buffer,
+				 .len = receive_size,
+				 .speed_hz = matrixio->speed_hz};
+	struct spi_message m;
+
+	spi_message_init(&m);
+	spi_message_add_tail(&t, &m);
+
+	return matrixio_spi_sync(matrixio, &m);
 }
 
 int matrixio_hw_reg_read(void *context, unsigned int reg, unsigned int *val)
@@ -78,8 +102,7 @@ int matrixio_hw_reg_read(void *context, unsigned int reg, unsigned int *val)
 	hw_addr->burst = 0;
 	hw_addr->readnwrite = 1;
 
-	ret = matrixio_spi_transfer(matrixio->spi, send_buf,
-				    (uint8_t *)recv_buf, 4);
+	ret = matrixio_spi_transfer(matrixio, send_buf, (uint8_t *)recv_buf, 4);
 
 	if (ret) {
 		return ret;
@@ -104,7 +127,7 @@ int matrixio_hw_reg_write(void *context, unsigned int reg, unsigned int val)
 
 	send_buf[1] = val;
 
-	return matrixio_spi_transfer(matrixio->spi, (uint8_t *)send_buf,
+	return matrixio_spi_transfer(matrixio, (uint8_t *)send_buf,
 				     (uint8_t *)recv_buf, 4);
 }
 
@@ -115,8 +138,8 @@ int matrixio_hw_buf_read(struct matrixio *matrixio, unsigned int add,
 	int offset;
 	unsigned int val;
 	uint16_t *words = data;
-	
-	mutex_lock(&matrixio_buff_lock);
+
+	mutex_lock(&matrixio->buf_lock);
 
 	for (offset = 0; offset < (length / 2); offset++) {
 		ret = matrixio_hw_reg_read(matrixio, add + offset, &val);
@@ -127,12 +150,36 @@ int matrixio_hw_buf_read(struct matrixio *matrixio, unsigned int add,
 		words[offset] = val;
 	}
 
-	mutex_unlock(&matrixio_buff_lock);
+	mutex_unlock(&matrixio->buf_lock);
 
 	return 0;
 }
-
 EXPORT_SYMBOL(matrixio_hw_buf_read);
+
+int matrixio_hw_read_enqueue(struct matrixio *matrixio, unsigned int add,
+			     int length, struct kfifo_rec_ptr_2 *fifo)
+{
+	int status;
+	struct hardware_address *hw_addr;
+
+	mutex_lock(&matrixio->buf_lock);
+
+	hw_addr = (struct hardware_address *)matrixio->tx_buffer;
+	hw_addr->reg = add;
+	hw_addr->burst = 1;
+	hw_addr->readnwrite = 1;
+
+	status = matrixio_spi_transfer_burst(
+	    matrixio, sizeof(struct hardware_address), length + 2);
+
+	if (status >= 0)
+		kfifo_in(fifo, &matrixio->rx_buffer[2], length);
+
+	mutex_unlock(&matrixio->buf_lock);
+
+	return status;
+}
+EXPORT_SYMBOL(matrixio_hw_read_enqueue);
 
 int matrixio_hw_buf_write(struct matrixio *matrixio, unsigned int add,
 			  int length, void *data)
@@ -141,7 +188,7 @@ int matrixio_hw_buf_write(struct matrixio *matrixio, unsigned int add,
 	int offset;
 	uint16_t *words = data;
 
-	mutex_lock(&matrixio_buff_lock);
+	mutex_lock(&matrixio->buf_lock);
 
 	for (offset = 0; offset < (length / 2); offset++) {
 		ret = matrixio_hw_reg_write(matrixio, add + offset,
@@ -149,10 +196,9 @@ int matrixio_hw_buf_write(struct matrixio *matrixio, unsigned int add,
 
 		if (ret)
 			return ret;
-
 	}
 
-	mutex_unlock(&matrixio_buff_lock);
+	mutex_unlock(&matrixio->buf_lock);
 
 	return 0;
 }
@@ -213,24 +259,12 @@ static int matrixio_init(struct matrixio *matrixio,
 	dev_set_drvdata(matrixio->dev, matrixio);
 
 	/* TODO: Check that this is actually a MATRIX FPGA */
-
 	ret = matrixio_register_devices(matrixio);
 
 	if (ret) {
 		dev_err(matrixio->dev, "Failed to register MATRIX FPGA \n");
 		return ret;
 	}
-
-	if (pdata && pdata->platform_init) {
-		ret = pdata->platform_init(matrixio->dev);
-		if (ret) {
-			dev_err(matrixio->dev, "Platform init failed: %d\n",
-				ret);
-			return ret;
-		}
-	} else
-		dev_warn(matrixio->dev,
-			 "No platform initialization provided\n");
 
 	return 0;
 }
@@ -253,8 +287,18 @@ static int matrixio_core_probe(struct spi_device *spi)
 		return -ENOMEM;
 
 	matrixio->dev = &spi->dev;
+
 	matrixio->spi = spi;
-	matrixio->stamp = 0x1221;
+	spin_lock_init(&matrixio->spi_lock);
+	mutex_init(&matrixio->buf_lock);
+
+	matrixio->speed_hz = spi->max_speed_hz;
+
+	matrixio->rx_buffer = devm_kzalloc(&spi->dev, 4096, GFP_KERNEL);
+
+	matrixio->tx_buffer = devm_kzalloc(&spi->dev, 4096, GFP_KERNEL);
+
+	spi_set_drvdata(spi, matrixio);
 
 	matrixio->regmap = devm_regmap_init(&spi->dev, NULL, matrixio,
 					    &matrixio_regmap_config);
