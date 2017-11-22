@@ -89,7 +89,7 @@ int matrixio_hw_reg_read(void *context, unsigned int reg, unsigned int *val)
 
 	ret = matrixio_spi_transfer(matrixio, 4);
 
-	if (!ret)
+	if (ret>=0)
 		*val = recv_buf[1];
 
 	mutex_unlock(&matrixio->reg_lock);
