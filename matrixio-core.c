@@ -259,24 +259,12 @@ static int matrixio_init(struct matrixio *matrixio,
 	dev_set_drvdata(matrixio->dev, matrixio);
 
 	/* TODO: Check that this is actually a MATRIX FPGA */
-
 	ret = matrixio_register_devices(matrixio);
 
 	if (ret) {
 		dev_err(matrixio->dev, "Failed to register MATRIX FPGA \n");
 		return ret;
 	}
-
-	if (pdata && pdata->platform_init) {
-		ret = pdata->platform_init(matrixio->dev);
-		if (ret) {
-			dev_err(matrixio->dev, "Platform init failed: %d\n",
-				ret);
-			return ret;
-		}
-	} else
-		dev_warn(matrixio->dev,
-			 "No platform initialization provided\n");
 
 	return 0;
 }
