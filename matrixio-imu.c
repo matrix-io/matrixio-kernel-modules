@@ -25,154 +25,154 @@
 #define MATRIXIO_SRAM_OFFSET_IMU 0x30
 #define MATRIXIO_CALIB_OFFSET 6
 
-
 struct matrixio_bus {
 	struct matrixio *mio;
 	struct mutex lock;
 };
 
-
 static const struct iio_chan_spec matrixio_imu_channels[] = {
-	{
-		.type = IIO_ACCEL,
-		.modified = 1,
-		.channel2 = IIO_MOD_X,
-		.address = 0,
-		.info_mask_separate = BIT(IIO_CHAN_INFO_RAW),
-	},
-	{
-		.type = IIO_ACCEL,
-		.modified = 1,
-		.channel2 = IIO_MOD_Y,
-		.address = 2,
-		.info_mask_separate = BIT(IIO_CHAN_INFO_RAW),
-	},
-	{
-		.type = IIO_ACCEL,
-		.modified = 1,
-		.channel2 = IIO_MOD_Z,
-		.address = 4,
-		.info_mask_separate = BIT(IIO_CHAN_INFO_RAW),
-	},
-	{
-		.type = IIO_ANGL_VEL,
-		.modified = 1,
-		.channel2 = IIO_MOD_X,
-		.address = 6,
-		.info_mask_separate = BIT(IIO_CHAN_INFO_RAW),
-	},
-	{
-		.type = IIO_ANGL_VEL,
-		.modified = 1,
-		.channel2 = IIO_MOD_Y,
-		.address = 8,
-		.info_mask_separate = BIT(IIO_CHAN_INFO_RAW),
-	},
-	{
-		.type = IIO_ANGL_VEL,
-		.modified = 1,
-		.channel2 = IIO_MOD_Z,
-		.address = 10,
-		.info_mask_separate = BIT(IIO_CHAN_INFO_RAW),
-	},
-	{
-		.type = IIO_MAGN,
-		.modified = 1,
-		.channel2 = IIO_MOD_X,
-		.address = 12,
-		.info_mask_separate = BIT(IIO_CHAN_INFO_RAW) | BIT(IIO_CHAN_INFO_CALIBBIAS),
-	},
-	{
-		.type = IIO_MAGN,
-		.modified = 1,
-		.channel2 = IIO_MOD_Y,
-		.address = 14,
-		.info_mask_separate = BIT(IIO_CHAN_INFO_RAW) | BIT(IIO_CHAN_INFO_CALIBBIAS),
-	},
-	{
-		.type = IIO_MAGN,
-		.modified = 1,
-		.channel2 = IIO_MOD_Z,
-		.address = 16,
-		.info_mask_separate = BIT(IIO_CHAN_INFO_RAW) | BIT(IIO_CHAN_INFO_CALIBBIAS),
-	}
-};
+    {
+	.type = IIO_ACCEL,
+	.modified = 1,
+	.channel2 = IIO_MOD_X,
+	.address = 0,
+	.info_mask_separate = BIT(IIO_CHAN_INFO_RAW),
+    },
+    {
+	.type = IIO_ACCEL,
+	.modified = 1,
+	.channel2 = IIO_MOD_Y,
+	.address = 2,
+	.info_mask_separate = BIT(IIO_CHAN_INFO_RAW),
+    },
+    {
+	.type = IIO_ACCEL,
+	.modified = 1,
+	.channel2 = IIO_MOD_Z,
+	.address = 4,
+	.info_mask_separate = BIT(IIO_CHAN_INFO_RAW),
+    },
+    {
+	.type = IIO_ANGL_VEL,
+	.modified = 1,
+	.channel2 = IIO_MOD_X,
+	.address = 6,
+	.info_mask_separate = BIT(IIO_CHAN_INFO_RAW),
+    },
+    {
+	.type = IIO_ANGL_VEL,
+	.modified = 1,
+	.channel2 = IIO_MOD_Y,
+	.address = 8,
+	.info_mask_separate = BIT(IIO_CHAN_INFO_RAW),
+    },
+    {
+	.type = IIO_ANGL_VEL,
+	.modified = 1,
+	.channel2 = IIO_MOD_Z,
+	.address = 10,
+	.info_mask_separate = BIT(IIO_CHAN_INFO_RAW),
+    },
+    {
+	.type = IIO_MAGN,
+	.modified = 1,
+	.channel2 = IIO_MOD_X,
+	.address = 12,
+	.info_mask_separate =
+	    BIT(IIO_CHAN_INFO_RAW) | BIT(IIO_CHAN_INFO_CALIBBIAS),
+    },
+    {
+	.type = IIO_MAGN,
+	.modified = 1,
+	.channel2 = IIO_MOD_Y,
+	.address = 14,
+	.info_mask_separate =
+	    BIT(IIO_CHAN_INFO_RAW) | BIT(IIO_CHAN_INFO_CALIBBIAS),
+    },
+    {
+	.type = IIO_MAGN,
+	.modified = 1,
+	.channel2 = IIO_MOD_Z,
+	.address = 16,
+	.info_mask_separate =
+	    BIT(IIO_CHAN_INFO_RAW) | BIT(IIO_CHAN_INFO_CALIBBIAS),
+    }};
 
-static void matrixio_int_to_int_plus_micro (int data, int *val, int *val2)
+static void matrixio_int_to_int_plus_micro(int data, int *val, int *val2)
 {
 	*val = data / 1000;
-	*val2 = (data % 1000)*1000;
+	*val2 = (data % 1000) * 1000;
 }
 
-static int matrixio_int_plus_micro_to_int (int val, int val2)
+static int matrixio_int_plus_micro_to_int(int val, int val2)
 {
-	return val*1000 + (val2/1000); 
+	return val * 1000 + (val2 / 1000);
 }
 
 static int matrixio_imu_write_raw(struct iio_dev *indio_dev,
-				struct iio_chan_spec const *chan, int val,
-				int val2, long mask)
+				  struct iio_chan_spec const *chan, int val,
+				  int val2, long mask)
 {
 	struct matrixio_bus *data = iio_priv(indio_dev);
 	int ret;
 	int data_write;
 
-	if(mask == IIO_CHAN_INFO_CALIBBIAS) {
+	if (mask == IIO_CHAN_INFO_CALIBBIAS) {
 
-		data_write = matrixio_int_plus_micro_to_int (val, val2);
-		mutex_lock(&indio_dev->mlock);	
+		data_write = matrixio_int_plus_micro_to_int(val, val2);
+		mutex_lock(&indio_dev->mlock);
 		ret = matrixio_hw_buf_write(
-	    		data->mio, MATRIXIO_MCU_BASE + (MATRIXIO_SRAM_OFFSET_IMU >> 1) + chan->address + 
-			MATRIXIO_CALIB_OFFSET,sizeof(data_write), &data_write);
+		    data->mio,
+		    MATRIXIO_MCU_BASE + (MATRIXIO_SRAM_OFFSET_IMU >> 1) +
+			chan->address + MATRIXIO_CALIB_OFFSET,
+		    sizeof(data_write), &data_write);
 		mutex_unlock(&indio_dev->mlock);
-		return  ret;
-	} 
+		return ret;
+	}
 
 	return -EINVAL;
 }
 
-
-
 static int matrixio_imu_read_raw(struct iio_dev *indio_dev,
-				struct iio_chan_spec const *chan, int *val,
-				int *val2, long mask)
+				 struct iio_chan_spec const *chan, int *val,
+				 int *val2, long mask)
 {
 	struct matrixio_bus *data = iio_priv(indio_dev);
 	int ret;
 	int data_read;
 	int offset;
 
-	switch (mask){ 
-		case IIO_CHAN_INFO_CALIBBIAS:
-			offset = chan->address + MATRIXIO_CALIB_OFFSET;
-			break;
-		case IIO_CHAN_INFO_RAW:
-			offset = chan->address;
-			break;
-		default:
-			return -EINVAL;
-			
+	switch (mask) {
+	case IIO_CHAN_INFO_CALIBBIAS:
+		offset = chan->address + MATRIXIO_CALIB_OFFSET;
+		break;
+	case IIO_CHAN_INFO_RAW:
+		offset = chan->address;
+		break;
+	default:
+		return -EINVAL;
 	}
 
-	mutex_lock(&indio_dev->mlock);	
-	ret = matrixio_hw_buf_read(
-	    	data->mio, MATRIXIO_MCU_BASE + (MATRIXIO_SRAM_OFFSET_IMU >> 1) + offset,
-		sizeof(data_read), &data_read);
-	
+	mutex_lock(&indio_dev->mlock);
+	ret = matrixio_hw_buf_read(data->mio,
+				   MATRIXIO_MCU_BASE +
+				       (MATRIXIO_SRAM_OFFSET_IMU >> 1) + offset,
+				   sizeof(data_read), &data_read);
+
 	mutex_unlock(&indio_dev->mlock);
 
-	if(ret)
+	if (ret)
 		return ret;
 
-	matrixio_int_to_int_plus_micro (data_read, val, val2);
-		
-	return  IIO_VAL_INT_PLUS_MICRO;
+	matrixio_int_to_int_plus_micro(data_read, val, val2);
+
+	return IIO_VAL_INT_PLUS_MICRO;
 }
 
 static const struct iio_info matrixio_imu_info = {
-	.read_raw = matrixio_imu_read_raw,
-	.write_raw = matrixio_imu_write_raw, 
-	.driver_module = THIS_MODULE,
+    .read_raw = matrixio_imu_read_raw,
+    .write_raw = matrixio_imu_write_raw,
+    .driver_module = THIS_MODULE,
 };
 
 static int matrixio_imu_probe(struct platform_device *pdev)
