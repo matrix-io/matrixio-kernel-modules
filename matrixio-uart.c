@@ -28,7 +28,7 @@ static irqreturn_t uart_rxint(int irq, void *id)
 	unsigned long flags;
 
 	spin_lock_irqsave(&port.lock, flags);
-	
+
 	regmap_read(matrixio->regmap, MATRIXIO_UART_BASE + 1, &val);
 
 	spin_unlock_irqrestore(&port.lock, flags);
