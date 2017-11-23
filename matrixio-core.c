@@ -40,23 +40,16 @@ static ssize_t matrixio_spi_sync(struct matrixio *matrixio,
 				 struct spi_message *message)
 {
 	DECLARE_COMPLETION_ONSTACK(done);
-	int status;
 	struct spi_device *spi;
 
 	spin_lock_irq(&matrixio->spi_lock);
 	spi = matrixio->spi;
 	spin_unlock_irq(&matrixio->spi_lock);
 
-	status = spi_sync(spi, message);
-
-	if (status == 0)
-		status = message->actual_length;
-
-	return status;
+	return spi_sync(spi, message);
 }
 
-static int matrixio_spi_transfer(struct matrixio *matrixio, 
-				 unsigned int size)
+static int matrixio_spi_transfer(struct matrixio *matrixio, unsigned int size)
 {
 	struct spi_transfer t = {.rx_buf = matrixio->rx_buffer,
 				 .tx_buf = matrixio->tx_buffer,
@@ -89,7 +82,7 @@ int matrixio_hw_reg_read(void *context, unsigned int reg, unsigned int *val)
 
 	ret = matrixio_spi_transfer(matrixio, 4);
 
-	if (ret>=0)
+	if (ret == 0)
 		*val = recv_buf[1];
 
 	mutex_unlock(&matrixio->reg_lock);
@@ -158,10 +151,9 @@ int matrixio_hw_read_enqueue(struct matrixio *matrixio, unsigned int add,
 	hw_addr->burst = 1;
 	hw_addr->readnwrite = 1;
 
-	ret = matrixio_spi_transfer(matrixio,
-				    length + 2);
+	ret = matrixio_spi_transfer(matrixio, length + 2);
 
-	if (ret >= 0)
+	if (ret == 0)
 		kfifo_in(fifo, &matrixio->rx_buffer[2], length);
 
 	mutex_unlock(&matrixio->buf_lock);
