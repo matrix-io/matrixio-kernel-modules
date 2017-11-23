@@ -2,6 +2,7 @@
 #include <alsa/pcm_external.h>
 #include <alsa/pcm_plugin.h>
 #include <math.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
@@ -94,12 +95,12 @@ static int matrixio_start(snd_pcm_ioplug_t *io)
 
 	capture->pcm_fd = open("/dev/matrixio_pcm", O_RDONLY);
 	capture->ptr = 0;
-	return 0; // snd_pcm_start(capture->pcm);
+	return 0;
 }
 
 static int matrixio_stop(snd_pcm_ioplug_t *io)
 {
-	//struct matrixio_t *capture = io->private_data;
+	// struct matrixio_t *capture = io->private_data;
 	// close(capture->pcm_fd);
 
 	return 0;
@@ -122,30 +123,36 @@ static snd_pcm_sframes_t matrixio_transfer(snd_pcm_ioplug_t *io,
 {
 	struct matrixio_t *capture = io->private_data;
 	int chn;
-	unsigned short *dst_samples[io->channels];
-	unsigned short *buf16 = (unsigned short *)capture->buf;
+	uint16_t *samples[io->channels];
+	uint16_t *buf16 = (unsigned short *)capture->buf;
 	/*
-		printf("%s:\n", __func__);
-		printf(" channel = %d \n", capture->channel);
-		printf(" rate = %d \n", io->rate);
-		printf(" size = %d \n", size);
-
-		printf(" period_size = %d \n", io->period_size);
-		printf(" buffer_size = %d \n", io->buffer_size);
-
-		printf(" offset = %d \n", offset);
+			printf("%s:\n", __func__);
+			printf(" channel = %d \n", capture->channel);
+			printf(" rate = %d \n", io->rate);
 	*/
+	printf(" %x size = %d  areas[0].first%8=%d  areas[0].step/8=%d "
+	       "offset=%d \n",
+	       areas[0].addr, size, areas[0].first % 8, areas[0].step / 8,
+	       offset);
+
+	printf(" period_size = %d \n", io->period_size);
+	printf(" buffer_size = %d \n", io->buffer_size);
+
+	/*			printf(" offset = %d \n", offset);
+		*/
 	read(capture->pcm_fd, buf16, MATRIXIO_MICARRAY_BUFFER_SIZE);
 
 	for (chn = 0; chn < io->channels; chn++) {
-		dst_samples[chn] =
-		    (unsigned short *)areas[chn].addr +
-		    (areas[chn].first + areas[chn].step * offset) / 8;
+		samples[chn] = (unsigned short *)(areas[chn].addr + offset);
+		/*	+
+				areas[chn].first / 8 +
+				areas[chn].step / 8 * offset;*/
+		//	samples[chn] += offset;
 	}
-
-	for (int j = 0; j < 8; j++)
+	int c = 1; // size / 128;
+	for (int j = 0; j < c * 128; j++)
 		for (int chn = 0; chn < io->channels; chn++) {
-			dst_samples[chn][j] = buf16[j * 8 + chn];
+			samples[chn][j] = buf16[j * 8 + chn];
 		}
 
 	return size;
