@@ -139,7 +139,7 @@ struct file_operations matrixio_pcm_file_ops = {.owner = THIS_MODULE,
 static int matrixio_pcm_open(struct snd_pcm_substream *substream)
 {
 	int ret;
-	printk(KERN_INFO "pcm_open");
+	printk(KERN_INFO "-------------pcm_open");
 
 	ret = snd_soc_set_runtime_hwparams(substream, &matrixio_pcm_hardware);
 
@@ -156,20 +156,20 @@ static int matrixio_pcm_open(struct snd_pcm_substream *substream)
 
 static int matrixio_pcm_close(struct snd_pcm_substream *substream)
 {
-	printk(KERN_INFO "pcm_close");
+	printk(KERN_INFO "-------------pcm_close");
 	return 0;
 }
 
 static int matrixio_pcm_hw_params(struct snd_pcm_substream *substream,
 				  struct snd_pcm_hw_params *hw_params)
 {
-	printk(KERN_INFO "pcm hw params");
+	printk(KERN_INFO "-------------pcm hw params");
 	return 0;
 }
 
 static int matrixio_pcm_hw_free(struct snd_pcm_substream *substream)
 {
-	printk(KERN_INFO "pcm hw free");
+	printk(KERN_INFO "-------------pcm hw free");
 
 	// snd_pcm_set_runtime_buffer(substream, NULL);
 	return 0;
@@ -177,20 +177,20 @@ static int matrixio_pcm_hw_free(struct snd_pcm_substream *substream)
 
 static int matrixio_pcm_prepare(struct snd_pcm_substream *substream)
 {
-	printk(KERN_INFO "pcm prepare");
+	printk(KERN_INFO "-------------pcm prepare");
 	return 0;
 }
 
 static int matrixio_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 {
-	printk(KERN_INFO "PCM trigger");
+	printk(KERN_INFO "-------------pcm trigger");
 	return 0;
 }
 
 static snd_pcm_uframes_t
 matrixio_pcm_pointer(struct snd_pcm_substream *substream)
 {
-	printk(KERN_INFO "pcm pointer");
+	printk(KERN_INFO "-------------pcm pointer");
 	snd_pcm_uframes_t offset;
 
 	return offset;

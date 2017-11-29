@@ -14,7 +14,6 @@
 #include <linux/cdev.h>
 #include <linux/fs.h>
 #include <linux/init.h>
-#include <linux/kfifo.h>
 #include <linux/module.h>
 #include <linux/moduleparam.h>
 #include <linux/of_irq.h>
@@ -44,78 +43,11 @@ struct matrixio_substream {
 	int force_end_work;
 };
 
-struct kfifo_rec_ptr_2 pcm_fifo;
 
 struct matrixio_substream *ms;
 
-static struct class *cl;
-
-static struct cdev matrixio_pcm_cdev;
 
 static DEFINE_MUTEX(read_lock);
-
-static DECLARE_WAIT_QUEUE_HEAD(wq);
-
-static irqreturn_t matrixio_dai_interrupt(int irq, void *irq_data)
-{
-	queue_work(ms->workqueue, &ms->work);
-	return IRQ_HANDLED;
-}
-
-static void matrixio_pcm_work(struct work_struct *w)
-{
-	unsigned long flags;
-
-	spin_lock_irqsave(&ms->lock, flags);
-
-	matrixio_hw_read_enqueue(ms->mio, MATRIXIO_MICARRAY_BASE,
-				 MATRIXIO_MICARRAY_BUFFER_SIZE, &pcm_fifo);
-
-	spin_unlock_irqrestore(&ms->lock, flags);
-
-	wake_up_interruptible(&wq);
-}
-
-static int pcm_fifo_open(struct inode *inode, struct file *file)
-{
-	kfifo_reset(&pcm_fifo);
-
-	return 0;
-}
-
-static ssize_t pcm_fifo_read(struct file *file, char __user *buf, size_t count,
-			     loff_t *ppos)
-{
-	int ret;
-	unsigned int chunks, copied;
-
-	if (count > MATRIXIO_FIFO_SIZE)
-		return -EIO;
-
-	if (mutex_lock_interruptible(&read_lock))
-		return -ERESTARTSYS;
-
-	if (wait_event_interruptible(wq, kfifo_len(&pcm_fifo) != 0))
-		goto erestartsys;
-
-	chunks = count / MATRIXIO_MICARRAY_BUFFER_SIZE;
-
-	ret = kfifo_to_user(&pcm_fifo, buf,
-			    chunks * MATRIXIO_MICARRAY_BUFFER_SIZE, &copied);
-
-	mutex_unlock(&read_lock);
-
-	return ret ? ret : copied;
-
-erestartsys:
-	mutex_unlock(&read_lock);
-	return -ERESTARTSYS;
-}
-
-struct file_operations matrixio_pcm_file_ops = {.owner = THIS_MODULE,
-						.read = pcm_fifo_read,
-						.open = pcm_fifo_open,
-						.llseek = noop_llseek};
 
 static int matrixio_startup(struct snd_pcm_substream *substream)
 {
@@ -140,7 +72,8 @@ static struct snd_soc_dai_link matrixio_snd_soc_dai[] = {{
     .stream_name = "matrixio.0",
     .codec_dai_name = "snd-soc-dummy-dai",
     .cpu_dai_name = "matrixio-dai.0",
-    .codec_name = "matrixio-pcm",
+    .platform_name = "matrixio-pcm",
+    .codec_name = "snd-soc-dummy",
     .ops = &matrixio_snd_ops,
 }};
 
@@ -310,45 +243,6 @@ static int matrixio_probe(struct platform_device *pdev)
 			ret);
 		return ret;
 	}
-
-	sprintf(workqueue_name, "matrixio_pcm");
-
-	ms->workqueue = create_freezable_workqueue(workqueue_name);
-
-	if (!ms->workqueue) {
-		dev_err(&pdev->dev, "cannot create workqueue");
-		return -EBUSY;
-	}
-
-	ms->force_end_work = 0;
-
-	INIT_WORK(&ms->work, matrixio_pcm_work);
-
-	ms->irq = irq_of_parse_and_map(np, 0);
-
-	ret = devm_request_irq(&pdev->dev, ms->irq, matrixio_dai_interrupt, 0,
-			       "matrixio-audio", ms);
-
-	if (ret) {
-		dev_err(&pdev->dev, "can't request irq %d\n", ms->irq);
-		destroy_workqueue(ms->workqueue);
-		return -EBUSY;
-	}
-
-	dev_notice(&pdev->dev, "MATRIXIO audio drive loaded (IRQ=%d)", ms->irq);
-
-	ret = kfifo_alloc(&pcm_fifo, MATRIXIO_FIFO_SIZE, GFP_KERNEL);
-
-	if (ret)
-		dev_err(&pdev->dev, "error PCM kfifo allocation");
-
-	alloc_chrdev_region(&devt, 0, 1, "matrixio_pcm");
-	cl = class_create(THIS_MODULE, "matrixio_pcm");
-
-	device_create(cl, NULL, devt, NULL, "matrixio_pcm");
-
-	cdev_init(&matrixio_pcm_cdev, &matrixio_pcm_file_ops);
-	cdev_add(&matrixio_pcm_cdev, devt, 1);
 
 	return ret;
 }
