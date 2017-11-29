@@ -7,6 +7,7 @@ obj-m += matrixio-uart.o
 obj-m += matrixio-everloop.o
 obj-m += snd-soc-matrixio.o
 obj-m += matrixio-codec.o
+obj-m += matrixio-pcm.o
 obj-m += matrixio-gpio.o
 obj-m += matrixio-env.o
 obj-m += matrixio-imu.o
