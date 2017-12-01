@@ -186,14 +186,14 @@ static int matrixio_register_devices(struct matrixio *matrixio)
 		.pdata_size = sizeof(*matrixio),
 	    },
 	    {
-		.name = "matrixio-codec",
-		.of_compatible = "matrixio-codec",
+		.name = "matrixio-pcm",
+		.of_compatible = "matrixio-pcm",
 		.platform_data = matrixio,
 		.pdata_size = sizeof(*matrixio),
 	    },
             {
-                .name = "matrixio-pcm",
-                .of_compatible = "matrixio-pcm",
+                .name = "matrixio-codec",
+                .of_compatible = "matrixio-codec",
                 .platform_data = matrixio,
                 .pdata_size = sizeof(*matrixio),
             },
@@ -221,7 +221,6 @@ static int matrixio_register_devices(struct matrixio *matrixio)
 		.platform_data = matrixio,
 		.pdata_size = sizeof(*matrixio),
 	    }
-
 	};
 
 	return devm_mfd_add_devices(matrixio->dev, -1, cells, ARRAY_SIZE(cells),

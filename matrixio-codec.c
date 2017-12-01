@@ -33,26 +33,8 @@
 #define MATRIXIO_MICARRAY_BUFFER_SIZE (128 * MATRIXIO_CHANNELS_MAX * 2)
 #define MATRIXIO_FIFO_SIZE (MATRIXIO_MICARRAY_BUFFER_SIZE * 4)
 
-struct matrixio_substream {
-	struct matrixio *mio;
-	int irq;
-	spinlock_t lock;
-	struct snd_pcm_substream *substream;
-	struct workqueue_struct *workqueue;
-	struct work_struct work;
-	int force_end_work;
-};
-
-
-struct matrixio_substream *ms;
-
-
-static DEFINE_MUTEX(read_lock);
-
 static int matrixio_startup(struct snd_pcm_substream *substream)
 {
-	ms->substream = substream;
-
 	printk(KERN_INFO "startup");
 	return 0;
 }
@@ -67,7 +49,8 @@ static struct snd_soc_ops matrixio_snd_ops = {
     .startup = matrixio_startup, .hw_params = matrixio_hw_params,
 };
 
-static struct snd_soc_dai_link matrixio_snd_soc_dai[] = {{
+static struct snd_soc_dai_link matrixio_snd_soc_dai[] = {
+{
     .name = "matrixio.0",
     .stream_name = "matrixio.0",
     .codec_dai_name = "snd-soc-dummy-dai",
@@ -75,10 +58,20 @@ static struct snd_soc_dai_link matrixio_snd_soc_dai[] = {{
     .platform_name = "matrixio-pcm",
     .codec_name = "snd-soc-dummy",
     .ops = &matrixio_snd_ops,
-}};
+},
+{
+    .name = "matrixio.1",
+    .stream_name = "matrixio.1",
+    .codec_dai_name = "snd-soc-dummy-dai",
+    .cpu_dai_name = "matrixio-dai.1",
+    .platform_name = "matrixio-pcm",
+    .codec_name = "snd-soc-dummy",
+    .ops = &matrixio_snd_ops,
+}
+};
 
 static struct snd_soc_card matrixio_soc_card = {
-    .name = "MATRIXIO_HAT",
+    .name = "MATRIXIO SOUND",
     .owner = THIS_MODULE,
     .dai_link = matrixio_snd_soc_dai,
     .num_links = ARRAY_SIZE(matrixio_snd_soc_dai),
@@ -111,10 +104,10 @@ static int matrixio_codec_prepare(struct snd_pcm_substream *substream,
 static int matrixio_codec_dai_startup(struct snd_pcm_substream *substream,
 				      struct snd_soc_dai *codec_dai)
 {
-	printk(KERN_INFO "::DAI STARTUP");
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct snd_pcm *pcm = rtd->pcm;
 
+	printk(KERN_INFO "::dai startup");
 	// snd_pcm_set_ops(pcm, SNDRV_PCM_STREAM_CAPTURE, &matrixio_pcm_ops);
 
 	pcm->info_flags = 0;
@@ -166,10 +159,7 @@ static const struct snd_soc_dapm_route matrixio_dapm_routes[] = {};
 
 static int matrixio_codec_probe(struct snd_soc_codec *codec)
 {
-	//	struct matrixio_substream *ms =
-	// snd_soc_codec_get_drvdata(codec);
-
-	snd_soc_codec_init_regmap(codec, ms->mio->regmap);
+	// snd_soc_codec_init_regmap(codec, ms->mio->regmap);
 	return 0;
 }
 
@@ -188,43 +178,42 @@ static const struct snd_soc_codec_driver matrixio_soc_codec_driver = {
 	},
 };
 
-static struct snd_soc_dai_driver matrixio_dai_driver[] = {{
-    .name = "matrixio-dai.0",
-    .capture =
-	{
-	    .stream_name = "matrixio.mic.0",
-	    .channels_min = 1,
-	    .channels_max = 1,
-	    .rates = MATRIXIO_RATES,
-	    .rate_min = 8000,
-	    .rate_max = 48000,
-	    .formats = MATRIXIO_FORMATS,
-	},
-    .ops = &matrixio_dai_ops,
-}};
+static struct snd_soc_dai_driver matrixio_dai_driver[] = {
+    {
+	.name = "matrixio-dai.0",
+	.capture =
+	    {
+		.stream_name = "matrixio.mic.0",
+		.channels_min = 1,
+		.channels_max = 1,
+		.rates = MATRIXIO_RATES,
+		.rate_min = 8000,
+		.rate_max = 48000,
+		.formats = MATRIXIO_FORMATS,
+	    },
+	.ops = &matrixio_dai_ops,
+    },
+    {
+	.name = "matrixio-dai.1",
+	.capture =
+	    {
+		.stream_name = "matrixio.mic.1",
+		.channels_min = 1,
+		.channels_max = 1,
+		.rates = MATRIXIO_RATES,
+		.rate_min = 8000,
+		.rate_max = 48000,
+		.formats = MATRIXIO_FORMATS,
+	    },
+	.ops = &matrixio_dai_ops,
+    }};
 
 static int matrixio_probe(struct platform_device *pdev)
 {
 	int ret;
-	char workqueue_name[12];
-	dev_t devt;
-	struct device_node *np = pdev->dev.of_node;
 	struct snd_soc_card *card = &matrixio_soc_card;
 
 	card->dev = &pdev->dev;
-
-	ms = devm_kzalloc(&pdev->dev, sizeof(struct matrixio_substream),
-			  GFP_KERNEL);
-	if (!ms)
-		return -ENOMEM;
-
-	ms->substream = 0;
-
-	spin_lock_init(&ms->lock);
-
-	platform_set_drvdata(pdev, ms);
-
-	ms->mio = dev_get_drvdata(pdev->dev.parent);
 
 	ret = snd_soc_register_codec(&pdev->dev, &matrixio_soc_codec_driver,
 				     matrixio_dai_driver,

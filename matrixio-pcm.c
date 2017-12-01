@@ -34,6 +34,8 @@
 #define MATRIXIO_MICARRAY_BUFFER_SIZE (128 * MATRIXIO_CHANNELS_MAX * 2)
 #define MATRIXIO_FIFO_SIZE (MATRIXIO_MICARRAY_BUFFER_SIZE * 4)
 
+unsigned int ptr;
+
 struct matrixio_soc_device {
 	struct matrixio *mio;
 };
@@ -75,7 +77,7 @@ static struct snd_pcm_hardware matrixio_pcm_hardware = {
     .buffer_bytes_max = 128 * 1024,
 };
 
-static irqreturn_t matrixio_dai_interrupt(int irq, void *irq_data)
+static irqreturn_t matrixio_pcm_interrupt(int irq, void *irq_data)
 {
 	queue_work(ms->workqueue, &ms->work);
 	return IRQ_HANDLED;
@@ -99,6 +101,7 @@ static int pcm_fifo_open(struct inode *inode, struct file *file)
 {
 	kfifo_reset(&pcm_fifo);
 
+	ptr = 0;
 	return 0;
 }
 
@@ -191,114 +194,63 @@ static snd_pcm_uframes_t
 matrixio_pcm_pointer(struct snd_pcm_substream *substream)
 {
 	printk(KERN_INFO "-------------pcm pointer");
-	snd_pcm_uframes_t offset;
+	ptr += 128;
+	snd_pcm_uframes_t offset = ptr;
 
 	return offset;
+}
+
+static int matrixio_pcm_ioctl(struct snd_pcm_substream *substream,
+			      unsigned int cmd, void *arg)
+{
+	printk(KERN_INFO "---------------pcm ioctl : [%d]", cmd);
+	switch (cmd) {
+	case SNDRV_PCM_IOCTL1_INFO:
+		return 0;
+	case SNDRV_PCM_IOCTL1_RESET:
+		printk(KERN_INFO "reset");
+		return 0; // snd_pcm_lib_ioctl_reset(substream, arg);
+	case SNDRV_PCM_IOCTL1_CHANNEL_INFO:
+		printk(KERN_INFO "info");
+		return 0; // snd_pcm_lib_ioctl_channel_info(substream, arg);
+	case SNDRV_PCM_IOCTL1_FIFO_SIZE:
+		printk(KERN_INFO "size");
+		return 0; // snd_pcm_lib_ioctl_fifo_size(substream, arg);
+	}
+	return -ENXIO;
+
+	return 0;
+}
+
+static int matrixio_pcm_copy(struct snd_pcm_substream *substream, int channel,
+			     snd_pcm_uframes_t pos, void __user *buf,
+			     snd_pcm_uframes_t count)
+{
+	printk(KERN_INFO "-----------------pcm copy channel=%d pos=%d count=%d",
+	       channel, pos, count);
+	return 0;
 }
 
 static struct snd_pcm_ops matrixio_pcm_ops = {
     .open = matrixio_pcm_open,
     .close = matrixio_pcm_close,
-    .ioctl = snd_pcm_lib_ioctl,
+    .copy = matrixio_pcm_copy,
+    .ioctl = matrixio_pcm_ioctl, // snd_pcm_lib_ioctl,
     .prepare = matrixio_pcm_prepare,
     .hw_params = matrixio_pcm_hw_params,
     .hw_free = matrixio_pcm_hw_free,
     .trigger = matrixio_pcm_trigger,
     .pointer = matrixio_pcm_pointer,
-    // .mmap = matrixio_pcm_mmap,
 };
-
-static int matrixio_startup(struct snd_pcm_substream *substream)
-{
-	ms->substream = substream;
-	printk(KERN_INFO "startup %p", ms->substream->pcm);
-	/*
-	snd_pcm_set_ops(ms->substream->pcm, SNDRV_PCM_STREAM_CAPTURE,
-					     &matrixio_pcm_ops);
-
-	*/
-	return 0;
-}
-
-static int matrixio_hw_params(struct snd_pcm_substream *substream,
-			      struct snd_pcm_hw_params *params)
-{
-	printk(KERN_INFO "hw_paramsi %p", substream->pcm);
-	return 0;
-}
-
-static int matrixio_codec_hw_params(struct snd_pcm_substream *substream,
-				    struct snd_pcm_hw_params *params,
-				    struct snd_soc_dai *dai)
-{
-
-	printk(KERN_INFO "::rate %d", params_rate(params));
-
-	return 0;
-}
-
-static int matrixio_codec_set_fmt(struct snd_soc_dai *dai, unsigned int fmt)
-{
-	printk(KERN_INFO "::fmt %d", fmt);
-	return 0;
-}
-
-static int matrixio_codec_prepare(struct snd_pcm_substream *substream,
-				  struct snd_soc_dai *dai)
-{
-	printk(KERN_INFO "::prepare");
-	return 0;
-}
-
-/* codec dai component */
-static int matrixio_codec_dai_startup(struct snd_pcm_substream *substream,
-				      struct snd_soc_dai *codec_dai)
-{
-	printk(KERN_INFO "::DAI STARTUP");
-	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct snd_pcm *pcm = rtd->pcm;
-
-	snd_pcm_set_ops(pcm, SNDRV_PCM_STREAM_CAPTURE, &matrixio_pcm_ops);
-
-	pcm->info_flags = 0;
-	return 0;
-}
-
-static int matrixio_codec_dai_digital_mute(struct snd_soc_dai *codec_dai,
-					   int mute)
-{
-	printk(KERN_INFO "::DIGITAL MUTE");
-	return 0;
-}
-
-static int matrixio_codec_dai_trigger(struct snd_pcm_substream *substream,
-				      int cmd, struct snd_soc_dai *codec_dai)
-{
-	printk(KERN_INFO "::trigger");
-	return 0;
-}
-
-static void matrixio_codec_dai_shutdown(struct snd_pcm_substream *substream,
-					struct snd_soc_dai *codec_dai)
-{
-	printk(KERN_INFO "::shutdown");
-}
-
-
-static const struct snd_soc_dapm_route matrixio_dapm_routes[] = {};
-
-static int matrixio_codec_probe(struct snd_soc_codec *codec)
-{
-	//	struct matrixio_substream *ms =
-	// snd_soc_codec_get_drvdata(codec);
-
-	snd_soc_codec_init_regmap(codec, ms->mio->regmap);
-	return 0;
-}
 
 static int matrixio_pcm_probe(struct snd_soc_platform *platform)
 {
+	int ret;
+	//	ret = request_irq(ms->irq, matrixio_pcm_interrupt, 0,
+	//"matrix-pcm", ms);
+
 	snd_soc_platform_set_drvdata(platform, &matrixio_soc_device);
+
 	return 0;
 }
 
@@ -313,25 +265,74 @@ static const struct snd_soc_platform_driver matrixio_soc_platform = {
     .pcm_new = matrixio_pcm_new,
 };
 
-static int matrixio_probe(struct platform_device *pdev)
+static int matrixio_pcm_platform_probe(struct platform_device *pdev)
 {
+	int ret;
+	char workqueue_name[12];
+	dev_t devt;
+
+	sprintf(workqueue_name, "matrixio_pcm");
+
+	ms = devm_kzalloc(&pdev->dev, sizeof(struct matrixio_substream),
+			  GFP_KERNEL);
+	if (!ms)
+		return -ENOMEM;
+
+	ms->workqueue = create_freezable_workqueue(workqueue_name);
+
+	if (!ms->workqueue) {
+		dev_err(&pdev->dev, "cannot create workqueue");
+		return -EBUSY;
+	}
+
+	INIT_WORK(&ms->work, matrixio_pcm_work);
+
+	ms->irq = irq_of_parse_and_map(pdev->dev.of_node, 0);
+
+	dev_notice(&pdev->dev, "MATRIXIO pcm irq=%d", ms->irq);
+	/*
+		ret = devm_request_irq(&pdev->dev, ms->irq,
+	   matrixio_pcm_interrupt, 0,
+				       dev_name(&pdev->dev), ms);
+		if (ret) {
+			dev_err(&pdev->dev, "can't request irq %d\n", ms->irq);
+			destroy_workqueue(ms->workqueue);
+			return -EBUSY;
+		}
+
+		dev_notice(&pdev->dev, "MATRIXIO audio drive loaded (IRQ=%d)",
+	   ms->irq);
+	*/
+	ret = kfifo_alloc(&pcm_fifo, MATRIXIO_FIFO_SIZE, GFP_KERNEL);
+
+	if (ret)
+		dev_err(&pdev->dev, "error PCM kfifo allocation");
+
+	alloc_chrdev_region(&devt, 0, 1, "matrixio_pcm");
+	cl = class_create(THIS_MODULE, "matrixio_pcm");
+
+	device_create(cl, NULL, devt, NULL, "matrixio_pcm");
+
+	cdev_init(&matrixio_pcm_cdev, &matrixio_pcm_file_ops);
+	cdev_add(&matrixio_pcm_cdev, devt, 1);
+
 	return devm_snd_soc_register_platform(&pdev->dev,
 					      &matrixio_soc_platform);
 }
 
-static const struct of_device_id snd_matrixio_codec_of_match[] = {
+static const struct of_device_id snd_matrixio_pcm_of_match[] = {
     {
 	.compatible = "matrixio-pcm",
     },
     {},
 };
-MODULE_DEVICE_TABLE(of, snd_matrixio_codec_of_match);
+MODULE_DEVICE_TABLE(of, snd_matrixio_pcm_of_match);
 
 static struct platform_driver matrixio_codec_driver = {
     .driver = {.name = "matrixio-pcm",
 	       .owner = THIS_MODULE,
-	       .of_match_table = snd_matrixio_codec_of_match},
-    .probe = matrixio_probe,
+	       .of_match_table = snd_matrixio_pcm_of_match},
+    .probe = matrixio_pcm_platform_probe,
 };
 
 module_platform_driver(matrixio_codec_driver);
