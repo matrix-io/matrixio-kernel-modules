@@ -25,12 +25,25 @@ static int force_end_work;
 
 struct matrixio_uart_status
 {
-  uint8_t fifo_length : 6;
-  uint8_t fifo_full : 1;
-  uint8_t fifo_empty :1;
-  uint8_t uart_ucr : 4;
-  uint8_t uart_tx_busy:4;
+  uint8_t fifo_length : 8;
+  uint8_t fifo_full: 1;
+  uint8_t fifo_empty : 1;
+  uint8_t uart_ucr : 2;
+  uint8_t uart_tx_busy : 4;
 };
+
+struct matrixio_uart_data
+{
+  uint8_t uart_rx:8;
+  uint8_t fifo_length : 8;
+};
+
+struct matrixio_uart_pointer
+{
+  uint8_t pointer_read:8;
+  uint8_t pointer_write:8;
+};
+
 
 static const char driver_name[] = "ttyMATRIX";
 static const char tty_dev_name[] = "ttyMATRIX";
@@ -44,31 +57,18 @@ static irqreturn_t uart_rxint(int irq, void *id)
 
 static void matrixio_uart_work(struct work_struct *w)
 {
-  unsigned int status;
-  unsigned int val;
+  struct matrixio_uart_data uart_data;
   struct matrixio_uart_status uart_status;
-  //spin_lock(&port.lock);
 
-  
+  regmap_read(matrixio->regmap, MATRIXIO_UART_BASE, (unsigned int *)&uart_status);
 
-  for( ;;) {
-    regmap_read(matrixio->regmap, MATRIXIO_UART_BASE, (unsigned int *)&uart_status);
-  printk(KERN_INFO "Fifo Number = %d", uart_status.fifo_length);
-  printk(KERN_INFO "FiFo Empty = %d",uart_status.fifo_empty);
-  
-  if(uart_status.fifo_empty){
-    printk(KERN_INFO "IRQ wasted");
-    break ;
-  }
+  if(uart_status.fifo_empty == 0){
+    regmap_read(matrixio->regmap, MATRIXIO_UART_BASE+1, (unsigned int *)&uart_data);
+    printk(KERN_INFO "Fifo data = %d",uart_data.fifo_length);
 
-    regmap_read(matrixio->regmap, MATRIXIO_UART_BASE + 1, &val);
-    //spin_unlock(&port.lock);
-
-    tty_insert_flip_char(&port.state->port, val, TTY_NORMAL);
+    tty_insert_flip_char(&port.state->port,(unsigned int)uart_data.uart_rx, TTY_NORMAL);
     tty_flip_buffer_push(&port.state->port);
-
-  }
-  
+  }  
 }
 
 static unsigned int matrixio_uart_tx_empty(struct uart_port *port) { return 1; }
@@ -86,10 +86,22 @@ static void matrixio_uart_stop_tx(struct uart_port *port) {}
 
 static void matrixio_uart_start_tx(struct uart_port *port)
 {
+    struct matrixio_uart_pointer uart_pointer;
+    struct matrixio_uart_status uart_status;
+
+    regmap_read(matrixio->regmap, MATRIXIO_UART_BASE+3, (unsigned int *)&uart_pointer);
+    printk(KERN_INFO "Read Pointer = %d", uart_pointer.pointer_read);
+    printk(KERN_INFO "Write Pointer = %d",uart_pointer.pointer_write);
 
 	while (1) {
-    regmap_write(matrixio->regmap, MATRIXIO_UART_BASE + 1,
-           port->state->xmit.buf[port->state->xmit.tail]);
+    
+    do{
+      regmap_read(matrixio->regmap, MATRIXIO_UART_BASE, (unsigned int *)&uart_status);
+      printk(KERN_INFO "FIFO fifo_length = %d",uart_status.fifo_length);
+
+ 	  }while(uart_status.uart_tx_busy);
+
+    regmap_write(matrixio->regmap, MATRIXIO_UART_BASE + 1,port->state->xmit.buf[port->state->xmit.tail]);
     port->state->xmit.tail =
         (port->state->xmit.tail + 1) & (UART_XMIT_SIZE - 1);
     port->icount.tx++;
@@ -105,7 +117,11 @@ static void matrixio_uart_enable_ms(struct uart_port *port) {}
 
 static void matrixio_uart_break_ctl(struct uart_port *port, int break_state) {}
 
-static int matrixio_uart_startup(struct uart_port *port) { return 0; }
+static int matrixio_uart_startup(struct uart_port *port) { 
+	regmap_write(matrixio->regmap, MATRIXIO_UART_BASE + 2,1);
+  regmap_write(matrixio->regmap, MATRIXIO_UART_BASE + 2,0); //TODO:manage in FPGA
+
+	return 0; }
 static void matrixio_uart_shutdown(struct uart_port *port) {
   flush_workqueue(workqueue);
 }
