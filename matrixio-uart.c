@@ -58,7 +58,6 @@ static void matrixio_uart_work(struct work_struct *w)
 	spin_lock(&conf_lock);
 	regmap_read(matrixio->regmap, MATRIXIO_UART_BASE + 1,
 			    (unsigned int *)&uart_data);
-	printk(KERN_INFO "FIFO Empty = %d",uart_data.empty);
 	if(!uart_data.empty){
 		tty_insert_flip_char(&port.state->port,
 				     (unsigned int)uart_data.uart_rx,
@@ -83,7 +82,9 @@ static void matrixio_uart_stop_tx(struct uart_port *port) {}
 
 static void matrixio_uart_start_tx(struct uart_port *port)
 {
-	struct matrixio_uart_status uart_status;
+  struct matrixio_uart_status uart_status;
+
+	spin_lock(&conf_lock);
 
 	while (1) {
 
@@ -101,6 +102,9 @@ static void matrixio_uart_start_tx(struct uart_port *port)
 		if (uart_circ_empty(&port->state->xmit))
 			break;
 	}
+
+	spin_unlock(&conf_lock);
+
 }
 
 static void matrixio_uart_stop_rx(struct uart_port *port) {}
@@ -111,14 +115,49 @@ static void matrixio_uart_break_ctl(struct uart_port *port, int break_state) {}
 
 static int matrixio_uart_startup(struct uart_port *port)
 {
+	int ret;
+	char workqueue_name[12];
+
+	spin_lock(&conf_lock);
 
 	regmap_write(matrixio->regmap, MATRIXIO_UART_BASE + 2, 1);
 	regmap_write(matrixio->regmap, MATRIXIO_UART_BASE + 2, 0);
+
+	spin_unlock(&conf_lock);
+
+	sprintf(workqueue_name, "matrixio_uart");
+
+	workqueue = create_freezable_workqueue(workqueue_name);
+
+	if (!workqueue) {
+		dev_err(port->dev, "cannot create workqueue");
+		return -EBUSY;
+	}
+
+	force_end_work = 0;
+
+	INIT_WORK(&work, matrixio_uart_work);
+
+	ret = request_irq(irq, uart_rxint, 0, driver_name, matrixio);
+
+	if (ret) {
+		dev_err(port->dev, "can't request irq %d\n", irq);
+		destroy_workqueue(workqueue);
+		return -EBUSY;
+	}
+
+	printk(KERN_INFO "MATRIX Creator TTY has been loaded (IRQ=%d,%d)", irq,
+	       ret);
+
 	return 0;
 }
+
 static void matrixio_uart_shutdown(struct uart_port *port)
 {
 	flush_workqueue(workqueue);
+	destroy_workqueue(workqueue);
+	free_irq(irq, matrixio);
+
 }
 
 static void matrixio_uart_set_termios(struct uart_port *port,
@@ -177,7 +216,6 @@ static int matrixio_uart_probe(struct platform_device *pdev)
 	int ret;
 	struct device *dev = &pdev->dev;
 	struct device_node *np = dev->of_node;
-	char workqueue_name[12];
 
 	matrixio = dev_get_drvdata(pdev->dev.parent);
 
@@ -211,36 +249,12 @@ static int matrixio_uart_probe(struct platform_device *pdev)
 		return ret;
 	}
 
-	sprintf(workqueue_name, "matrixio_uart");
-
-	workqueue = create_freezable_workqueue(workqueue_name);
-
-	if (!workqueue) {
-		dev_err(&pdev->dev, "cannot create workqueue");
-		return -EBUSY;
-	}
-
-	force_end_work = 0;
-
-	INIT_WORK(&work, matrixio_uart_work);
-
-	ret = request_irq(irq, uart_rxint, 0, driver_name, matrixio);
-
-	if (ret) {
-		dev_err(&pdev->dev, "can't request irq %d\n", irq);
-		destroy_workqueue(workqueue);
-		return -EBUSY;
-	}
-
-	printk(KERN_INFO "MATRIX Creator TTY has been loaded (IRQ=%d,%d)", irq,
-	       ret);
-
 	return ret;
 }
 
 static int matrixio_uart_remove(struct platform_device *pdev)
 {
-	free_irq(irq, matrixio);
+
 	uart_remove_one_port(&matrixio_uart_driver, &port);
 	uart_unregister_driver(&matrixio_uart_driver);
 	return 0;
