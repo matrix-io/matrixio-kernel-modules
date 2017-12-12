@@ -22,7 +22,6 @@ static struct work_struct work;
 static int force_end_work;
 static spinlock_t conf_lock;
 
-
 struct matrixio_uart_status {
 	uint8_t fifo_length : 8;
 	uint8_t fifo_full : 1;
@@ -57,8 +56,8 @@ static void matrixio_uart_work(struct work_struct *w)
 
 	spin_lock(&conf_lock);
 	regmap_read(matrixio->regmap, MATRIXIO_UART_BASE + 1,
-			    (unsigned int *)&uart_data);
-	if(!uart_data.empty){
+		    (unsigned int *)&uart_data);
+	if (!uart_data.empty) {
 		tty_insert_flip_char(&port.state->port,
 				     (unsigned int)uart_data.uart_rx,
 				     TTY_NORMAL);
@@ -82,7 +81,7 @@ static void matrixio_uart_stop_tx(struct uart_port *port) {}
 
 static void matrixio_uart_start_tx(struct uart_port *port)
 {
-  struct matrixio_uart_status uart_status;
+	struct matrixio_uart_status uart_status;
 
 	spin_lock(&conf_lock);
 
@@ -104,7 +103,6 @@ static void matrixio_uart_start_tx(struct uart_port *port)
 	}
 
 	spin_unlock(&conf_lock);
-
 }
 
 static void matrixio_uart_stop_rx(struct uart_port *port) {}
@@ -157,7 +155,6 @@ static void matrixio_uart_shutdown(struct uart_port *port)
 	flush_workqueue(workqueue);
 	destroy_workqueue(workqueue);
 	free_irq(irq, matrixio);
-
 }
 
 static void matrixio_uart_set_termios(struct uart_port *port,
