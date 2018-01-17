@@ -15,7 +15,6 @@
 #include <linux/cdev.h>
 #include <linux/fs.h>
 #include <linux/init.h>
-#include <linux/kfifo.h>
 #include <linux/module.h>
 #include <linux/moduleparam.h>
 #include <linux/of_irq.h>
@@ -54,8 +53,6 @@ struct matrixio_soc_device matrixio_soc_device;
 
 struct kfifo_rec_ptr_2 pcm_fifo;
 
-struct matrixio_substream *ms;
-
 static struct class *cl;
 
 static struct snd_pcm *matrixio_pcm;
@@ -79,6 +76,7 @@ static struct snd_pcm_hardware matrixio_pcm_hardware = {
 
 static irqreturn_t matrixio_pcm_interrupt(int irq, void *irq_data)
 {
+	struct matrixio_substream *ms = irq_data;
 	queue_work(ms->workqueue, &ms->work);
 	return IRQ_HANDLED;
 }
@@ -87,12 +85,17 @@ static void matrixio_pcm_work(struct work_struct *w)
 {
 	unsigned long flags;
 
-	spin_lock_irqsave(&ms->lock, flags);
+//	spin_lock_irqsave(&ms->lock, flags);
 
-	matrixio_hw_read_enqueue(ms->mio, MATRIXIO_MICARRAY_BASE,
-				 MATRIXIO_MICARRAY_BUFFER_SIZE, &pcm_fifo);
+//		rdev = container_of(work, struct cfg80211_registered_device,
+//							    event_work);
+	/*
+		matrixio_hw_read_enqueue(ms->mio, MATRIXIO_MICARRAY_BASE,
+					 MATRIXIO_MICARRAY_BUFFER_SIZE,
+	   &pcm_fifo);
 
-	spin_unlock_irqrestore(&ms->lock, flags);
+	*/
+//	spin_unlock_irqrestore(&ms->lock, flags);
 
 	wake_up_interruptible(&wq);
 }
@@ -142,6 +145,10 @@ struct file_operations matrixio_pcm_file_ops = {.owner = THIS_MODULE,
 static int matrixio_pcm_open(struct snd_pcm_substream *substream)
 {
 	int ret;
+	struct snd_pcm_runtime *runtime = substream->runtime;
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	void *data;
+
 	printk(KERN_INFO "-------------pcm_open");
 
 	ret = snd_soc_set_runtime_hwparams(substream, &matrixio_pcm_hardware);
@@ -153,6 +160,9 @@ static int matrixio_pcm_open(struct snd_pcm_substream *substream)
 					    SNDRV_PCM_HW_PARAM_PERIODS);
 	if (ret < 0)
 		return ret;
+
+	data = snd_soc_dai_get_dma_data(rtd->cpu_dai, substream);
+	runtime->private_data = data;
 
 	return 0;
 }
@@ -166,7 +176,11 @@ static int matrixio_pcm_close(struct snd_pcm_substream *substream)
 static int matrixio_pcm_hw_params(struct snd_pcm_substream *substream,
 				  struct snd_pcm_hw_params *hw_params)
 {
+	int ret;
 	printk(KERN_INFO "-------------pcm hw params");
+
+	// ret = snd_pcm_lib_malloc_pages(substream,
+	// params_buffer_bytes(hw_params));
 	return 0;
 }
 
@@ -193,7 +207,7 @@ static int matrixio_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 static snd_pcm_uframes_t
 matrixio_pcm_pointer(struct snd_pcm_substream *substream)
 {
-	printk(KERN_INFO "-------------pcm pointer");
+	printk(KERN_INFO "-------------pcm pointer ");
 	ptr += 128;
 	snd_pcm_uframes_t offset = ptr;
 
@@ -234,11 +248,11 @@ static int matrixio_pcm_copy(struct snd_pcm_substream *substream, int channel,
 static struct snd_pcm_ops matrixio_pcm_ops = {
     .open = matrixio_pcm_open,
     .close = matrixio_pcm_close,
-    .copy = matrixio_pcm_copy,
-    .ioctl = matrixio_pcm_ioctl, // snd_pcm_lib_ioctl,
-    .prepare = matrixio_pcm_prepare,
+    //   .copy = matrixio_pcm_copy,
+    .ioctl = snd_pcm_lib_ioctl,
+    //    .prepare = matrixio_pcm_prepare,
     .hw_params = matrixio_pcm_hw_params,
-    .hw_free = matrixio_pcm_hw_free,
+    //  .hw_free = matrixio_pcm_hw_free,
     .trigger = matrixio_pcm_trigger,
     .pointer = matrixio_pcm_pointer,
 };
@@ -269,7 +283,7 @@ static int matrixio_pcm_platform_probe(struct platform_device *pdev)
 {
 	int ret;
 	char workqueue_name[12];
-	dev_t devt;
+	struct matrixio_substream * ms;
 
 	sprintf(workqueue_name, "matrixio_pcm");
 
@@ -290,31 +304,16 @@ static int matrixio_pcm_platform_probe(struct platform_device *pdev)
 	ms->irq = irq_of_parse_and_map(pdev->dev.of_node, 0);
 
 	dev_notice(&pdev->dev, "MATRIXIO pcm irq=%d", ms->irq);
-	/*
-		ret = devm_request_irq(&pdev->dev, ms->irq,
-	   matrixio_pcm_interrupt, 0,
-				       dev_name(&pdev->dev), ms);
-		if (ret) {
-			dev_err(&pdev->dev, "can't request irq %d\n", ms->irq);
-			destroy_workqueue(ms->workqueue);
-			return -EBUSY;
-		}
 
-		dev_notice(&pdev->dev, "MATRIXIO audio drive loaded (IRQ=%d)",
-	   ms->irq);
-	*/
-	ret = kfifo_alloc(&pcm_fifo, MATRIXIO_FIFO_SIZE, GFP_KERNEL);
+	ret = devm_request_irq(&pdev->dev, ms->irq, matrixio_pcm_interrupt, 0,
+			       dev_name(&pdev->dev), ms);
+	if (ret) {
+		dev_err(&pdev->dev, "can't request irq %d\n", ms->irq);
+		destroy_workqueue(ms->workqueue);
+		return -EBUSY;
+	}
 
-	if (ret)
-		dev_err(&pdev->dev, "error PCM kfifo allocation");
-
-	alloc_chrdev_region(&devt, 0, 1, "matrixio_pcm");
-	cl = class_create(THIS_MODULE, "matrixio_pcm");
-
-	device_create(cl, NULL, devt, NULL, "matrixio_pcm");
-
-	cdev_init(&matrixio_pcm_cdev, &matrixio_pcm_file_ops);
-	cdev_add(&matrixio_pcm_cdev, devt, 1);
+	dev_notice(&pdev->dev, "MATRIXIO audio drive loaded (IRQ=%d)", ms->irq);
 
 	return devm_snd_soc_register_platform(&pdev->dev,
 					      &matrixio_soc_platform);
