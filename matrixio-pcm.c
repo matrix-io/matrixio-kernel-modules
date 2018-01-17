@@ -44,24 +44,14 @@ struct matrixio_substream {
 	int irq;
 	spinlock_t lock;
 	struct snd_pcm_substream *substream;
-	struct workqueue_struct *workqueue;
+	struct workqueue_struct *wq;
 	struct work_struct work;
 	int force_end_work;
 };
 
 struct matrixio_soc_device matrixio_soc_device;
 
-struct kfifo_rec_ptr_2 pcm_fifo;
-
-static struct class *cl;
-
 static struct snd_pcm *matrixio_pcm;
-
-static struct cdev matrixio_pcm_cdev;
-
-static DEFINE_MUTEX(read_lock);
-
-static DECLARE_WAIT_QUEUE_HEAD(wq);
 
 static struct snd_pcm_hardware matrixio_pcm_hardware = {
     .info = SNDRV_PCM_INFO_MMAP | SNDRV_PCM_INFO_MMAP_VALID |
@@ -77,70 +67,30 @@ static struct snd_pcm_hardware matrixio_pcm_hardware = {
 static irqreturn_t matrixio_pcm_interrupt(int irq, void *irq_data)
 {
 	struct matrixio_substream *ms = irq_data;
-	queue_work(ms->workqueue, &ms->work);
+
+	queue_work(ms->wq, &ms->work);
+
 	return IRQ_HANDLED;
 }
 
-static void matrixio_pcm_work(struct work_struct *w)
+static void matrixio_pcm_work(struct work_struct *work)
 {
 	unsigned long flags;
-
-//	spin_lock_irqsave(&ms->lock, flags);
-
-//		rdev = container_of(work, struct cfg80211_registered_device,
-//							    event_work);
+	struct matrixio_substream *ms;
+	//	spin_lock_irqsave(&ms->lock, flags)
+	ms = container_of(work, struct matrixio_substream, work);
+	//
+	//							    event_work);
 	/*
 		matrixio_hw_read_enqueue(ms->mio, MATRIXIO_MICARRAY_BASE,
 					 MATRIXIO_MICARRAY_BUFFER_SIZE,
 	   &pcm_fifo);
 
 	*/
-//	spin_unlock_irqrestore(&ms->lock, flags);
+	//	spin_unlock_irqrestore(&ms->lock, flags);
 
-	wake_up_interruptible(&wq);
+	//	wake_up_interruptible(&wq);
 }
-
-static int pcm_fifo_open(struct inode *inode, struct file *file)
-{
-	kfifo_reset(&pcm_fifo);
-
-	ptr = 0;
-	return 0;
-}
-
-static ssize_t pcm_fifo_read(struct file *file, char __user *buf, size_t count,
-			     loff_t *ppos)
-{
-	int ret;
-	unsigned int chunks, copied;
-
-	if (count > MATRIXIO_FIFO_SIZE)
-		return -EIO;
-
-	if (mutex_lock_interruptible(&read_lock))
-		return -ERESTARTSYS;
-
-	if (wait_event_interruptible(wq, kfifo_len(&pcm_fifo) != 0))
-		goto erestartsys;
-
-	chunks = count / MATRIXIO_MICARRAY_BUFFER_SIZE;
-
-	ret = kfifo_to_user(&pcm_fifo, buf,
-			    chunks * MATRIXIO_MICARRAY_BUFFER_SIZE, &copied);
-
-	mutex_unlock(&read_lock);
-
-	return ret ? ret : copied;
-
-erestartsys:
-	mutex_unlock(&read_lock);
-	return -ERESTARTSYS;
-}
-
-struct file_operations matrixio_pcm_file_ops = {.owner = THIS_MODULE,
-						.read = pcm_fifo_read,
-						.open = pcm_fifo_open,
-						.llseek = noop_llseek};
 
 static int matrixio_pcm_open(struct snd_pcm_substream *substream)
 {
@@ -283,7 +233,7 @@ static int matrixio_pcm_platform_probe(struct platform_device *pdev)
 {
 	int ret;
 	char workqueue_name[12];
-	struct matrixio_substream * ms;
+	struct matrixio_substream *ms;
 
 	sprintf(workqueue_name, "matrixio_pcm");
 
@@ -292,9 +242,9 @@ static int matrixio_pcm_platform_probe(struct platform_device *pdev)
 	if (!ms)
 		return -ENOMEM;
 
-	ms->workqueue = create_freezable_workqueue(workqueue_name);
+	ms->wq = create_singlethread_workqueue(workqueue_name);
 
-	if (!ms->workqueue) {
+	if (!ms->wq) {
 		dev_err(&pdev->dev, "cannot create workqueue");
 		return -EBUSY;
 	}
@@ -309,7 +259,7 @@ static int matrixio_pcm_platform_probe(struct platform_device *pdev)
 			       dev_name(&pdev->dev), ms);
 	if (ret) {
 		dev_err(&pdev->dev, "can't request irq %d\n", ms->irq);
-		destroy_workqueue(ms->workqueue);
+		destroy_workqueue(ms->wq);
 		return -EBUSY;
 	}
 
