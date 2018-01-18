@@ -43,10 +43,11 @@ struct matrixio_substream {
 	struct matrixio *mio;
 	int irq;
 	spinlock_t lock;
-	struct snd_pcm_substream *substream;
+	struct snd_pcm_substream __rcu *rx_substream;
 	struct workqueue_struct *wq;
 	struct work_struct work;
 	int force_end_work;
+	int stamp;
 };
 
 struct matrixio_soc_device matrixio_soc_device;
@@ -79,6 +80,8 @@ static void matrixio_pcm_work(struct work_struct *work)
 	struct matrixio_substream *ms;
 	//	spin_lock_irqsave(&ms->lock, flags)
 	ms = container_of(work, struct matrixio_substream, work);
+
+	//printk(KERN_INFO "%d\n", ms->stamp);
 	//
 	//							    event_work);
 	/*
@@ -105,12 +108,12 @@ static int matrixio_pcm_open(struct snd_pcm_substream *substream)
 
 	if (ret)
 		return ret;
-
+/*
 	ret = snd_pcm_hw_constraint_integer(substream->runtime,
 					    SNDRV_PCM_HW_PARAM_PERIODS);
 	if (ret < 0)
 		return ret;
-
+*/
 	data = snd_soc_dai_get_dma_data(rtd->cpu_dai, substream);
 	runtime->private_data = data;
 
@@ -120,6 +123,7 @@ static int matrixio_pcm_open(struct snd_pcm_substream *substream)
 static int matrixio_pcm_close(struct snd_pcm_substream *substream)
 {
 	printk(KERN_INFO "-------------pcm_close");
+	synchronize_rcu();
 	return 0;
 }
 
@@ -150,8 +154,28 @@ static int matrixio_pcm_prepare(struct snd_pcm_substream *substream)
 
 static int matrixio_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 {
-	printk(KERN_INFO "-------------pcm trigger");
-	return 0;
+	int ret = 0;
+	struct snd_pcm_runtime *runtime = substream->runtime;
+	struct matrixio_substream *ms = runtime->private_data;
+
+	switch (cmd) {
+	case SNDRV_PCM_TRIGGER_START:
+	case SNDRV_PCM_TRIGGER_RESUME:
+	case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
+		rcu_assign_pointer(ms->rx_substream, substream);
+		break;
+
+	case SNDRV_PCM_TRIGGER_STOP:
+	case SNDRV_PCM_TRIGGER_SUSPEND:
+	case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
+		rcu_assign_pointer(ms->rx_substream, NULL);
+		break;
+
+	default:
+		ret = -EINVAL;
+		break;
+	}
+	return ret;
 }
 
 static snd_pcm_uframes_t
@@ -242,6 +266,7 @@ static int matrixio_pcm_platform_probe(struct platform_device *pdev)
 	if (!ms)
 		return -ENOMEM;
 
+	ms->stamp = 1010101;
 	ms->wq = create_singlethread_workqueue(workqueue_name);
 
 	if (!ms->wq) {
@@ -265,6 +290,7 @@ static int matrixio_pcm_platform_probe(struct platform_device *pdev)
 
 	dev_notice(&pdev->dev, "MATRIXIO audio drive loaded (IRQ=%d)", ms->irq);
 
+	
 	return devm_snd_soc_register_platform(&pdev->dev,
 					      &matrixio_soc_platform);
 }
