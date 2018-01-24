@@ -101,15 +101,14 @@ static int matrixio_codec_prepare(struct snd_pcm_substream *substream,
 
 /* codec dai component */
 static int matrixio_codec_dai_startup(struct snd_pcm_substream *substream,
-				      struct snd_soc_dai *codec_dai)
+				      struct snd_soc_dai *dai)
 {
-	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct snd_pcm *pcm = rtd->pcm;
+	struct matrixio_substream *ms = snd_soc_dai_get_drvdata(dai);
+
+	snd_soc_dai_set_dma_data(dai, substream, ms);
 
 	printk(KERN_INFO "::dai startup");
-	// snd_pcm_set_ops(pcm, SNDRV_PCM_STREAM_CAPTURE, &matrixio_pcm_ops);
 
-	pcm->info_flags = 0;
 	return 0;
 }
 
@@ -135,12 +134,12 @@ static void matrixio_codec_dai_shutdown(struct snd_pcm_substream *substream,
 
 static const struct snd_soc_dai_ops matrixio_dai_ops = {
     .hw_params = matrixio_codec_hw_params,
-    .prepare = matrixio_codec_prepare,
+    //    .prepare = matrixio_codec_prepare,
     .set_fmt = matrixio_codec_set_fmt,
-    .digital_mute = matrixio_codec_dai_digital_mute,
+    //    .digital_mute = matrixio_codec_dai_digital_mute,
     .startup = matrixio_codec_dai_startup,
-    .shutdown = matrixio_codec_dai_shutdown,
-    .trigger = matrixio_codec_dai_trigger,
+    //    .shutdown = matrixio_codec_dai_shutdown,
+    //    .trigger = matrixio_codec_dai_trigger,
 };
 
 static const DECLARE_TLV_DB_SCALE(inpga_tlv, -1000, 100, 0);

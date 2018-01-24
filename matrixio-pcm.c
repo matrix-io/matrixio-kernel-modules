@@ -27,6 +27,8 @@
 #include <sound/pcm_params.h>
 #include <sound/soc.h>
 #include <sound/tlv.h>
+#include <linux/dma-mapping.h>
+#include <asm/dma.h>
 
 #define MATRIXIO_CHANNELS_MAX 8
 #define MATRIXIO_RATES SNDRV_PCM_RATE_8000_48000
@@ -89,7 +91,6 @@ static int matrixio_pcm_open(struct snd_pcm_substream *substream)
 	printk(KERN_INFO "-------------pcm_open");
 
 	snd_soc_set_runtime_hwparams(substream, &matrixio_pcm_hardware);
-
 	data = snd_soc_dai_get_dma_data(rtd->cpu_dai, substream);
 	runtime->private_data = data;
 
@@ -211,6 +212,13 @@ static int matrixio_pcm_new(struct snd_soc_pcm_runtime *rtd)
 {
 	struct snd_card *card = rtd->card->snd_card;
 	size_t size = matrixio_pcm_hardware.buffer_bytes_max;
+	int ret;
+
+	printk(KERN_INFO "matrixio_pcm_new");
+
+	ret = dma_coerce_mask_and_coherent(card->dev, DMA_BIT_MASK(32));
+	if (ret)
+		return ret;
 
 	return snd_pcm_lib_preallocate_pages_for_all(
 	    rtd->pcm, SNDRV_DMA_TYPE_DEV, card->dev, size, size);
