@@ -11,7 +11,9 @@
  *  option) any later version.
  */
 
+#include "matrixio-pcm.h"
 #include "matrixio-core.h"
+
 #include <linux/cdev.h>
 #include <linux/fs.h>
 #include <linux/init.h>
@@ -34,23 +36,6 @@
 #define MATRIXIO_FIFO_SIZE (MATRIXIO_MICARRAY_BUFFER_SIZE * 4)
 
 unsigned int ptr;
-
-struct matrixio_soc_device {
-	struct matrixio *mio;
-};
-
-struct matrixio_substream {
-	struct matrixio *mio;
-	int irq;
-	spinlock_t lock;
-	struct snd_pcm_substream __rcu *rx_substream;
-	struct workqueue_struct *wq;
-	struct work_struct work;
-	int force_end_work;
-	int stamp;
-};
-
-struct matrixio_soc_device matrixio_soc_device;
 
 static struct snd_pcm *matrixio_pcm;
 
@@ -81,7 +66,7 @@ static void matrixio_pcm_work(struct work_struct *work)
 	//	spin_lock_irqsave(&ms->lock, flags)
 	ms = container_of(work, struct matrixio_substream, work);
 
-	//printk(KERN_INFO "%d\n", ms->stamp);
+	// printk(KERN_INFO "%d\n", ms->stamp);
 	//
 	//							    event_work);
 	/*
@@ -97,23 +82,14 @@ static void matrixio_pcm_work(struct work_struct *work)
 
 static int matrixio_pcm_open(struct snd_pcm_substream *substream)
 {
-	int ret;
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	void *data;
 
 	printk(KERN_INFO "-------------pcm_open");
 
-	ret = snd_soc_set_runtime_hwparams(substream, &matrixio_pcm_hardware);
+	snd_soc_set_runtime_hwparams(substream, &matrixio_pcm_hardware);
 
-	if (ret)
-		return ret;
-/*
-	ret = snd_pcm_hw_constraint_integer(substream->runtime,
-					    SNDRV_PCM_HW_PARAM_PERIODS);
-	if (ret < 0)
-		return ret;
-*/
 	data = snd_soc_dai_get_dma_data(rtd->cpu_dai, substream);
 	runtime->private_data = data;
 
@@ -231,26 +207,17 @@ static struct snd_pcm_ops matrixio_pcm_ops = {
     .pointer = matrixio_pcm_pointer,
 };
 
-static int matrixio_pcm_probe(struct snd_soc_platform *platform)
+static int matrixio_pcm_new(struct snd_soc_pcm_runtime *rtd)
 {
-	int ret;
-	//	ret = request_irq(ms->irq, matrixio_pcm_interrupt, 0,
-	//"matrix-pcm", ms);
+	struct snd_card *card = rtd->card->snd_card;
+	size_t size = matrixio_pcm_hardware.buffer_bytes_max;
 
-	snd_soc_platform_set_drvdata(platform, &matrixio_soc_device);
-
-	return 0;
+	return snd_pcm_lib_preallocate_pages_for_all(
+	    rtd->pcm, SNDRV_DMA_TYPE_DEV, card->dev, size, size);
 }
 
-static int matrixio_pcm_remove(struct snd_soc_platform *platform) { return 0; }
-
-static int matrixio_pcm_new(struct snd_soc_pcm_runtime *rtd) { return 0; }
-
 static const struct snd_soc_platform_driver matrixio_soc_platform = {
-    .probe = matrixio_pcm_probe,
-    .remove = matrixio_pcm_remove,
-    .ops = &matrixio_pcm_ops,
-    .pcm_new = matrixio_pcm_new,
+    .ops = &matrixio_pcm_ops, .pcm_new = matrixio_pcm_new,
 };
 
 static int matrixio_pcm_platform_probe(struct platform_device *pdev)
@@ -290,7 +257,6 @@ static int matrixio_pcm_platform_probe(struct platform_device *pdev)
 
 	dev_notice(&pdev->dev, "MATRIXIO audio drive loaded (IRQ=%d)", ms->irq);
 
-	
 	return devm_snd_soc_register_platform(&pdev->dev,
 					      &matrixio_soc_platform);
 }

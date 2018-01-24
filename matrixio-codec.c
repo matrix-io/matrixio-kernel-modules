@@ -50,25 +50,24 @@ static struct snd_soc_ops matrixio_snd_ops = {
 };
 
 static struct snd_soc_dai_link matrixio_snd_soc_dai[] = {
-{
-    .name = "matrixio.0",
-    .stream_name = "matrixio.0",
-    .codec_dai_name = "snd-soc-dummy-dai",
-    .cpu_dai_name = "matrixio-dai.0",
-    .platform_name = "matrixio-pcm",
-    .codec_name = "snd-soc-dummy",
-    .ops = &matrixio_snd_ops,
-},
-{
-    .name = "matrixio.1",
-    .stream_name = "matrixio.1",
-    .codec_dai_name = "snd-soc-dummy-dai",
-    .cpu_dai_name = "matrixio-dai.1",
-    .platform_name = "matrixio-pcm",
-    .codec_name = "snd-soc-dummy",
-    .ops = &matrixio_snd_ops,
-}
-};
+    {
+	.name = "matrixio.0",
+	.stream_name = "matrixio.0",
+	.codec_dai_name = "snd-soc-dummy-dai",
+	.cpu_dai_name = "matrixio-dai.0",
+	.platform_name = "matrixio-pcm",
+	.codec_name = "snd-soc-dummy",
+	.ops = &matrixio_snd_ops,
+    },
+    {
+	.name = "matrixio.1",
+	.stream_name = "matrixio.1",
+	.codec_dai_name = "snd-soc-dummy-dai",
+	.cpu_dai_name = "matrixio-dai.1",
+	.platform_name = "matrixio-pcm",
+	.codec_name = "snd-soc-dummy",
+	.ops = &matrixio_snd_ops,
+    }};
 
 static struct snd_soc_card matrixio_soc_card = {
     .name = "MATRIXIO SOUND",
