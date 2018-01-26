@@ -14,7 +14,9 @@
 #include "matrixio-pcm.h"
 #include "matrixio-core.h"
 
+#include <asm/dma.h>
 #include <linux/cdev.h>
+#include <linux/dma-mapping.h>
 #include <linux/fs.h>
 #include <linux/init.h>
 #include <linux/module.h>
@@ -27,8 +29,6 @@
 #include <sound/pcm_params.h>
 #include <sound/soc.h>
 #include <sound/tlv.h>
-#include <linux/dma-mapping.h>
-#include <asm/dma.h>
 
 #define MATRIXIO_CHANNELS_MAX 8
 #define MATRIXIO_RATES SNDRV_PCM_RATE_8000_48000
@@ -45,11 +45,16 @@ static struct snd_pcm_hardware matrixio_pcm_hardware = {
     .info = SNDRV_PCM_INFO_MMAP | SNDRV_PCM_INFO_MMAP_VALID |
 	    SNDRV_PCM_INFO_INTERLEAVED | SNDRV_PCM_INFO_PAUSE |
 	    SNDRV_PCM_INFO_RESUME | SNDRV_PCM_INFO_NO_PERIOD_WAKEUP,
-    .period_bytes_min = 32,
-    .period_bytes_max = 64 * 1024,
-    .periods_min = 2,
-    .periods_max = 255,
-    .buffer_bytes_max = 128 * 1024,
+
+    .formats = MATRIXIO_FORMATS,
+    .rates = MATRIXIO_RATES,
+    .rate_min = 8000,
+    .rate_max = 48000,
+    .period_bytes_min = 128 * 2,
+    .period_bytes_max = 128 * 2,
+    .periods_min = 1,
+    .periods_max = 2,
+    .buffer_bytes_max = 128 * 2,
 };
 
 static irqreturn_t matrixio_pcm_interrupt(int irq, void *irq_data)
@@ -68,6 +73,7 @@ static void matrixio_pcm_work(struct work_struct *work)
 	//	spin_lock_irqsave(&ms->lock, flags)
 	ms = container_of(work, struct matrixio_substream, work);
 
+	ptr += 128;
 	// printk(KERN_INFO "%d\n", ms->stamp);
 	//
 	//							    event_work);
@@ -126,6 +132,7 @@ static int matrixio_pcm_hw_free(struct snd_pcm_substream *substream)
 static int matrixio_pcm_prepare(struct snd_pcm_substream *substream)
 {
 	printk(KERN_INFO "-------------pcm prepare");
+	ptr = 0;
 	return 0;
 }
 
@@ -158,33 +165,35 @@ static int matrixio_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 static snd_pcm_uframes_t
 matrixio_pcm_pointer(struct snd_pcm_substream *substream)
 {
-	printk(KERN_INFO "-------------pcm pointer ");
-	ptr += 128;
-	snd_pcm_uframes_t offset = ptr;
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct snd_pcm_runtime *runtime = substream->runtime;
+	unsigned int diff;
+	uint16_t *dma_data;
 
-	return offset;
-}
+	static snd_pcm_uframes_t frames = 0;
+	// struct bf5xx_i2s_pcm_data *dma_data;
 
-static int matrixio_pcm_ioctl(struct snd_pcm_substream *substream,
-			      unsigned int cmd, void *arg)
-{
-	printk(KERN_INFO "---------------pcm ioctl : [%d]", cmd);
-	switch (cmd) {
-	case SNDRV_PCM_IOCTL1_INFO:
-		return 0;
-	case SNDRV_PCM_IOCTL1_RESET:
-		printk(KERN_INFO "reset");
-		return 0; // snd_pcm_lib_ioctl_reset(substream, arg);
-	case SNDRV_PCM_IOCTL1_CHANNEL_INFO:
-		printk(KERN_INFO "info");
-		return 0; // snd_pcm_lib_ioctl_channel_info(substream, arg);
-	case SNDRV_PCM_IOCTL1_FIFO_SIZE:
-		printk(KERN_INFO "size");
-		return 0; // snd_pcm_lib_ioctl_fifo_size(substream, arg);
+	dma_data = snd_soc_dai_get_dma_data(rtd->cpu_dai, substream);
+
+	printk(KERN_INFO "%s", __func__);
+	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
+		diff = 128; // sport_curr_offset_tx(sport);
+	} else {
+		diff = 128; // sport_curr_offset_rx(sport);
 	}
-	return -ENXIO;
 
-	return 0;
+	/**
+	 * TX at least can report one frame beyond the end of the
+	 * buffer if we hit the wraparound case - clamp to within the
+	 * buffer as the ALSA APIs require.
+	 **/
+	if (diff == snd_pcm_lib_buffer_bytes(substream))
+		diff = 0;
+	frames = ptr - frames;
+	// frames = bytes_to_frames(substream->runtime, diff);
+	// if (dma_data->tdm_mode)
+	//	frames = frames * runtime->channels / 8;
+	return frames;
 }
 
 static int matrixio_pcm_copy(struct snd_pcm_substream *substream, int channel,
@@ -196,16 +205,26 @@ static int matrixio_pcm_copy(struct snd_pcm_substream *substream, int channel,
 	return 0;
 }
 
+static int matrixio_pcm_mmap(struct snd_pcm_substream *substream,
+			     struct vm_area_struct *vma)
+{
+	struct snd_pcm_runtime *runtime = substream->runtime;
+
+	return dma_mmap_wc(substream->pcm->card->dev, vma, runtime->dma_area,
+			   runtime->dma_addr, runtime->dma_bytes);
+}
+
 static struct snd_pcm_ops matrixio_pcm_ops = {
     .open = matrixio_pcm_open,
-    .close = matrixio_pcm_close,
-    //   .copy = matrixio_pcm_copy,
     .ioctl = snd_pcm_lib_ioctl,
-    //    .prepare = matrixio_pcm_prepare,
     .hw_params = matrixio_pcm_hw_params,
-    //  .hw_free = matrixio_pcm_hw_free,
+    .hw_free = matrixio_pcm_hw_free,
+    .prepare = matrixio_pcm_prepare,
     .trigger = matrixio_pcm_trigger,
     .pointer = matrixio_pcm_pointer,
+    .mmap = matrixio_pcm_mmap,
+    .copy = matrixio_pcm_copy,
+    .close = matrixio_pcm_close,
 };
 
 static int matrixio_pcm_new(struct snd_soc_pcm_runtime *rtd)

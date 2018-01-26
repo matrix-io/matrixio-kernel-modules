@@ -51,19 +51,28 @@ static struct snd_soc_ops matrixio_snd_ops = {
 
 static struct snd_soc_dai_link matrixio_snd_soc_dai[] = {
     {
-	.name = "matrixio.0",
-	.stream_name = "matrixio.0",
+        .name = "matrixio.pcm.0",
+        .stream_name = "matrixio.pcm.0",
+        .codec_dai_name = "snd-soc-dummy-dai",
+        .cpu_dai_name = "matrixio-pcm-out.0",
+        .platform_name = "matrixio-pcm",
+        .codec_name = "snd-soc-dummy",
+        .ops = &matrixio_snd_ops,
+    },
+    {
+	.name = "matrixio.mic.0",
+	.stream_name = "matrixio.mic.0",
 	.codec_dai_name = "snd-soc-dummy-dai",
-	.cpu_dai_name = "matrixio-dai.0",
+	.cpu_dai_name = "matrixio-mic.0",
 	.platform_name = "matrixio-pcm",
 	.codec_name = "snd-soc-dummy",
 	.ops = &matrixio_snd_ops,
     },
     {
-	.name = "matrixio.1",
-	.stream_name = "matrixio.1",
+	.name = "matrixio.mic.1",
+	.stream_name = "matrixio.mic.1",
 	.codec_dai_name = "snd-soc-dummy-dai",
-	.cpu_dai_name = "matrixio-dai.1",
+	.cpu_dai_name = "matrixio-mic.1",
 	.platform_name = "matrixio-pcm",
 	.codec_name = "snd-soc-dummy",
 	.ops = &matrixio_snd_ops,
@@ -178,10 +187,24 @@ static const struct snd_soc_codec_driver matrixio_soc_codec_driver = {
 
 static struct snd_soc_dai_driver matrixio_dai_driver[] = {
     {
-	.name = "matrixio-dai.0",
+        .name = "matrixio-pcm-out.0",
+        .playback =
+            {
+                .stream_name = "matrixio-pcm-out.0",
+                .channels_min = 2,
+                .channels_max = 2,
+                .rates = MATRIXIO_RATES,
+                .rate_min = 8000,
+                .rate_max = 48000,
+                .formats = MATRIXIO_FORMATS,
+            },
+        .ops = &matrixio_dai_ops,
+    },
+    {
+	.name = "matrixio-mic.0",
 	.capture =
 	    {
-		.stream_name = "matrixio.mic.0",
+		.stream_name = "matrixio-mic.0",
 		.channels_min = 1,
 		.channels_max = 1,
 		.rates = MATRIXIO_RATES,
@@ -192,10 +215,10 @@ static struct snd_soc_dai_driver matrixio_dai_driver[] = {
 	.ops = &matrixio_dai_ops,
     },
     {
-	.name = "matrixio-dai.1",
+	.name = "matrixio-mic.1",
 	.capture =
 	    {
-		.stream_name = "matrixio.mic.1",
+		.stream_name = "matrixio-mic.1",
 		.channels_min = 1,
 		.channels_max = 1,
 		.rates = MATRIXIO_RATES,
