@@ -51,13 +51,13 @@ static struct snd_soc_ops matrixio_snd_ops = {
 
 static struct snd_soc_dai_link matrixio_snd_soc_dai[] = {
     {
-        .name = "matrixio.pcm.0",
-        .stream_name = "matrixio.pcm.0",
-        .codec_dai_name = "snd-soc-dummy-dai",
-        .cpu_dai_name = "matrixio-pcm-out.0",
-        .platform_name = "matrixio-pcm",
-        .codec_name = "snd-soc-dummy",
-        .ops = &matrixio_snd_ops,
+	.name = "matrixio.pcm.0",
+	.stream_name = "matrixio.pcm.0",
+	.codec_dai_name = "snd-soc-dummy-dai",
+	.cpu_dai_name = "matrixio-pcm-out.0",
+	.platform_name = "matrixio-pcm",
+	.codec_name = "snd-soc-dummy",
+	.ops = &matrixio_snd_ops,
     },
     {
 	.name = "matrixio.mic.0",
@@ -187,18 +187,18 @@ static const struct snd_soc_codec_driver matrixio_soc_codec_driver = {
 
 static struct snd_soc_dai_driver matrixio_dai_driver[] = {
     {
-        .name = "matrixio-pcm-out.0",
-        .playback =
-            {
-                .stream_name = "matrixio-pcm-out.0",
-                .channels_min = 2,
-                .channels_max = 2,
-                .rates = MATRIXIO_RATES,
-                .rate_min = 8000,
-                .rate_max = 48000,
-                .formats = MATRIXIO_FORMATS,
-            },
-        .ops = &matrixio_dai_ops,
+	.name = "matrixio-pcm-out.0",
+	.playback =
+	    {
+		.stream_name = "matrixio-pcm-out.0",
+		.channels_min = 2,
+		.channels_max = 2,
+		.rates = MATRIXIO_RATES,
+		.rate_min = 8000,
+		.rate_max = 48000,
+		.formats = MATRIXIO_FORMATS,
+	    },
+	.ops = &matrixio_dai_ops,
     },
     {
 	.name = "matrixio-mic.0",
@@ -232,24 +232,21 @@ static struct snd_soc_dai_driver matrixio_dai_driver[] = {
 static int matrixio_probe(struct platform_device *pdev)
 {
 	int ret;
-	struct snd_soc_card *card = &matrixio_soc_card;
-
-	card->dev = &pdev->dev;
 
 	ret = snd_soc_register_codec(&pdev->dev, &matrixio_soc_codec_driver,
 				     matrixio_dai_driver,
 				     ARRAY_SIZE(matrixio_dai_driver));
-
 	if (ret) {
 		dev_err(&pdev->dev, "Failed to register MATRIXIO codec: %d\n",
 			ret);
 		return ret;
 	}
 
-	ret = devm_snd_soc_register_card(&pdev->dev, card);
+	matrixio_soc_card.dev = &pdev->dev;
 
+	ret = devm_snd_soc_register_card(&pdev->dev, &matrixio_soc_card);
 	if (ret) {
-		dev_err(&pdev->dev, "Failed to register MATRIXIO card: %d\n",
+		dev_err(&pdev->dev, "Failed to register MATRIXIO card (%d)\n",
 			ret);
 		return ret;
 	}

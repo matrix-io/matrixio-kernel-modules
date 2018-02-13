@@ -27,4 +27,5 @@ install: matrixio.dtbo
 
 clean:
 	make -C /lib/modules/$(shell uname -r)/build M=$(PWD) clean
+	sudo rm /lib/modules/$(shell uname -r)/kernel/sound/soc/codecs/*matrixio*
 	rm *.dtbo

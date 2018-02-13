@@ -57,7 +57,7 @@ static irqreturn_t matrixio_pcm_interrupt(int irq, void *irq_data)
 {
 	struct matrixio_substream *ms = irq_data;
 
-	//queue_work(ms->wq, &ms->work);
+	// queue_work(ms->wq, &ms->work);
 
 	return IRQ_HANDLED;
 }
