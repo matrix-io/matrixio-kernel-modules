@@ -23,7 +23,7 @@ static int force_end_work;
 static spinlock_t conf_lock;
 
 struct matrixio_uart_status {
-	uint8_t fifo_length : 8;
+	uint8_t dummy : 8;
 	uint8_t fifo_full : 1;
 	uint8_t fifo_empty : 1;
 	uint8_t uart_ucr : 2;
@@ -55,8 +55,9 @@ static void matrixio_uart_work(struct work_struct *w)
 	struct matrixio_uart_data uart_data;
 
 	spin_lock(&conf_lock);
-	regmap_read(matrixio->regmap, MATRIXIO_UART_BASE + 1,
+	regmap_read(matrixio->regmap, MATRIXIO_UART_BASE,
 		    (unsigned int *)&uart_data);
+
 	if (!uart_data.empty) {
 		tty_insert_flip_char(&port.state->port,
 				     (unsigned int)uart_data.uart_rx,
@@ -88,11 +89,12 @@ static void matrixio_uart_start_tx(struct uart_port *port)
 	while (1) {
 
 		do {
-			regmap_read(matrixio->regmap, MATRIXIO_UART_BASE,
+			regmap_read(matrixio->regmap, MATRIXIO_UART_BASE + 0x100,
 				    (unsigned int *)&uart_status);
+
 		} while (uart_status.uart_tx_busy);
 
-		regmap_write(matrixio->regmap, MATRIXIO_UART_BASE + 1,
+		regmap_write(matrixio->regmap, MATRIXIO_UART_BASE + 0x101,
 			     port->state->xmit.buf[port->state->xmit.tail]);
 		port->state->xmit.tail =
 		    (port->state->xmit.tail + 1) & (UART_XMIT_SIZE - 1);
@@ -118,8 +120,8 @@ static int matrixio_uart_startup(struct uart_port *port)
 
 	spin_lock(&conf_lock);
 
-	regmap_write(matrixio->regmap, MATRIXIO_UART_BASE + 2, 1);
-	regmap_write(matrixio->regmap, MATRIXIO_UART_BASE + 2, 0);
+	regmap_write(matrixio->regmap, MATRIXIO_UART_BASE + 0x102, 1);
+	regmap_write(matrixio->regmap, MATRIXIO_UART_BASE + 0x102, 0);
 
 	spin_unlock(&conf_lock);
 
