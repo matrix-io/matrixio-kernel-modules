@@ -181,12 +181,12 @@ static int matrixio_register_devices(struct matrixio *matrixio)
 		.platform_data = matrixio,
 		.pdata_size = sizeof(*matrixio),
 	    },
-	   /* {
+	    {
 		.name = "matrixio-codec",
 		.of_compatible = "matrixio-codec",
 		.platform_data = matrixio,
 		.pdata_size = sizeof(*matrixio),
-	    },*/
+	    },
 	    {
 		.name = "matrixio-uart",
 		.of_compatible = "matrixio-uart",

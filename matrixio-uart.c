@@ -215,7 +215,6 @@ static int matrixio_uart_probe(struct platform_device *pdev)
 	int ret;
 	struct device *dev = &pdev->dev;
 	struct device_node *np = dev->of_node;
-
 	matrixio = dev_get_drvdata(pdev->dev.parent);
 
 	if (np)
@@ -253,11 +252,12 @@ static int matrixio_uart_probe(struct platform_device *pdev)
 
 static int matrixio_uart_remove(struct platform_device *pdev)
 {
-
 	uart_remove_one_port(&matrixio_uart_driver, &port);
+	port.dev = NULL;
 	uart_unregister_driver(&matrixio_uart_driver);
 	return 0;
 }
+
 
 static const struct of_device_id matrixio_uart_dt_ids[] = {
     {.compatible = "matrixio-uart", .data = (void *)0}, {}};

@@ -8,8 +8,6 @@
 
 #include "matrixio-core.h"
 
-#define MATRIXIO_GPIO_BASE 0x2800
-
 struct matrixio_gpio {
 	struct gpio_chip chip;
 	struct matrixio *mio;
