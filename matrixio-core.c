@@ -137,6 +137,8 @@ int matrixio_hw_read_enqueue(struct matrixio *matrixio, unsigned int add,
 	int ret;
 	struct hardware_cmd *hw_addr;
 
+        mutex_lock(&matrixio->reg_lock);
+
 	hw_addr = (struct hardware_cmd *)matrixio->tx_buffer;
 	hw_addr->reg = add;
 	hw_addr->readnwrite = 1;
@@ -145,6 +147,8 @@ int matrixio_hw_read_enqueue(struct matrixio *matrixio, unsigned int add,
 
 	if (ret == 0)
 		kfifo_in(fifo, &matrixio->rx_buffer[2], length);
+
+        mutex_unlock(&matrixio->reg_lock);
 
 	return ret;
 }
