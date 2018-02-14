@@ -50,29 +50,20 @@ static struct snd_soc_ops matrixio_snd_ops = {
 };
 
 static struct snd_soc_dai_link matrixio_snd_soc_dai[] = {
-    {
-	.name = "matrixio.pcm.0",
-	.stream_name = "matrixio.pcm.0",
-	.codec_dai_name = "snd-soc-dummy-dai",
-	.cpu_dai_name = "matrixio-pcm-out.0",
-	.platform_name = "matrixio-pcm",
-	.codec_name = "snd-soc-dummy",
-	.ops = &matrixio_snd_ops,
-    },
+    /*  {
+	  .name = "matrixio.pcm.0",
+	  .stream_name = "matrixio.pcm.0",
+	  .codec_dai_name = "snd-soc-dummy-dai",
+	  .cpu_dai_name = "matrixio-pcm-out.0",
+	  .platform_name = "matrixio-pcm",
+	  .codec_name = "snd-soc-dummy",
+	  .ops = &matrixio_snd_ops,
+      },*/
     {
 	.name = "matrixio.mic.0",
 	.stream_name = "matrixio.mic.0",
 	.codec_dai_name = "snd-soc-dummy-dai",
 	.cpu_dai_name = "matrixio-mic.0",
-	.platform_name = "matrixio-pcm",
-	.codec_name = "snd-soc-dummy",
-	.ops = &matrixio_snd_ops,
-    },
-    {
-	.name = "matrixio.mic.1",
-	.stream_name = "matrixio.mic.1",
-	.codec_dai_name = "snd-soc-dummy-dai",
-	.cpu_dai_name = "matrixio-mic.1",
 	.platform_name = "matrixio-pcm",
 	.codec_name = "snd-soc-dummy",
 	.ops = &matrixio_snd_ops,
@@ -186,7 +177,7 @@ static const struct snd_soc_codec_driver matrixio_soc_codec_driver = {
 };
 
 static struct snd_soc_dai_driver matrixio_dai_driver[] = {
-    {
+    /* {
 	.name = "matrixio-pcm-out.0",
 	.playback =
 	    {
@@ -199,28 +190,14 @@ static struct snd_soc_dai_driver matrixio_dai_driver[] = {
 		.formats = MATRIXIO_FORMATS,
 	    },
 	.ops = &matrixio_dai_ops,
-    },
+    },*/
     {
 	.name = "matrixio-mic.0",
 	.capture =
 	    {
 		.stream_name = "matrixio-mic.0",
 		.channels_min = 1,
-		.channels_max = 1,
-		.rates = MATRIXIO_RATES,
-		.rate_min = 8000,
-		.rate_max = 48000,
-		.formats = MATRIXIO_FORMATS,
-	    },
-	.ops = &matrixio_dai_ops,
-    },
-    {
-	.name = "matrixio-mic.1",
-	.capture =
-	    {
-		.stream_name = "matrixio-mic.1",
-		.channels_min = 1,
-		.channels_max = 1,
+		.channels_max = 8,
 		.rates = MATRIXIO_RATES,
 		.rate_min = 8000,
 		.rate_max = 48000,

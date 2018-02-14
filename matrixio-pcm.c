@@ -31,8 +31,8 @@
 #define MATRIXIO_CHANNELS_MAX 8
 #define MATRIXIO_RATES SNDRV_PCM_RATE_8000_48000
 #define MATRIXIO_FORMATS SNDRV_PCM_FMTBIT_S16_LE
-#define MATRIXIO_MICARRAY_BASE 0x1800
-#define MATRIXIO_MICARRAY_BUFFER_SIZE (128 * MATRIXIO_CHANNELS_MAX * 2)
+#define MATRIXIO_MICARRAY_BASE 0x2000
+#define MATRIXIO_MICARRAY_BUFFER_SIZE (256 * MATRIXIO_CHANNELS_MAX * 2)
 #define MATRIXIO_FIFO_SIZE (MATRIXIO_MICARRAY_BUFFER_SIZE * 4)
 
 unsigned int ptr;
@@ -53,7 +53,7 @@ static irqreturn_t matrixio_pcm_interrupt(int irq, void *irq_data)
 {
 	struct matrixio_substream *ms = irq_data;
 
-	// queue_work(ms->wq, &ms->work);
+	queue_work(ms->wq, &ms->work);
 
 	return IRQ_HANDLED;
 }
@@ -63,8 +63,6 @@ static void matrixio_pcm_work(struct work_struct *wk)
 	unsigned long flags;
 
 	struct matrixio_substream *ms;
-
-	return;
 
 	ms = container_of(wk, struct matrixio_substream, work);
 
@@ -162,7 +160,10 @@ static int matrixio_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 static snd_pcm_uframes_t
 matrixio_pcm_pointer(struct snd_pcm_substream *substream)
 {
-	printk(KERN_INFO "-------------pcm pointer ");
+	struct snd_pcm_runtime * runtime = substream->runtime;
+	struct matrixio_substream *ms = runtime->private_data; 
+	//printk(KERN_INFO "-------------pcm pointer %d %d",ms->stamp, ms->mio->stamp);
+	//kfifo_len
 	ptr += 128;
 	snd_pcm_uframes_t offset = ptr;
 
@@ -221,6 +222,8 @@ static int matrixio_pcm_platform_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 
+	ms->mio = dev_get_drvdata(pdev->dev.parent);
+
 	ms->stamp = 1010101;
 
 	sprintf(workqueue_name, "matrixio_pcm");
@@ -247,8 +250,6 @@ static int matrixio_pcm_platform_probe(struct platform_device *pdev)
 		destroy_workqueue(ms->wq);
 		return -EBUSY;
 	}
-
-	dev_notice(&pdev->dev, "MATRIXIO audio drive loaded (IRQ=%d)", ms->irq);
 
 	ret =
 	    devm_snd_soc_register_platform(&pdev->dev, &matrixio_soc_platform);

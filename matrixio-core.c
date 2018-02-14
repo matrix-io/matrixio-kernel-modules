@@ -24,8 +24,7 @@
 
 struct hardware_cmd {
 	uint8_t readnwrite : 1;
-	uint8_t burst : 1;
-	uint16_t reg : 14;
+	uint16_t reg : 15;
 	uint16_t value;
 };
 
@@ -76,7 +75,6 @@ int matrixio_hw_reg_read(void *context, unsigned int reg, unsigned int *val)
 	hw_addr = (struct hardware_cmd *)matrixio->tx_buffer;
 
 	hw_addr->reg = reg;
-	hw_addr->burst = 0;
 	hw_addr->readnwrite = 1;
 	hw_addr->value = 0;
 
@@ -101,7 +99,6 @@ int matrixio_hw_reg_write(void *context, unsigned int reg, unsigned int val)
 	hw_cmd = (struct hardware_cmd *)matrixio->tx_buffer;
 
 	hw_cmd->reg = reg;
-	hw_cmd->burst = 0;
 	hw_cmd->readnwrite = 0;
 	hw_cmd->value = val;
 
@@ -142,7 +139,6 @@ int matrixio_hw_read_enqueue(struct matrixio *matrixio, unsigned int add,
 
 	hw_addr = (struct hardware_cmd *)matrixio->tx_buffer;
 	hw_addr->reg = add;
-	hw_addr->burst = 1;
 	hw_addr->readnwrite = 1;
 
 	ret = matrixio_spi_transfer(matrixio, length + 2);
@@ -220,7 +216,9 @@ static int matrixio_register_devices(struct matrixio *matrixio)
 		.of_compatible = "matrixio-imu",
 		.platform_data = matrixio,
 		.pdata_size = sizeof(*matrixio),
-	    }};
+	    }
+
+	};
 
 	return devm_mfd_add_devices(matrixio->dev, -1, cells, ARRAY_SIZE(cells),
 				    NULL, 0, NULL);
@@ -264,6 +262,8 @@ static int matrixio_core_probe(struct spi_device *spi)
 	matrixio->dev = &spi->dev;
 
 	matrixio->spi = spi;
+
+	matrixio->stamp = 777;
 
 	spin_lock_init(&matrixio->spi_lock);
 
