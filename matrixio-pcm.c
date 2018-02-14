@@ -60,19 +60,17 @@ static irqreturn_t matrixio_pcm_interrupt(int irq, void *irq_data)
 
 static void matrixio_pcm_work(struct work_struct *wk)
 {
-	unsigned long flags;
-
 	struct matrixio_substream *ms;
 
 	ms = container_of(wk, struct matrixio_substream, work);
 
-	spin_lock_irqsave(&ms->lock, flags);
+	spin_lock(&ms->lock);
 
 	matrixio_hw_read_enqueue(ms->mio, MATRIXIO_MICARRAY_BASE,
 				 MATRIXIO_MICARRAY_BUFFER_SIZE,
 				 &ms->capture_fifo);
 
-	spin_unlock_irqrestore(&ms->lock, flags);
+	spin_unlock(&ms->lock);
 	// wake_up_interruptible(&wq);
 }
 
