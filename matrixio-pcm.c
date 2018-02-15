@@ -32,35 +32,46 @@
 #define MATRIXIO_RATES SNDRV_PCM_RATE_8000_48000
 #define MATRIXIO_FORMATS SNDRV_PCM_FMTBIT_S16_LE
 #define MATRIXIO_MICARRAY_BASE 0x2000
-#define MATRIXIO_MICARRAY_BUFFER_SIZE (256 * MATRIXIO_CHANNELS_MAX * 2)
-#define MATRIXIO_FIFO_SIZE (MATRIXIO_MICARRAY_BUFFER_SIZE * 4)
+#define MATRIXIO_MICARRAY_BUFFER_SIZE (256 * 1 /*MATRIXIO_CHANNELS_MAX*/ * 2)
+#define MATRIXIO_FIFO_SIZE (MATRIXIO_MICARRAY_BUFFER_SIZE * 16)
 
-unsigned int ptr;
+static int pos = 0;
 
-static struct snd_pcm *matrixio_pcm;
+static struct matrixio_substream *ms;
 
 static struct snd_pcm_hardware matrixio_pcm_capture_hw = {
     .info = SNDRV_PCM_INFO_MMAP | SNDRV_PCM_INFO_MMAP_VALID |
 	    SNDRV_PCM_INFO_INTERLEAVED | SNDRV_PCM_INFO_PAUSE,
-    .period_bytes_min = 32,
-    .period_bytes_max = 64 * 1024,
-    .periods_min = 2,
-    .periods_max = 255,
-    .buffer_bytes_max = 128 * 1024,
+    .period_bytes_min = 256 * 2,
+    .period_bytes_max = 256 * 2,
+    .periods_min = 1,
+    .periods_max = 16,
+    .buffer_bytes_max = 256 * 2 * 16,
 };
 
 static void matrixio_pcm_capture_work(struct work_struct *wk)
 {
+	int ret;
+	uint8_t raw[MATRIXIO_MICARRAY_BUFFER_SIZE];
 	struct matrixio_substream *ms;
 
 	ms = container_of(wk, struct matrixio_substream, work);
 
 	mutex_lock(&ms->lock);
 
-	matrixio_hw_read_enqueue(ms->mio, MATRIXIO_MICARRAY_BASE,
+	ret = matrixio_hw_buf_read(ms->mio, MATRIXIO_MICARRAY_BASE,
+				   MATRIXIO_MICARRAY_BUFFER_SIZE, raw);
+
+	kfifo_in(&ms->capture_fifo, raw, MATRIXIO_MICARRAY_BUFFER_SIZE);
+	/*
+	ret = matrixio_hw_read_enqueue(ms->mio, MATRIXIO_MICARRAY_BASE,
 				 MATRIXIO_MICARRAY_BUFFER_SIZE,
 				 &ms->capture_fifo);
 
+	printk(KERN_INFO "%d %d %d", ret, kfifo_len(&ms->capture_fifo),
+	       MATRIXIO_MICARRAY_BUFFER_SIZE);
+*/
+	snd_pcm_period_elapsed(ms->capture_substream);
 	mutex_unlock(&ms->lock);
 }
 
@@ -69,7 +80,7 @@ static irqreturn_t matrixio_pcm_interrupt(int irq, void *irq_data)
 	static int initialized = 0;
 	struct matrixio_substream *ms = irq_data;
 
-	if (ms->capture_substream)
+	if (ms->capture_substream == 0)
 		return IRQ_NONE;
 
 	if (initialized == 0) {
@@ -84,18 +95,13 @@ static irqreturn_t matrixio_pcm_interrupt(int irq, void *irq_data)
 
 static int matrixio_pcm_open(struct snd_pcm_substream *substream)
 {
-
-	int rate;
-	struct matrixio_substream *ms = snd_pcm_substream_chip(substream);
 	struct snd_pcm_runtime *runtime = substream->runtime;
 
-	snd_pcm_set_sync(substream);
-	runtime->hw = matrixio_pcm_capture_hw;
+	snd_soc_set_runtime_hwparams(substream, &matrixio_pcm_capture_hw);
 
-	mutex_lock(&ms->lock);
+	//	snd_pcm_set_sync(substream);
 
 	if (ms->capture_substream != NULL) {
-		mutex_unlock(&ms->lock);
 		return -EBUSY;
 	}
 	ms->capture_substream = substream;
@@ -104,34 +110,28 @@ static int matrixio_pcm_open(struct snd_pcm_substream *substream)
 
 	flush_workqueue(ms->wq);
 
-	mutex_unlock(&ms->lock);
-
 	return 0;
 }
 
 static int matrixio_pcm_close(struct snd_pcm_substream *substream)
 {
-	printk(KERN_INFO "-------------pcm_close");
+	ms->capture_substream = 0;
 	return 0;
 }
 
 static int matrixio_pcm_hw_params(struct snd_pcm_substream *substream,
 				  struct snd_pcm_hw_params *hw_params)
 {
-	int ret;
 	printk(KERN_INFO "-------------pcm hw params");
-
-	// ret = snd_pcm_lib_malloc_pages(substream,
-	// params_buffer_bytes(hw_params));
 	return 0;
+	return snd_pcm_lib_malloc_pages(substream,
+					params_buffer_bytes(hw_params));
 }
 
 static int matrixio_pcm_hw_free(struct snd_pcm_substream *substream)
 {
 	printk(KERN_INFO "-------------pcm hw free");
-
-	// snd_pcm_set_runtime_buffer(substream, NULL);
-	return 0;
+	return snd_pcm_lib_free_pages(substream);
 }
 
 static int matrixio_pcm_prepare(struct snd_pcm_substream *substream)
@@ -168,22 +168,33 @@ static snd_pcm_uframes_t
 matrixio_pcm_pointer(struct snd_pcm_substream *substream)
 {
 	struct snd_pcm_runtime *runtime = substream->runtime;
-	struct matrixio_substream *ms = runtime->private_data;
-	// printk(KERN_INFO "-------------pcm pointer %d %d",ms->stamp,
-	// ms->mio->stamp);
-	// kfifo_len
-	ptr += 128;
-	snd_pcm_uframes_t offset = ptr;
+	printk(KERN_INFO "-------------pcm pointer %d",
+	       kfifo_len(&ms->capture_fifo));
 
-	return 0;
+	pos = kfifo_len(&ms->capture_fifo) / 2;
+	return pos;
 }
 
 static int matrixio_pcm_copy(struct snd_pcm_substream *substream, int channel,
 			     snd_pcm_uframes_t pos, void __user *buf,
 			     snd_pcm_uframes_t count)
 {
+	int ret, len;
+	unsigned int copied;
 	printk(KERN_INFO "-----------------pcm copy channel=%d pos=%d count=%d",
 	       channel, pos, count);
+	/*
+		len = kfifo_len(&ms->capture_fifo);
+
+		if (len < count)
+			ret = kfifo_to_user(&ms->capture_fifo, buf, len,
+	   &copied);
+		else
+			*/
+	ret = kfifo_to_user(&ms->capture_fifo, buf, count * 2, &copied);
+
+	printk(KERN_INFO "len=%d count=%d copied=%d",
+	       kfifo_len(&ms->capture_fifo), count, copied);
 	return 0;
 }
 
@@ -202,14 +213,17 @@ static struct snd_pcm_ops matrixio_pcm_ops = {
 
 static int matrixio_pcm_new(struct snd_soc_pcm_runtime *rtd)
 {
-	return 0;
 	/*
-	struct snd_card *card = rtd->card->snd_card;
-	size_t size = matrixio_pcm_hardware.buffer_bytes_max;
+	struct snd_pcm *pcm = rtd->pcm;
 
-	return snd_pcm_lib_preallocate_pages_for_all(
-	    rtd->pcm, SNDRV_DMA_TYPE_DEV, card->dev, size, size);
+	struct platform_device *pdev = to_platform_device(rtd->platform->dev);
+
+	struct matrixio_substream *ms = dev_get_drvdata(&pdev->dev);
+
+	dev_set_drvdata(rtd->dev, ms);
+	// snd_soc_card_set_drvdata(rtd->card, ms);
 */
+	return 0;
 }
 
 static const struct snd_soc_platform_driver matrixio_soc_platform = {
@@ -221,7 +235,6 @@ static int matrixio_pcm_platform_probe(struct platform_device *pdev)
 
 	int ret;
 	char workqueue_name[12];
-	struct matrixio_substream *ms;
 
 	ms = devm_kzalloc(&pdev->dev, sizeof(struct matrixio_substream),
 			  GFP_KERNEL);
@@ -231,6 +244,8 @@ static int matrixio_pcm_platform_probe(struct platform_device *pdev)
 	}
 
 	ms->mio = dev_get_drvdata(pdev->dev.parent);
+
+	ms->capture_substream = 0;
 
 	mutex_init(&ms->lock);
 	ms->stamp = 1010101;
@@ -265,6 +280,8 @@ static int matrixio_pcm_platform_probe(struct platform_device *pdev)
 			"MATRIXIO sound SoC register platform error: %d", ret);
 		return ret;
 	}
+
+	dev_set_drvdata(&pdev->dev, ms);
 
 	dev_notice(&pdev->dev, "MATRIXIO audio drive loaded (IRQ=%d)", ms->irq);
 	return 0;

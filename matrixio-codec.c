@@ -33,11 +33,7 @@
 #define MATRIXIO_MICARRAY_BUFFER_SIZE (128 * MATRIXIO_CHANNELS_MAX * 2)
 #define MATRIXIO_FIFO_SIZE (MATRIXIO_MICARRAY_BUFFER_SIZE * 4)
 
-static int matrixio_startup(struct snd_pcm_substream *substream)
-{
-	printk(KERN_INFO "startup");
-	return 0;
-}
+static int matrixio_startup(struct snd_pcm_substream *substream) { return 0; }
 
 static int matrixio_hw_params(struct snd_pcm_substream *substream,
 			      struct snd_pcm_hw_params *params)
@@ -80,34 +76,24 @@ static int matrixio_codec_hw_params(struct snd_pcm_substream *substream,
 				    struct snd_pcm_hw_params *params,
 				    struct snd_soc_dai *dai)
 {
-
-	printk(KERN_INFO "::rate %d", params_rate(params));
-
 	return 0;
 }
 
 static int matrixio_codec_set_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 {
-	printk(KERN_INFO "::fmt %d", fmt);
 	return 0;
 }
 
 static int matrixio_codec_prepare(struct snd_pcm_substream *substream,
 				  struct snd_soc_dai *dai)
 {
-	printk(KERN_INFO "::prepare");
 	return 0;
 }
 
-/* codec dai component */
 static int matrixio_codec_dai_startup(struct snd_pcm_substream *substream,
 				      struct snd_soc_dai *dai)
 {
 	struct matrixio_substream *ms = snd_soc_dai_get_drvdata(dai);
-
-	snd_soc_dai_set_dma_data(dai, substream, ms);
-
-	printk(KERN_INFO "::dai startup");
 
 	return 0;
 }
@@ -115,21 +101,18 @@ static int matrixio_codec_dai_startup(struct snd_pcm_substream *substream,
 static int matrixio_codec_dai_digital_mute(struct snd_soc_dai *codec_dai,
 					   int mute)
 {
-	printk(KERN_INFO "::DIGITAL MUTE");
 	return 0;
 }
 
 static int matrixio_codec_dai_trigger(struct snd_pcm_substream *substream,
 				      int cmd, struct snd_soc_dai *codec_dai)
 {
-	printk(KERN_INFO "::trigger");
 	return 0;
 }
 
 static void matrixio_codec_dai_shutdown(struct snd_pcm_substream *substream,
 					struct snd_soc_dai *codec_dai)
 {
-	printk(KERN_INFO "::shutdown");
 }
 
 static const struct snd_soc_dai_ops matrixio_dai_ops = {
