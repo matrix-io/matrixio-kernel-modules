@@ -42,11 +42,11 @@ static struct matrixio_substream *ms;
 static struct snd_pcm_hardware matrixio_pcm_capture_hw = {
     .info = SNDRV_PCM_INFO_MMAP | SNDRV_PCM_INFO_MMAP_VALID |
 	    SNDRV_PCM_INFO_INTERLEAVED | SNDRV_PCM_INFO_PAUSE,
-    .period_bytes_min = 256 * 2,
-    .period_bytes_max = 256 * 2,
-    .periods_min = 1,
-    .periods_max = 16,
-    .buffer_bytes_max = 256 * 2 * 16,
+    .period_bytes_min = 256 * 2 * 8,
+    .period_bytes_max = 256 * 2 * 32,
+    .periods_min = 2,
+    .periods_max = 4,
+    .buffer_bytes_max = 256 * 2 * 16 * 16,
 };
 
 static void matrixio_pcm_capture_work(struct work_struct *wk)
