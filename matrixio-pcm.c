@@ -59,7 +59,7 @@ static void matrixio_pcm_capture_work(struct work_struct *wk)
 
 	mutex_lock(&ms->lock);
 
-	ret = matrixio_hw_buf_read(ms->mio, MATRIXIO_MICARRAY_BASE,
+	ret = matrixio_read(ms->mio, MATRIXIO_MICARRAY_BASE,
 				   MATRIXIO_MICARRAY_BUFFER_SIZE, raw);
 
 	kfifo_in(&ms->capture_fifo, raw, MATRIXIO_MICARRAY_BUFFER_SIZE);
