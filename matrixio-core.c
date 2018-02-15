@@ -24,7 +24,7 @@
 
 struct hardware_cmd {
 	uint8_t readnwrite : 1;
-	uint16_t reg : 14;
+	uint16_t reg : 15;
 	uint16_t value;
 };
 
