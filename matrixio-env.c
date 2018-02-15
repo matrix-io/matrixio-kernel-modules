@@ -100,7 +100,7 @@ static int matrixio_env_read_raw(struct iio_dev *indio_dev,
 	struct matrixio_env_data env_data;
 
 	mutex_lock(&indio_dev->mlock);
-	ret = matrixio_hw_buf_read(
+	ret = matrixio_read(
 	    data->mio, MATRIXIO_MCU_BASE + (MATRIXIO_SRAM_OFFSET_ENV >> 1),
 	    sizeof(env_data), &env_data);
 	mutex_unlock(&indio_dev->mlock);

@@ -67,11 +67,12 @@ static void matrixio_pcm_work(struct work_struct *w)
 	unsigned long flags;
 
 	spin_lock_irqsave(&ms->lock, flags);
-
+/*
 	matrixio_hw_read_enqueue(ms->mio, MATRIXIO_MICARRAY_BASE,
 				 MATRIXIO_MICARRAY_BUFFER_SIZE, &pcm_fifo);
 
-	spin_unlock_irqrestore(&ms->lock, flags);
+**/
+			 	 spin_unlock_irqrestore(&ms->lock, flags);
 
 	wake_up_interruptible(&wq);
 }
