@@ -38,7 +38,7 @@ Add in `/boot/config.txt`
 dtoverlay=matrixio
 ```
 
-It allows and activate the MATRIXIO Kernel modules. MATRIX HAL and MALOS layer don't support this configuration.
+It allows and activate the MATRIXIO Kernel modules. **MATRIX HAL and MALOS layer don't support this configuration**.
 
 ## Status
 
@@ -46,5 +46,5 @@ It allows and activate the MATRIXIO Kernel modules. MATRIX HAL and MALOS layer d
 * GPIO = Complete (without PWM and Servo)
 * Sensors = Complete with IIO implementation.
 * Zwave UART = Unstable, It has a bug in the remove process. (Work)
-* ALSA - Microphones - Playback = IN DEVELOPMENT
+* ALSA - Microphones - Playback = **IN DEVELOPMENT**
 
