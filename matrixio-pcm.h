@@ -19,6 +19,7 @@ struct matrixio_substream {
 	struct snd_pcm *pcm;
 
 	snd_pcm_uframes_t position;
+	int channels;
 };
 
 #endif

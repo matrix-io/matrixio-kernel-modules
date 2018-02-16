@@ -31,7 +31,6 @@
 #define MATRIXIO_CHANNELS_MAX 8
 #define MATRIXIO_RATES SNDRV_PCM_RATE_8000_48000
 #define MATRIXIO_FORMATS SNDRV_PCM_FMTBIT_S16_LE
-#define MATRIXIO_MICARRAY_BASE 0x2000
 #define MATRIXIO_MICARRAY_BUFFER_SIZE (256 * 1 /*MATRIXIO_CHANNELS_MAX*/ * 2)
 #define MATRIXIO_FIFO_SIZE (MATRIXIO_MICARRAY_BUFFER_SIZE * 32)
 
@@ -39,10 +38,12 @@ static struct matrixio_substream *ms;
 
 static uint16_t matrixio_buf[MATRIXIO_CHANNELS_MAX][8192];
 
-static struct snd_pcm_hardware matrixio_pcm_capture_hw = {
-    .info = // SNDRV_PCM_INFO_MMAP | SNDRV_PCM_INFO_MMAP_VALID |
-    SNDRV_PCM_INFO_INTERLEAVED | SNDRV_PCM_INFO_PAUSE,
+static const uint16_t matrixio_params[][3] = {
+    {8000, 380, 0},  {12000, 253, 2}, {16000, 189, 3}, {22050, 134, 5},
+    {24000, 126, 5}, {32000, 94, 6},  {44100, 68, 8},   {48000, 62, 8}};
 
+static struct snd_pcm_hardware matrixio_pcm_capture_hw = {
+    .info = SNDRV_PCM_INFO_INTERLEAVED | SNDRV_PCM_INFO_PAUSE,
     .formats = SNDRV_PCM_FMTBIT_S16_LE,
     .rates = SNDRV_PCM_RATE_8000_48000,
     .rate_min = 8000,
@@ -54,7 +55,6 @@ static struct snd_pcm_hardware matrixio_pcm_capture_hw = {
     .period_bytes_max = 32768,
     .periods_min = 4,
     .periods_max = 8,
-
 };
 
 static void matrixio_pcm_capture_work(struct work_struct *wk)
@@ -124,19 +124,32 @@ static int matrixio_pcm_close(struct snd_pcm_substream *substream)
 static int matrixio_pcm_hw_params(struct snd_pcm_substream *substream,
 				  struct snd_pcm_hw_params *hw_params)
 {
-	int ret;
-	printk(KERN_INFO "-------------pcm hw params");
-	// return 0;
-	printk(KERN_INFO "c %d", params_channels(hw_params));
+	int i;
+	int rate;
+
+	ms->channels = params_channels(hw_params);
+
 	printk(KERN_INFO "w %d",
 	       snd_pcm_format_width(params_format(hw_params)));
 
-	return 0;
-	ret =
-	    snd_pcm_lib_malloc_pages(substream, params_buffer_bytes(hw_params));
+	printk(KERN_INFO "rate  %d", params_rate(hw_params));
 
-	printk(KERN_INFO "ret %d", ret);
-	return ret;
+	rate = params_rate(hw_params);
+
+	for (i = 0; i < ARRAY_SIZE(matrixio_params); i++) {
+		if (rate == matrixio_params[i][0]) {
+			regmap_write(ms->mio->regmap,
+				     MATRIXIO_MICARRAY_BASE + 0x801,
+				     matrixio_params[i][1]);
+
+			regmap_write(ms->mio->regmap,
+				     MATRIXIO_MICARRAY_BASE + 0x802,
+				     matrixio_params[i][2]);
+			break;
+		}
+	}
+
+	return 0;
 }
 
 static int matrixio_pcm_hw_free(struct snd_pcm_substream *substream)
@@ -180,10 +193,7 @@ static struct snd_pcm_ops matrixio_pcm_ops = {
     .close = matrixio_pcm_close,
 };
 
-static int matrixio_pcm_new(struct snd_soc_pcm_runtime *rtd)
-{
-	return 0;
-}
+static int matrixio_pcm_new(struct snd_soc_pcm_runtime *rtd) { return 0; }
 
 static const struct snd_soc_platform_driver matrixio_soc_platform = {
     .ops = &matrixio_pcm_ops, .pcm_new = matrixio_pcm_new,
