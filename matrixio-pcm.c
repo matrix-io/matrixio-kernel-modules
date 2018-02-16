@@ -40,7 +40,7 @@ static uint16_t matrixio_buf[MATRIXIO_CHANNELS_MAX][8192];
 
 static const uint16_t matrixio_params[][3] = {
     {8000, 380, 0},  {12000, 253, 2}, {16000, 189, 3}, {22050, 134, 5},
-    {24000, 126, 5}, {32000, 94, 6},  {44100, 68, 8},  {48000, 62, 8}};
+    {24000, 126, 5}, {32000, 94, 6},  {44100, 68, 7},  {48000, 62, 7}};
 
 static struct snd_pcm_hardware matrixio_pcm_capture_hw = {
     .info = SNDRV_PCM_INFO_INTERLEAVED | SNDRV_PCM_INFO_PAUSE,

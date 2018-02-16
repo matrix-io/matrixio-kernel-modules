@@ -259,7 +259,6 @@ static int matrixio_uart_remove(struct platform_device *pdev)
 	return 0;
 }
 
-
 static const struct of_device_id matrixio_uart_dt_ids[] = {
     {.compatible = "matrixio-uart", .data = (void *)0}, {}};
 

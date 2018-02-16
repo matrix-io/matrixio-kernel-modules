@@ -51,9 +51,9 @@ static int matrixio_gpio_direction_output(struct gpio_chip *gc, unsigned offset,
 
 	mutex_lock(&chip->lock);
 
-  regmap_read(chip->mio->regmap, MATRIXIO_GPIO_BASE, &gpio_direction);
+	regmap_read(chip->mio->regmap, MATRIXIO_GPIO_BASE, &gpio_direction);
 	regmap_read(chip->mio->regmap, MATRIXIO_GPIO_BASE + 1, &gpio_value);
-        
+
 	if (value)
 		gpio_value |= BIT(offset);
 	else
@@ -61,7 +61,7 @@ static int matrixio_gpio_direction_output(struct gpio_chip *gc, unsigned offset,
 
 	gpio_direction |= BIT(offset);
 
-  regmap_write(chip->mio->regmap, MATRIXIO_GPIO_BASE, gpio_direction);
+	regmap_write(chip->mio->regmap, MATRIXIO_GPIO_BASE, gpio_direction);
 	regmap_write(chip->mio->regmap, MATRIXIO_GPIO_BASE + 1, gpio_value);
 	mutex_unlock(&chip->lock);
 
