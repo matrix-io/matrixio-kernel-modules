@@ -35,14 +35,13 @@
 #define MATRIXIO_MICARRAY_BUFFER_SIZE (256 * 1 /*MATRIXIO_CHANNELS_MAX*/ * 2)
 #define MATRIXIO_FIFO_SIZE (MATRIXIO_MICARRAY_BUFFER_SIZE * 32)
 
-static snd_pcm_uframes_t position = 0;
 static struct matrixio_substream *ms;
 
 static uint16_t matrixio_buf[MATRIXIO_CHANNELS_MAX][8192];
 
 static struct snd_pcm_hardware matrixio_pcm_capture_hw = {
-    .info = SNDRV_PCM_INFO_MMAP | SNDRV_PCM_INFO_MMAP_VALID |
-	    SNDRV_PCM_INFO_INTERLEAVED | SNDRV_PCM_INFO_PAUSE,
+    .info = // SNDRV_PCM_INFO_MMAP | SNDRV_PCM_INFO_MMAP_VALID |
+    SNDRV_PCM_INFO_INTERLEAVED | SNDRV_PCM_INFO_PAUSE,
 
     .formats = SNDRV_PCM_FMTBIT_S16_LE,
     .rates = SNDRV_PCM_RATE_8000_48000,
@@ -70,11 +69,9 @@ static void matrixio_pcm_capture_work(struct work_struct *wk)
 
 	ret = matrixio_read(ms->mio, MATRIXIO_MICARRAY_BASE,
 			    MATRIXIO_MICARRAY_BUFFER_SIZE,
-			    &matrixio_buf[0][position]);
+			    &matrixio_buf[0][ms->position]);
 
-	//	kfifo_in(&ms->capture_fifo, raw, MATRIXIO_MICARRAY_BUFFER_SIZE);
-
-	position += 256;
+	ms->position += 256;
 	mutex_unlock(&ms->lock);
 
 	snd_pcm_period_elapsed(ms->capture_substream);
@@ -104,16 +101,14 @@ static int matrixio_pcm_open(struct snd_pcm_substream *substream)
 
 	snd_soc_set_runtime_hwparams(substream, &matrixio_pcm_capture_hw);
 
-	//	snd_pcm_set_sync(substream);
+	snd_pcm_set_sync(substream);
 
 	if (ms->capture_substream != NULL) {
 		return -EBUSY;
 	}
 	ms->capture_substream = substream;
 
-	kfifo_reset(&ms->capture_fifo);
-
-	position = 0;
+	ms->position = 0;
 
 	flush_workqueue(ms->wq);
 
@@ -129,10 +124,19 @@ static int matrixio_pcm_close(struct snd_pcm_substream *substream)
 static int matrixio_pcm_hw_params(struct snd_pcm_substream *substream,
 				  struct snd_pcm_hw_params *hw_params)
 {
+	int ret;
 	printk(KERN_INFO "-------------pcm hw params");
+	// return 0;
+	printk(KERN_INFO "c %d", params_channels(hw_params));
+	printk(KERN_INFO "w %d",
+	       snd_pcm_format_width(params_format(hw_params)));
+
 	return 0;
-	return snd_pcm_lib_malloc_pages(substream,
-					params_buffer_bytes(hw_params));
+	ret =
+	    snd_pcm_lib_malloc_pages(substream, params_buffer_bytes(hw_params));
+
+	printk(KERN_INFO "ret %d", ret);
+	return ret;
 }
 
 static int matrixio_pcm_hw_free(struct snd_pcm_substream *substream)
@@ -143,6 +147,7 @@ static int matrixio_pcm_hw_free(struct snd_pcm_substream *substream)
 
 static int matrixio_pcm_prepare(struct snd_pcm_substream *substream)
 {
+	ms->position = 0;
 	printk(KERN_INFO "-------------pcm prepare");
 	return 0;
 }
@@ -157,6 +162,11 @@ static int matrixio_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 	case SNDRV_PCM_TRIGGER_START:
 	case SNDRV_PCM_TRIGGER_RESUME:
 	case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
+		/*
+		mutex_lock(&ms->lock);
+		ms->position = 0;
+		mutex_unlock(&ms->lock);
+		*/
 		break;
 
 	case SNDRV_PCM_TRIGGER_STOP:
@@ -175,12 +185,13 @@ static snd_pcm_uframes_t
 matrixio_pcm_pointer(struct snd_pcm_substream *substream)
 {
 	struct snd_pcm_runtime *runtime = substream->runtime;
-	printk(KERN_INFO " - pcm pointer %d", position);
-	// kfifo_len(&ms->capture_fifo)/2);
+	printk(KERN_INFO " - pcm pointer %d", ms->position);
 
-	position = position < runtime->buffer_size ? position : 0;
-	return position;
-	// return kfifo_len(&ms->capture_fifo) / 2;
+	mutex_lock(&ms->lock);
+	ms->position = ms->position < runtime->buffer_size ? ms->position : 0;
+	mutex_unlock(&ms->lock);
+
+	return ms->position;
 }
 
 static int matrixio_pcm_copy(struct snd_pcm_substream *substream, int channel,
@@ -188,7 +199,6 @@ static int matrixio_pcm_copy(struct snd_pcm_substream *substream, int channel,
 			     snd_pcm_uframes_t count)
 {
 	int ret, len;
-	unsigned int copied;
 	printk(KERN_INFO "-----------------pcm copy channel=%d pos=%d count=%d",
 	       channel, pos, count);
 
@@ -203,7 +213,6 @@ static struct snd_pcm_ops matrixio_pcm_ops = {
     .prepare = matrixio_pcm_prepare,
     .trigger = matrixio_pcm_trigger,
     .pointer = matrixio_pcm_pointer,
-    .mmap = snd_pcm_lib_mmap_iomem,
     .copy = matrixio_pcm_copy,
     .close = matrixio_pcm_close,
 };
@@ -245,18 +254,11 @@ static int matrixio_pcm_platform_probe(struct platform_device *pdev)
 	ms->capture_substream = 0;
 
 	mutex_init(&ms->lock);
-	ms->stamp = 1010101;
 
 	sprintf(workqueue_name, "matrixio_pcm");
 	ms->wq = create_singlethread_workqueue(workqueue_name);
 	if (!ms->wq) {
 		dev_err(&pdev->dev, "cannot create workqueue");
-		return -ENOMEM;
-	}
-
-	ret = kfifo_alloc(&ms->capture_fifo, MATRIXIO_FIFO_SIZE, GFP_KERNEL);
-	if (ret) {
-		dev_err(&pdev->dev, "error PCM kfifo allocation");
 		return -ENOMEM;
 	}
 
