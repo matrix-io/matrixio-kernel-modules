@@ -22,7 +22,7 @@
 
 #define MATRIXIO_CONF_BASE 0x0000
 #define MATRIXIO_UART_BASE 0x1000
-#define MATRIXIO_MICROPHONE_ARRAY_BASE 0x2000
+#define MATRIXIO_MICARRAY_BASE 0x2000
 #define MATRIXIO_EVERLOOP_BASE 0x3000
 #define MATRIXIO_GPIO_BASE 0x4000
 #define MATRIXIO_MCU_BASE 0x5000
@@ -42,17 +42,14 @@ struct matrixio_platform_data {
 	int (*platform_init)(struct device *dev);
 };
 
-int matrixio_hw_reg_read(void *context, unsigned int reg, unsigned int *val);
+int matrixio_reg_read(void *context, unsigned int reg, unsigned int *val);
 
-int matrixio_hw_reg_write(void *context, unsigned int reg, unsigned int val);
+int matrixio_reg_write(void *context, unsigned int reg, unsigned int val);
 
-int matrixio_hw_buf_read(struct matrixio *matrixio, unsigned int add,
-			 int length, void *data);
+int matrixio_read(struct matrixio *matrixio, unsigned int add, int length,
+		     void *data);
 
-int matrixio_hw_buf_write(struct matrixio *matrixio, unsigned int add,
-			  int length, void *data);
-
-int matrixio_hw_read_enqueue(struct matrixio *matrixio, unsigned int add,
-			     int length, struct kfifo_rec_ptr_2 *fifo);
+int matrixio_write(struct matrixio *matrixio, unsigned int add, int length,
+		      void *data);
 
 #endif

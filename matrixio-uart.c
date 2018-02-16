@@ -89,7 +89,8 @@ static void matrixio_uart_start_tx(struct uart_port *port)
 	while (1) {
 
 		do {
-			regmap_read(matrixio->regmap, MATRIXIO_UART_BASE + 0x100,
+			regmap_read(matrixio->regmap,
+				    MATRIXIO_UART_BASE + 0x100,
 				    (unsigned int *)&uart_status);
 
 		} while (uart_status.uart_tx_busy);
@@ -257,7 +258,6 @@ static int matrixio_uart_remove(struct platform_device *pdev)
 	uart_unregister_driver(&matrixio_uart_driver);
 	return 0;
 }
-
 
 static const struct of_device_id matrixio_uart_dt_ids[] = {
     {.compatible = "matrixio-uart", .data = (void *)0}, {}};

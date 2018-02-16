@@ -96,16 +96,26 @@
 			};
 		};
 	};
-	fragment@9 {
-		target = <&matrixio_core_0>;
-		__overlay__ {
-			matrixio_codec_a: matrix_codec@0 {
-				compatible = "matrixio-codec";
-                                interrupts = <6 0x3>; /* both edge triggered */
+
+        fragment@9 {
+                target = <&matrixio_core_0>;
+                __overlay__ {
+                        matrix-pcm@0 {
+                                compatible = "matrixio-pcm";
+                                interrupts = <6 0x3>; /* both edges triggered */
                                 interrupt-parent = <&gpio>;
-				status = "okay";
-			};
-		};
-	};
+                                status = "okay";
+                        };
+                };
+        };
+        fragment@10 {
+                target = <&matrixio_core_0>;
+                __overlay__ {
+                        matrix-codec@0 {
+                                compatible = "matrixio-codec";
+                                status = "okay";
+                        };
+                };
+        };
 };
 
