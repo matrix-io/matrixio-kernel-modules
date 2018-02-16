@@ -80,16 +80,10 @@ static void matrixio_pcm_capture_work(struct work_struct *wk)
 
 static irqreturn_t matrixio_pcm_interrupt(int irq, void *irq_data)
 {
-	static int initialized = 0;
 	struct matrixio_substream *ms = irq_data;
 
 	if (ms->capture_substream == 0)
 		return IRQ_NONE;
-
-	if (initialized == 0) {
-		INIT_WORK(&ms->work, matrixio_pcm_capture_work);
-		initialized = 1;
-	}
 
 	queue_work(ms->wq, &ms->work);
 
@@ -98,6 +92,10 @@ static irqreturn_t matrixio_pcm_interrupt(int irq, void *irq_data)
 
 static int matrixio_pcm_open(struct snd_pcm_substream *substream)
 {
+	int ret;
+
+	char workqueue_name[12];
+
 	snd_soc_set_runtime_hwparams(substream, &matrixio_pcm_capture_hw);
 
 	snd_pcm_set_sync(substream);
@@ -105,18 +103,41 @@ static int matrixio_pcm_open(struct snd_pcm_substream *substream)
 	if (ms->capture_substream != NULL) {
 		return -EBUSY;
 	}
+
 	ms->capture_substream = substream;
 
 	ms->position = 0;
 
-	flush_workqueue(ms->wq);
+	sprintf(workqueue_name, "matrixio_pcm");
+
+	ms->wq = create_singlethread_workqueue(workqueue_name);
+
+	if (!ms->wq) {
+		return -ENOMEM;
+	}
+
+	INIT_WORK(&ms->work, matrixio_pcm_capture_work);
+
+	ret = request_irq(ms->irq, matrixio_pcm_interrupt, 0,
+			  "matrixio-capture", ms);
+	if (ret) {
+		destroy_workqueue(ms->wq);
+		return -EBUSY;
+	}
 
 	return 0;
 }
 
 static int matrixio_pcm_close(struct snd_pcm_substream *substream)
 {
+	free_irq(ms->irq, ms);
+
+	flush_workqueue(ms->wq);
+
+	destroy_workqueue(ms->wq);
+
 	ms->capture_substream = 0;
+
 	return 0;
 }
 
@@ -206,7 +227,6 @@ static const struct snd_soc_platform_driver matrixio_soc_platform = {
 static int matrixio_pcm_platform_probe(struct platform_device *pdev)
 {
 	int ret;
-	char workqueue_name[12];
 
 	ms = devm_kzalloc(&pdev->dev, sizeof(struct matrixio_substream),
 			  GFP_KERNEL);
@@ -221,22 +241,7 @@ static int matrixio_pcm_platform_probe(struct platform_device *pdev)
 
 	mutex_init(&ms->lock);
 
-	sprintf(workqueue_name, "matrixio_pcm");
-	ms->wq = create_singlethread_workqueue(workqueue_name);
-	if (!ms->wq) {
-		dev_err(&pdev->dev, "cannot create workqueue");
-		return -ENOMEM;
-	}
-
 	ms->irq = irq_of_parse_and_map(pdev->dev.of_node, 0);
-
-	ret = devm_request_irq(&pdev->dev, ms->irq, matrixio_pcm_interrupt, 0,
-			       dev_name(&pdev->dev), ms);
-	if (ret) {
-		dev_err(&pdev->dev, "can't request irq %d\n", ms->irq);
-		destroy_workqueue(ms->wq);
-		return -EBUSY;
-	}
 
 	ret =
 	    devm_snd_soc_register_platform(&pdev->dev, &matrixio_soc_platform);
