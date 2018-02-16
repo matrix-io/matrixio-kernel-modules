@@ -141,51 +141,19 @@ static int matrixio_pcm_hw_params(struct snd_pcm_substream *substream,
 
 static int matrixio_pcm_hw_free(struct snd_pcm_substream *substream)
 {
-	printk(KERN_INFO "-------------pcm hw free");
 	return snd_pcm_lib_free_pages(substream);
 }
 
 static int matrixio_pcm_prepare(struct snd_pcm_substream *substream)
 {
 	ms->position = 0;
-	printk(KERN_INFO "-------------pcm prepare");
 	return 0;
-}
-
-static int matrixio_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
-{
-	int ret = 0;
-	struct snd_pcm_runtime *runtime = substream->runtime;
-	struct matrixio_substream *ms = runtime->private_data;
-
-	switch (cmd) {
-	case SNDRV_PCM_TRIGGER_START:
-	case SNDRV_PCM_TRIGGER_RESUME:
-	case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
-		/*
-		mutex_lock(&ms->lock);
-		ms->position = 0;
-		mutex_unlock(&ms->lock);
-		*/
-		break;
-
-	case SNDRV_PCM_TRIGGER_STOP:
-	case SNDRV_PCM_TRIGGER_SUSPEND:
-	case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
-		break;
-
-	default:
-		ret = -EINVAL;
-		break;
-	}
-	return ret;
 }
 
 static snd_pcm_uframes_t
 matrixio_pcm_pointer(struct snd_pcm_substream *substream)
 {
 	struct snd_pcm_runtime *runtime = substream->runtime;
-	printk(KERN_INFO " - pcm pointer %d", ms->position);
 
 	mutex_lock(&ms->lock);
 	ms->position = ms->position < runtime->buffer_size ? ms->position : 0;
@@ -198,10 +166,6 @@ static int matrixio_pcm_copy(struct snd_pcm_substream *substream, int channel,
 			     snd_pcm_uframes_t pos, void __user *buf,
 			     snd_pcm_uframes_t count)
 {
-	int ret, len;
-	printk(KERN_INFO "-----------------pcm copy channel=%d pos=%d count=%d",
-	       channel, pos, count);
-
 	return copy_to_user(buf, &matrixio_buf[0][pos], count * 2);
 }
 
@@ -211,7 +175,6 @@ static struct snd_pcm_ops matrixio_pcm_ops = {
     .hw_params = matrixio_pcm_hw_params,
     .hw_free = matrixio_pcm_hw_free,
     .prepare = matrixio_pcm_prepare,
-    .trigger = matrixio_pcm_trigger,
     .pointer = matrixio_pcm_pointer,
     .copy = matrixio_pcm_copy,
     .close = matrixio_pcm_close,
@@ -219,16 +182,6 @@ static struct snd_pcm_ops matrixio_pcm_ops = {
 
 static int matrixio_pcm_new(struct snd_soc_pcm_runtime *rtd)
 {
-	/*
-	struct snd_pcm *pcm = rtd->pcm;
-
-	struct platform_device *pdev = to_platform_device(rtd->platform->dev);
-
-	struct matrixio_substream *ms = dev_get_drvdata(&pdev->dev);
-
-	dev_set_drvdata(rtd->dev, ms);
-	// snd_soc_card_set_drvdata(rtd->card, ms);
-*/
 	return 0;
 }
 
@@ -238,7 +191,6 @@ static const struct snd_soc_platform_driver matrixio_soc_platform = {
 
 static int matrixio_pcm_platform_probe(struct platform_device *pdev)
 {
-
 	int ret;
 	char workqueue_name[12];
 
