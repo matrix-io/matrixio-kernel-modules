@@ -121,11 +121,11 @@ static int matrixio_imu_write_raw(struct iio_dev *indio_dev,
 
 		data_write = matrixio_int_plus_micro_to_int(val, val2);
 		mutex_lock(&indio_dev->mlock);
-		ret = matrixio_write(
-		    data->mio,
-		    MATRIXIO_MCU_BASE + (MATRIXIO_SRAM_OFFSET_IMU >> 1) +
-			chan->address + MATRIXIO_CALIB_OFFSET,
-		    sizeof(data_write), &data_write);
+		ret = matrixio_write(data->mio,
+				     MATRIXIO_MCU_BASE +
+					 (MATRIXIO_SRAM_OFFSET_IMU >> 1) +
+					 chan->address + MATRIXIO_CALIB_OFFSET,
+				     sizeof(data_write), &data_write);
 		mutex_unlock(&indio_dev->mlock);
 		return ret;
 	}
@@ -155,9 +155,9 @@ static int matrixio_imu_read_raw(struct iio_dev *indio_dev,
 
 	mutex_lock(&indio_dev->mlock);
 	ret = matrixio_read(data->mio,
-				   MATRIXIO_MCU_BASE +
-				       (MATRIXIO_SRAM_OFFSET_IMU >> 1) + offset,
-				   sizeof(data_read), &data_read);
+			    MATRIXIO_MCU_BASE +
+				(MATRIXIO_SRAM_OFFSET_IMU >> 1) + offset,
+			    sizeof(data_read), &data_read);
 
 	mutex_unlock(&indio_dev->mlock);
 
