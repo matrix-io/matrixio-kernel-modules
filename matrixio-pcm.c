@@ -35,8 +35,10 @@
 #define MATRIXIO_MICARRAY_BUFFER_SIZE (256 * 1 /*MATRIXIO_CHANNELS_MAX*/ * 2)
 #define MATRIXIO_FIFO_SIZE (MATRIXIO_MICARRAY_BUFFER_SIZE * 32)
 
-static snd_pcm_uframes_t position=0;
+static snd_pcm_uframes_t position = 0;
 static struct matrixio_substream *ms;
+
+static uint16_t matrixio_buf[MATRIXIO_CHANNELS_MAX][8192];
 
 static struct snd_pcm_hardware matrixio_pcm_capture_hw = {
     .info = SNDRV_PCM_INFO_MMAP | SNDRV_PCM_INFO_MMAP_VALID |
@@ -67,9 +69,10 @@ static void matrixio_pcm_capture_work(struct work_struct *wk)
 	mutex_lock(&ms->lock);
 
 	ret = matrixio_read(ms->mio, MATRIXIO_MICARRAY_BASE,
-			    MATRIXIO_MICARRAY_BUFFER_SIZE, raw);
+			    MATRIXIO_MICARRAY_BUFFER_SIZE,
+			    &matrixio_buf[0][position]);
 
-	kfifo_in(&ms->capture_fifo, raw, MATRIXIO_MICARRAY_BUFFER_SIZE);
+	//	kfifo_in(&ms->capture_fifo, raw, MATRIXIO_MICARRAY_BUFFER_SIZE);
 
 	position += 256;
 	mutex_unlock(&ms->lock);
@@ -173,11 +176,11 @@ matrixio_pcm_pointer(struct snd_pcm_substream *substream)
 {
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	printk(KERN_INFO " - pcm pointer %d", position);
-	      // kfifo_len(&ms->capture_fifo)/2);
+	// kfifo_len(&ms->capture_fifo)/2);
 
 	position = position < runtime->buffer_size ? position : 0;
 	return position;
-	//return kfifo_len(&ms->capture_fifo) / 2;
+	// return kfifo_len(&ms->capture_fifo) / 2;
 }
 
 static int matrixio_pcm_copy(struct snd_pcm_substream *substream, int channel,
@@ -188,27 +191,8 @@ static int matrixio_pcm_copy(struct snd_pcm_substream *substream, int channel,
 	unsigned int copied;
 	printk(KERN_INFO "-----------------pcm copy channel=%d pos=%d count=%d",
 	       channel, pos, count);
-if(0)
-{
-	ret = 0;
-	while (ret < count) {
-		if (kfifo_to_user(&ms->capture_fifo, buf, 512, &copied))
-		{
-			//printk(KERN_INFO "ERROR"); 
-			ret = -EFAULT;
-			goto out;
-		}
-		ret += copied;
-		buf += copied;
-	}
-out:
-	kfifo_reset (&ms->capture_fifo);
-}
-//position -= count;
 
-//	printk(KERN_INFO "len=%d count=%d copied=%d\n",
-//	       kfifo_len(&ms->capture_fifo), count, ret);
-	return 0;
+	return copy_to_user(buf, &matrixio_buf[0][pos], count * 2);
 }
 
 static struct snd_pcm_ops matrixio_pcm_ops = {
