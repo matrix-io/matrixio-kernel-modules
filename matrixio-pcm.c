@@ -40,7 +40,7 @@ static uint16_t matrixio_buf[MATRIXIO_CHANNELS_MAX][8192];
 
 static const uint16_t matrixio_params[][3] = {
     {8000, 380, 0},  {12000, 253, 2}, {16000, 189, 3}, {22050, 134, 5},
-    {24000, 126, 5}, {32000, 94, 6},  {44100, 68, 8},   {48000, 62, 8}};
+    {24000, 126, 5}, {32000, 94, 6},  {44100, 68, 8},  {48000, 62, 8}};
 
 static struct snd_pcm_hardware matrixio_pcm_capture_hw = {
     .info = SNDRV_PCM_INFO_INTERLEAVED | SNDRV_PCM_INFO_PAUSE,
@@ -59,17 +59,18 @@ static struct snd_pcm_hardware matrixio_pcm_capture_hw = {
 
 static void matrixio_pcm_capture_work(struct work_struct *wk)
 {
+	int c;
 	int ret;
-	uint8_t raw[MATRIXIO_MICARRAY_BUFFER_SIZE];
 	struct matrixio_substream *ms;
 
 	ms = container_of(wk, struct matrixio_substream, work);
 
 	mutex_lock(&ms->lock);
 
-	ret = matrixio_read(ms->mio, MATRIXIO_MICARRAY_BASE,
-			    MATRIXIO_MICARRAY_BUFFER_SIZE,
-			    &matrixio_buf[0][ms->position]);
+	for (c = 0; c < ms->channels; c++)
+		ret = matrixio_read(ms->mio, MATRIXIO_MICARRAY_BASE,
+				    MATRIXIO_MICARRAY_BUFFER_SIZE,
+				    &matrixio_buf[c][ms->position]);
 
 	ms->position += 256;
 	mutex_unlock(&ms->lock);
@@ -97,8 +98,6 @@ static irqreturn_t matrixio_pcm_interrupt(int irq, void *irq_data)
 
 static int matrixio_pcm_open(struct snd_pcm_substream *substream)
 {
-	struct snd_pcm_runtime *runtime = substream->runtime;
-
 	snd_soc_set_runtime_hwparams(substream, &matrixio_pcm_capture_hw);
 
 	snd_pcm_set_sync(substream);
@@ -129,10 +128,8 @@ static int matrixio_pcm_hw_params(struct snd_pcm_substream *substream,
 
 	ms->channels = params_channels(hw_params);
 
-	printk(KERN_INFO "w %d",
-	       snd_pcm_format_width(params_format(hw_params)));
-
-	printk(KERN_INFO "rate  %d", params_rate(hw_params));
+	if (snd_pcm_format_width(params_format(hw_params)) != 16)
+		return -EINVAL;
 
 	rate = params_rate(hw_params);
 
@@ -145,11 +142,11 @@ static int matrixio_pcm_hw_params(struct snd_pcm_substream *substream,
 			regmap_write(ms->mio->regmap,
 				     MATRIXIO_MICARRAY_BASE + 0x802,
 				     matrixio_params[i][2]);
-			break;
+			return 0;
 		}
 	}
 
-	return 0;
+	return -EINVAL;
 }
 
 static int matrixio_pcm_hw_free(struct snd_pcm_substream *substream)
@@ -179,7 +176,14 @@ static int matrixio_pcm_copy(struct snd_pcm_substream *substream, int channel,
 			     snd_pcm_uframes_t pos, void __user *buf,
 			     snd_pcm_uframes_t count)
 {
-	return copy_to_user(buf, &matrixio_buf[0][pos], count * 2);
+	int i, c;
+	static int16_t buf_interleaved[MATRIXIO_CHANNELS_MAX * 8192];
+
+	for (i = 0; i < count; i++)
+		for (c = 0; c < ms->channels; c++)
+			buf_interleaved[i * ms->channels + c] =
+			    matrixio_buf[c][pos + i];
+	return copy_to_user(buf, buf_interleaved, count * 2 * ms->channels);
 }
 
 static struct snd_pcm_ops matrixio_pcm_ops = {
