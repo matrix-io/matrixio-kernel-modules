@@ -259,14 +259,14 @@ static int matrixio_pcm_platform_probe(struct platform_device *pdev)
 
 static const struct of_device_id snd_matrixio_pcm_of_match[] = {
     {
-	.compatible = "matrixio-pcm",
+	.compatible = "matrixio-pcm-capture",
     },
     {},
 };
 MODULE_DEVICE_TABLE(of, snd_matrixio_pcm_of_match);
 
 static struct platform_driver matrixio_codec_driver = {
-    .driver = {.name = "matrixio-pcm",
+    .driver = {.name = "matrixio-pcm-capture",
 	       .owner = THIS_MODULE,
 	       .of_match_table = snd_matrixio_pcm_of_match},
     .probe = matrixio_pcm_platform_probe,

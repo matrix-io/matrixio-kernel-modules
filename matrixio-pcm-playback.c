@@ -49,7 +49,7 @@ static struct snd_pcm_hardware matrixio_pcm_platback_hw = {
     .rate_min = 8000,
     .rate_max = 48000,
     .channels_min = 1,
-    .channels_max = 8,
+    .channels_max = 2,
     .buffer_bytes_max = 32768,
     .period_bytes_min = 4096,
     .period_bytes_max = 32768,
@@ -99,45 +99,45 @@ static int matrixio_pcm_open(struct snd_pcm_substream *substream)
 	snd_soc_set_runtime_hwparams(substream, &matrixio_pcm_platback_hw);
 
 	snd_pcm_set_sync(substream);
-/*
-	if (ms->capture_substream != NULL) {
-		return -EBUSY;
-	}
+	/*
+		if (ms->capture_substream != NULL) {
+			return -EBUSY;
+		}
 
-	ms->capture_substream = substream;
+		ms->capture_substream = substream;
 
-	ms->position = 0;
+		ms->position = 0;
 
-	sprintf(workqueue_name, "matrixio_pcm");
+		sprintf(workqueue_name, "matrixio_pcm");
 
-	ms->wq = create_singlethread_workqueue(workqueue_name);
+		ms->wq = create_singlethread_workqueue(workqueue_name);
 
-	if (!ms->wq) {
-		return -ENOMEM;
-	}
+		if (!ms->wq) {
+			return -ENOMEM;
+		}
 
-	INIT_WORK(&ms->work, matrixio_pcm_capture_work);
+		INIT_WORK(&ms->work, matrixio_pcm_capture_work);
 
-	ret = request_irq(ms->irq, matrixio_pcm_interrupt, 0,
-			  "matrixio-capture", ms);
-	if (ret) {
-		destroy_workqueue(ms->wq);
-		return -EBUSY;
-	}
-*/
+		ret = request_irq(ms->irq, matrixio_pcm_interrupt, 0,
+				  "matrixio-capture", ms);
+		if (ret) {
+			destroy_workqueue(ms->wq);
+			return -EBUSY;
+		}
+	*/
 	return 0;
 }
 
 static int matrixio_pcm_close(struct snd_pcm_substream *substream)
 {
-/*	free_irq(ms->irq, ms);
+	/*	free_irq(ms->irq, ms);
 
-	flush_workqueue(ms->wq);
+		flush_workqueue(ms->wq);
 
-	destroy_workqueue(ms->wq);
+		destroy_workqueue(ms->wq);
 
-	ms->capture_substream = 0;
-*/
+		ms->capture_substream = 0;
+	*/
 	return 0;
 }
 
@@ -241,19 +241,10 @@ static int matrixio_pcm_platform_probe(struct platform_device *pdev)
 
 	mutex_init(&ms->lock);
 
-	ms->irq = irq_of_parse_and_map(pdev->dev.of_node, 0);
-
-	ret =
-	    devm_snd_soc_register_platform(&pdev->dev, &matrixio_soc_platform);
-	if (ret) {
-		dev_err(&pdev->dev,
-			"MATRIXIO sound SoC register platform error: %d", ret);
-		return ret;
-	}
-
 	dev_set_drvdata(&pdev->dev, ms);
 
-	dev_notice(&pdev->dev, "MATRIXIO audio drive loaded (IRQ=%d)", ms->irq);
+	dev_notice(&pdev->dev, "MATRIXIO PCM playback loaded");
+
 	return 0;
 }
 
