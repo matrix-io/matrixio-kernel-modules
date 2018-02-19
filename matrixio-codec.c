@@ -3,7 +3,7 @@
  *
  * Copyright 2017 MATRIX Labs
  *
- * Author: Andres Calderon <andres.calderon@admobilize.com>
+: * Author: Andres Calderon <andres.calderon@admobilize.com>
  *
  *  This program is free software; you can redistribute  it and/or modify it
  *  under  the terms of  the GNU General  Public License as published by the
@@ -26,12 +26,8 @@
 
 #include "matrixio-core.h"
 
-#define MATRIXIO_CHANNELS_MAX 8
 #define MATRIXIO_RATES SNDRV_PCM_RATE_8000_48000
 #define MATRIXIO_FORMATS SNDRV_PCM_FMTBIT_S16_LE
-#define MATRIXIO_MICARRAY_BASE 0x2000
-#define MATRIXIO_MICARRAY_BUFFER_SIZE (256 * MATRIXIO_CHANNELS_MAX * 2)
-#define MATRIXIO_FIFO_SIZE (MATRIXIO_MICARRAY_BUFFER_SIZE * 4)
 
 static int matrixio_startup(struct snd_pcm_substream *substream) { return 0; }
 
@@ -46,15 +42,6 @@ static struct snd_soc_ops matrixio_snd_ops = {
 };
 
 static struct snd_soc_dai_link matrixio_snd_soc_dai[] = {
-    /*  {
-	  .name = "matrixio.pcm.0",
-	  .stream_name = "matrixio.pcm.0",
-	  .codec_dai_name = "snd-soc-dummy-dai",
-	  .cpu_dai_name = "matrixio-pcm-out.0",
-	  .platform_name = "matrixio-pcm",
-	  .codec_name = "snd-soc-dummy",
-	  .ops = &matrixio_snd_ops,
-      },*/
     {
 	.name = "matrixio.mic.0",
 	.stream_name = "matrixio.mic.0",
@@ -63,67 +50,25 @@ static struct snd_soc_dai_link matrixio_snd_soc_dai[] = {
 	.platform_name = "matrixio-pcm-capture",
 	.codec_name = "snd-soc-dummy",
 	.ops = &matrixio_snd_ops,
+    },
+    {
+	.name = "matrixio.pcm.0",
+	.stream_name = "matrixio.pcm.0",
+	.codec_dai_name = "snd-soc-dummy-dai",
+	.cpu_dai_name = "matrixio-pcm-out.0",
+	.platform_name = "matrixio-pcm-playback",
+	.codec_name = "snd-soc-dummy",
+	.ops = &matrixio_snd_ops,
     }};
 
 static struct snd_soc_card matrixio_soc_card = {
-    .name = "MATRIXIO SOUND",
+    .name = "MATRIXIO",
     .owner = THIS_MODULE,
     .dai_link = matrixio_snd_soc_dai,
     .num_links = ARRAY_SIZE(matrixio_snd_soc_dai),
 };
 
-static int matrixio_codec_hw_params(struct snd_pcm_substream *substream,
-				    struct snd_pcm_hw_params *params,
-				    struct snd_soc_dai *dai)
-{
-	return 0;
-}
 
-static int matrixio_codec_set_fmt(struct snd_soc_dai *dai, unsigned int fmt)
-{
-	return 0;
-}
-
-static int matrixio_codec_prepare(struct snd_pcm_substream *substream,
-				  struct snd_soc_dai *dai)
-{
-	return 0;
-}
-
-static int matrixio_codec_dai_startup(struct snd_pcm_substream *substream,
-				      struct snd_soc_dai *dai)
-{
-	struct matrixio_substream *ms = snd_soc_dai_get_drvdata(dai);
-
-	return 0;
-}
-
-static int matrixio_codec_dai_digital_mute(struct snd_soc_dai *codec_dai,
-					   int mute)
-{
-	return 0;
-}
-
-static int matrixio_codec_dai_trigger(struct snd_pcm_substream *substream,
-				      int cmd, struct snd_soc_dai *codec_dai)
-{
-	return 0;
-}
-
-static void matrixio_codec_dai_shutdown(struct snd_pcm_substream *substream,
-					struct snd_soc_dai *codec_dai)
-{
-}
-
-static const struct snd_soc_dai_ops matrixio_dai_ops = {
-    .hw_params = matrixio_codec_hw_params,
-    //    .prepare = matrixio_codec_prepare,
-    .set_fmt = matrixio_codec_set_fmt,
-    //    .digital_mute = matrixio_codec_dai_digital_mute,
-    .startup = matrixio_codec_dai_startup,
-    //    .shutdown = matrixio_codec_dai_shutdown,
-    //    .trigger = matrixio_codec_dai_trigger,
-};
 
 static const DECLARE_TLV_DB_SCALE(inpga_tlv, -1000, 100, 0);
 
@@ -160,20 +105,6 @@ static const struct snd_soc_codec_driver matrixio_soc_codec_driver = {
 };
 
 static struct snd_soc_dai_driver matrixio_dai_driver[] = {
-    /* {
-	.name = "matrixio-pcm-out.0",
-	.playback =
-	    {
-		.stream_name = "matrixio-pcm-out.0",
-		.channels_min = 2,
-		.channels_max = 2,
-		.rates = MATRIXIO_RATES,
-		.rate_min = 8000,
-		.rate_max = 48000,
-		.formats = MATRIXIO_FORMATS,
-	    },
-	.ops = &matrixio_dai_ops,
-    },*/
     {
 	.name = "matrixio-mic.0",
 	.capture =
@@ -186,31 +117,37 @@ static struct snd_soc_dai_driver matrixio_dai_driver[] = {
 		.rate_max = 48000,
 		.formats = MATRIXIO_FORMATS,
 	    },
-	.ops = &matrixio_dai_ops,
+    },
+    {
+	.name = "matrixio-pcm-out.0",
+	.playback =
+	    {
+		.stream_name = "matrixio-pcm-out.0",
+		.channels_min = 1,
+		.channels_max = 2,
+		.rates = MATRIXIO_RATES,
+		.rate_min = 8000,
+		.rate_max = 48000,
+		.formats = MATRIXIO_FORMATS,
+	    },
     }};
 
 static int matrixio_probe(struct platform_device *pdev)
 {
 	int ret;
-
+	printk(KERN_INFO "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++");
 	ret = snd_soc_register_codec(&pdev->dev, &matrixio_soc_codec_driver,
 				     matrixio_dai_driver,
 				     ARRAY_SIZE(matrixio_dai_driver));
 	if (ret) {
-		dev_err(&pdev->dev, "Failed to register MATRIXIO codec: %d\n",
-			ret);
 		return ret;
 	}
-
+	
 	matrixio_soc_card.dev = &pdev->dev;
-
 	ret = devm_snd_soc_register_card(&pdev->dev, &matrixio_soc_card);
 	if (ret) {
-		dev_err(&pdev->dev, "Failed to register MATRIXIO card (%d)\n",
-			ret);
 		return ret;
 	}
-
 	return ret;
 }
 

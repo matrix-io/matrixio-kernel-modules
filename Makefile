@@ -1,7 +1,7 @@
 DTC=dtc
 
 snd-soc-matrixio-objs := matrixio-codec.o
-snd-pcm-matrixio-objs := matrixio-pcm-capture.o
+snd-pcm-matrixio-objs := matrixio-pcm-capture.o matrixio-pcm-playback.o
 
 obj-m += matrixio-core.o
 obj-m += matrixio-uart.o
@@ -9,6 +9,7 @@ obj-m += matrixio-everloop.o
 obj-m += snd-soc-matrixio.o
 obj-m += matrixio-codec.o
 obj-m += matrixio-pcm-capture.o
+obj-m += matrixio-pcm-playback.o
 obj-m += matrixio-gpio.o
 obj-m += matrixio-env.o
 obj-m += matrixio-imu.o
