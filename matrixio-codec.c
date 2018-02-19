@@ -68,8 +68,6 @@ static struct snd_soc_card matrixio_soc_card = {
     .num_links = ARRAY_SIZE(matrixio_snd_soc_dai),
 };
 
-
-
 static const DECLARE_TLV_DB_SCALE(inpga_tlv, -1000, 100, 0);
 
 static const struct snd_kcontrol_new matrixio_snd_controls[] = {
@@ -135,14 +133,15 @@ static struct snd_soc_dai_driver matrixio_dai_driver[] = {
 static int matrixio_probe(struct platform_device *pdev)
 {
 	int ret;
-	printk(KERN_INFO "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++");
+	printk(KERN_INFO
+	       "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++");
 	ret = snd_soc_register_codec(&pdev->dev, &matrixio_soc_codec_driver,
 				     matrixio_dai_driver,
 				     ARRAY_SIZE(matrixio_dai_driver));
 	if (ret) {
 		return ret;
 	}
-	
+
 	matrixio_soc_card.dev = &pdev->dev;
 	ret = devm_snd_soc_register_card(&pdev->dev, &matrixio_soc_card);
 	if (ret) {
