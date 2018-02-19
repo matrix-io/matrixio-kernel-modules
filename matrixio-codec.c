@@ -60,7 +60,7 @@ static struct snd_soc_dai_link matrixio_snd_soc_dai[] = {
 	.stream_name = "matrixio.mic.0",
 	.codec_dai_name = "snd-soc-dummy-dai",
 	.cpu_dai_name = "matrixio-mic.0",
-	.platform_name = "matrixio-pcm",
+	.platform_name = "matrixio-pcm-capture",
 	.codec_name = "snd-soc-dummy",
 	.ops = &matrixio_snd_ops,
     }};
