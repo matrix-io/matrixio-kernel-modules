@@ -29,15 +29,14 @@
 #define MATRIXIO_RATES SNDRV_PCM_RATE_8000_48000
 #define MATRIXIO_FORMATS SNDRV_PCM_FMTBIT_S16_LE
 
-static struct snd_soc_dai_link matrixio_snd_soc_dai[] = {
-    {
-	.name = "matrixio.pcm.0",
-	.stream_name = "matrixio.pcm.0",
-	.codec_dai_name = "snd-soc-dummy-dai",
-	.cpu_dai_name = "matrixio.pcm.0",
-	.platform_name = "matrixio-pcm-playback",
-	.codec_name = "snd-soc-dummy",
-    }};
+static struct snd_soc_dai_link matrixio_snd_soc_dai[] = {{
+    .name = "matrixio.pcm.0",
+    .stream_name = "matrixio.pcm.0",
+    .codec_dai_name = "snd-soc-dummy-dai",
+    .cpu_dai_name = "matrixio.pcm.0",
+    .platform_name = "matrixio-pcm-playback",
+    .codec_name = "snd-soc-dummy",
+}};
 
 static struct snd_soc_card matrixio_soc_card = {
     .name = "MATRIXIO SOUND",
@@ -79,20 +78,19 @@ static const struct snd_soc_codec_driver matrixio_soc_codec_driver = {
 	},
 };
 
-static struct snd_soc_dai_driver matrixio_dai_driver[] = {
-    {
-	.name = "matrixio.pcm.0",
-	.playback =
-	    {
-		.stream_name = "matrixio.pcm.0",
-		.channels_min = 1,
-		.channels_max = 2,
-		.rates = MATRIXIO_RATES,
-		.rate_min = 8000,
-		.rate_max = 48000,
-		.formats = MATRIXIO_FORMATS,
-	    },
-    }};
+static struct snd_soc_dai_driver matrixio_dai_driver[] = {{
+    .name = "matrixio.pcm.0",
+    .playback =
+	{
+	    .stream_name = "matrixio.pcm.0",
+	    .channels_min = 1,
+	    .channels_max = 2,
+	    .rates = MATRIXIO_RATES,
+	    .rate_min = 8000,
+	    .rate_max = 48000,
+	    .formats = MATRIXIO_FORMATS,
+	},
+}};
 
 static int matrixio_playback_probe(struct platform_device *pdev)
 {

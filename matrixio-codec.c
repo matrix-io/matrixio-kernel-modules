@@ -31,19 +31,19 @@
 
 static struct snd_soc_dai_link matrixio_snd_soc_dai[] = {
     {
-	  .name = "matrixio.pcm.0",
-	  .stream_name = "matrixio.pcm.0",
-	  .codec_dai_name = "snd-soc-dummy-dai",
-	  .cpu_dai_name = "matrixio.pcm.0",
-	  .platform_name = "matrixio-pcm-playback",
-	  .codec_name = "snd-soc-dummy",
-      },
-    {
-	.name = "matrixio.mic.0",
-	.stream_name = "matrixio.mic.0",
+	.name = "matrixio.capture.0",
+	.stream_name = "matrixio.capture.0",
 	.codec_dai_name = "snd-soc-dummy-dai",
-	.cpu_dai_name = "matrixio.mic.0",
-	.platform_name = "matrixio-pcm-capture",
+	.cpu_dai_name = "matrixio.capture.0",
+	.platform_name = "matrixio-pcm",
+	.codec_name = "snd-soc-dummy",
+    },
+    {
+	.name = "matrixio.playback.0",
+	.stream_name = "matrixio.playback.0",
+	.codec_dai_name = "snd-soc-dummy-dai",
+	.cpu_dai_name = "matrixio.playback.0",
+	.platform_name = "matrixio-pcm",
 	.codec_name = "snd-soc-dummy",
     }};
 
@@ -88,13 +88,13 @@ static const struct snd_soc_codec_driver matrixio_soc_codec_driver = {
 };
 
 static struct snd_soc_dai_driver matrixio_dai_driver[] = {
-     {
-	.name = "matrixio.pcm.0",
-	.playback =
+    {
+	.name = "matrixio.capture.0",
+	.capture =
 	    {
-		.stream_name = "matrixio.pcm.0",
-		.channels_min = 2,
-		.channels_max = 2,
+		.stream_name = "matrixio.capture.0",
+		.channels_min = 1,
+		.channels_max = 8,
 		.rates = MATRIXIO_RATES,
 		.rate_min = 8000,
 		.rate_max = 48000,
@@ -102,12 +102,12 @@ static struct snd_soc_dai_driver matrixio_dai_driver[] = {
 	    },
     },
     {
-	.name = "matrixio.mic.0",
-	.capture =
+	.name = "matrixio.playback.0",
+	.playback =
 	    {
-		.stream_name = "matrixio.mic.0",
+		.stream_name = "matrixio.playback.0",
 		.channels_min = 1,
-		.channels_max = 8,
+		.channels_max = 2,
 		.rates = MATRIXIO_RATES,
 		.rate_min = 8000,
 		.rate_max = 48000,
@@ -134,15 +134,16 @@ static int matrixio_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, card);
 
-//	snd_soc_card_set_drvdata(card, matrixio_stuff);
+	//	snd_soc_card_set_drvdata(card, matrixio_stuff);
 
 	ret = snd_soc_of_parse_card_name(card, "matrixio,model");
 	if (ret)
 		goto out;
 
-//	ret = snd_soc_of_parse_audio_routing(card, "matrixio,audio-routing");
-//	if (ret)
-//		goto out;
+	//	ret = snd_soc_of_parse_audio_routing(card,
+	//"matrixio,audio-routing");
+	//	if (ret)
+	//		goto out;
 
 	ret = devm_snd_soc_register_card(&pdev->dev, card);
 	if (ret) {

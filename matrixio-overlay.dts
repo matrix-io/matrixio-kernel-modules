@@ -102,7 +102,7 @@
                 target = <&matrixio_core_0>;
                 __overlay__ {
                         pcm-capture@0 {
-                                compatible = "matrixio-pcm-capture";
+                                compatible = "matrixio-pcm";
                                 interrupts = <6 0x3>; /* both edges triggered */
                                 interrupt-parent = <&gpio>;
                                 status = "okay";
@@ -111,16 +111,6 @@
         };
 
         fragment@10 {
-                target = <&matrixio_core_0>;
-                __overlay__ {
-                        pcm-playback@0 {
-                                compatible = "matrixio-pcm-playback";
-                                status = "okay";
-                        };
-                };
-        };
-
-        fragment@11 {
                 target = <&matrixio_core_0>;
                 __overlay__ {
                         matrix-codec@0 {

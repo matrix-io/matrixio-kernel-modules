@@ -96,6 +96,8 @@ static int matrixio_pcm_open(struct snd_pcm_substream *substream)
 
 	char workqueue_name[12];
 
+	printk(KERN_INFO "substream->stream = %d", substream->stream);
+
 	snd_soc_set_runtime_hwparams(substream, &matrixio_pcm_capture_hw);
 
 	snd_pcm_set_sync(substream);
@@ -138,6 +140,7 @@ static int matrixio_pcm_close(struct snd_pcm_substream *substream)
 
 	ms->capture_substream = 0;
 
+	ms->playback_substream = 0;
 	return 0;
 }
 
@@ -146,6 +149,8 @@ static int matrixio_pcm_hw_params(struct snd_pcm_substream *substream,
 {
 	int i;
 	int rate;
+
+	printk(KERN_INFO "substream->stream = %d", substream->stream);
 
 	ms->channels = params_channels(hw_params);
 
@@ -238,6 +243,8 @@ static int matrixio_pcm_platform_probe(struct platform_device *pdev)
 	ms->mio = dev_get_drvdata(pdev->dev.parent);
 
 	ms->capture_substream = 0;
+	
+	ms->playback_substream = 0;
 
 	mutex_init(&ms->lock);
 
@@ -259,14 +266,14 @@ static int matrixio_pcm_platform_probe(struct platform_device *pdev)
 
 static const struct of_device_id snd_matrixio_pcm_of_match[] = {
     {
-	.compatible = "matrixio-pcm-capture",
+	.compatible = "matrixio-pcm",
     },
     {},
 };
 MODULE_DEVICE_TABLE(of, snd_matrixio_pcm_of_match);
 
 static struct platform_driver matrixio_codec_driver = {
-    .driver = {.name = "matrixio-pcm-capture",
+    .driver = {.name = "matrixio-pcm",
 	       .owner = THIS_MODULE,
 	       .of_match_table = snd_matrixio_pcm_of_match},
     .probe = matrixio_pcm_platform_probe,
