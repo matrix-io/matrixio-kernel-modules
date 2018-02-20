@@ -85,7 +85,6 @@ static const struct snd_soc_codec_driver matrixio_soc_codec_driver = {
 	    .num_dapm_widgets = ARRAY_SIZE(matrixio_dapm_widgets),
 	    .dapm_routes = matrixio_dapm_routes,
 	    .num_dapm_routes = ARRAY_SIZE(matrixio_dapm_routes),
-
 	},
 };
 
@@ -122,24 +121,37 @@ static int matrixio_probe(struct platform_device *pdev)
 {
 	int ret;
 
+	struct snd_soc_card *card = &matrixio_soc_card;
+
 	ret = snd_soc_register_codec(&pdev->dev, &matrixio_soc_codec_driver,
 				     matrixio_dai_driver,
 				     ARRAY_SIZE(matrixio_dai_driver));
 	if (ret) {
 		dev_err(&pdev->dev, "Failed to register MATRIXIO codec: %d\n",
 			ret);
-		return ret;
+		goto out;
 	}
 
-	matrixio_soc_card.dev = &pdev->dev;
+	card->dev = &pdev->dev;
 
-	ret = devm_snd_soc_register_card(&pdev->dev, &matrixio_soc_card);
+	platform_set_drvdata(pdev, card);
+
+//	snd_soc_card_set_drvdata(card, matrixio_stuff);
+
+	ret = snd_soc_of_parse_card_name(card, "matrixio,model");
+	if (ret)
+		goto out;
+
+//	ret = snd_soc_of_parse_audio_routing(card, "matrixio,audio-routing");
+//	if (ret)
+//		goto out;
+
+	ret = devm_snd_soc_register_card(&pdev->dev, card);
 	if (ret) {
 		dev_err(&pdev->dev, "Failed to register MATRIXIO card (%d)\n",
 			ret);
-		return ret;
 	}
-
+out:
 	return ret;
 }
 
