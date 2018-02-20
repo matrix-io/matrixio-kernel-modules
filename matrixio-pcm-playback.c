@@ -57,38 +57,6 @@ static struct snd_pcm_hardware matrixio_pcm_platback_hw = {
     .periods_max = 8,
 };
 
-static void matrixio_pcm_capture_work(struct work_struct *wk)
-{
-	int c;
-	int ret;
-	struct matrixio_substream *ms;
-
-	ms = container_of(wk, struct matrixio_substream, work);
-
-	mutex_lock(&ms->lock);
-
-	for (c = 0; c < ms->channels; c++)
-		ret = matrixio_read(ms->mio, MATRIXIO_MICARRAY_BASE,
-				    MATRIXIO_MICARRAY_BUFFER_SIZE,
-				    &matrixio_buf[c][ms->position]);
-
-	ms->position += 256;
-	mutex_unlock(&ms->lock);
-
-	snd_pcm_period_elapsed(ms->capture_substream);
-}
-
-static irqreturn_t matrixio_pcm_interrupt(int irq, void *irq_data)
-{
-	struct matrixio_substream *ms = irq_data;
-
-	if (ms->capture_substream == 0)
-		return IRQ_NONE;
-
-	queue_work(ms->wq, &ms->work);
-
-	return IRQ_HANDLED;
-}
 
 static int matrixio_pcm_open(struct snd_pcm_substream *substream)
 {
@@ -154,18 +122,6 @@ static int matrixio_pcm_hw_params(struct snd_pcm_substream *substream,
 
 	rate = params_rate(hw_params);
 
-	for (i = 0; i < ARRAY_SIZE(matrixio_params); i++) {
-		if (rate == matrixio_params[i][0]) {
-			regmap_write(ms->mio->regmap,
-				     MATRIXIO_MICARRAY_BASE + 0x801,
-				     matrixio_params[i][1]);
-
-			regmap_write(ms->mio->regmap,
-				     MATRIXIO_MICARRAY_BASE + 0x802,
-				     matrixio_params[i][2]);
-			return 0;
-		}
-	}
 
 	return -EINVAL;
 }
@@ -207,7 +163,7 @@ static int matrixio_pcm_copy(struct snd_pcm_substream *substream, int channel,
 	return copy_to_user(buf, buf_interleaved, count * 2 * ms->channels);
 }
 
-static struct snd_pcm_ops matrixio_pcm_ops = {
+static struct snd_pcm_ops matrixio_pcm_playback_ops = {
     .open = matrixio_pcm_open,
     .ioctl = snd_pcm_lib_ioctl,
     .hw_params = matrixio_pcm_hw_params,
@@ -221,7 +177,7 @@ static struct snd_pcm_ops matrixio_pcm_ops = {
 static int matrixio_pcm_new(struct snd_soc_pcm_runtime *rtd) { return 0; }
 
 static const struct snd_soc_platform_driver matrixio_soc_platform = {
-    .ops = &matrixio_pcm_ops, .pcm_new = matrixio_pcm_new,
+    .ops = &matrixio_pcm_playback_ops, .pcm_new = matrixio_pcm_new,
 };
 
 static int matrixio_pcm_platform_probe(struct platform_device *pdev)
@@ -248,23 +204,23 @@ static int matrixio_pcm_platform_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static const struct of_device_id snd_matrixio_pcm_of_match[] = {
+static const struct of_device_id snd_matrixio_pcm_playback_of_match[] = {
     {
 	.compatible = "matrixio-pcm-playback",
     },
     {},
 };
-MODULE_DEVICE_TABLE(of, snd_matrixio_pcm_of_match);
+MODULE_DEVICE_TABLE(of, snd_matrixio_pcm_playback_of_match);
 
-static struct platform_driver matrixio_codec_driver = {
+static struct platform_driver matrixio_pcm_playback_driver = {
     .driver = {.name = "matrixio-pcm-playback",
 	       .owner = THIS_MODULE,
-	       .of_match_table = snd_matrixio_pcm_of_match},
+	       .of_match_table = snd_matrixio_pcm_playback_of_match},
     .probe = matrixio_pcm_platform_probe,
 };
 
-module_platform_driver(matrixio_codec_driver);
+module_platform_driver(matrixio_pcm_playback_driver);
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Andres Calderon <andres.calderon@admobilize.com>");
-MODULE_DESCRIPTION("MATRIXIO PCM module");
+MODULE_DESCRIPTION("MATRIXIO PCM playback module");

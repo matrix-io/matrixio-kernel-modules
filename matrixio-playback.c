@@ -31,19 +31,11 @@
 
 static struct snd_soc_dai_link matrixio_snd_soc_dai[] = {
     {
-	  .name = "matrixio.pcm.0",
-	  .stream_name = "matrixio.pcm.0",
-	  .codec_dai_name = "snd-soc-dummy-dai",
-	  .cpu_dai_name = "matrixio.pcm.0",
-	  .platform_name = "matrixio-pcm-playback",
-	  .codec_name = "snd-soc-dummy",
-      },
-    {
-	.name = "matrixio.mic.0",
-	.stream_name = "matrixio.mic.0",
+	.name = "matrixio.pcm.0",
+	.stream_name = "matrixio.pcm.0",
 	.codec_dai_name = "snd-soc-dummy-dai",
-	.cpu_dai_name = "matrixio.mic.0",
-	.platform_name = "matrixio-pcm-capture",
+	.cpu_dai_name = "matrixio.pcm.0",
+	.platform_name = "matrixio-pcm-playback",
 	.codec_name = "snd-soc-dummy",
     }};
 
@@ -88,26 +80,13 @@ static const struct snd_soc_codec_driver matrixio_soc_codec_driver = {
 };
 
 static struct snd_soc_dai_driver matrixio_dai_driver[] = {
-     {
+    {
 	.name = "matrixio.pcm.0",
 	.playback =
 	    {
 		.stream_name = "matrixio.pcm.0",
-		.channels_min = 2,
-		.channels_max = 2,
-		.rates = MATRIXIO_RATES,
-		.rate_min = 8000,
-		.rate_max = 48000,
-		.formats = MATRIXIO_FORMATS,
-	    },
-    },
-    {
-	.name = "matrixio.mic.0",
-	.capture =
-	    {
-		.stream_name = "matrixio.mic.0",
 		.channels_min = 1,
-		.channels_max = 8,
+		.channels_max = 2,
 		.rates = MATRIXIO_RATES,
 		.rate_min = 8000,
 		.rate_max = 48000,
@@ -115,7 +94,7 @@ static struct snd_soc_dai_driver matrixio_dai_driver[] = {
 	    },
     }};
 
-static int matrixio_probe(struct platform_device *pdev)
+static int matrixio_playback_probe(struct platform_device *pdev)
 {
 	int ret;
 
@@ -134,16 +113,6 @@ static int matrixio_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, card);
 
-//	snd_soc_card_set_drvdata(card, matrixio_stuff);
-
-	ret = snd_soc_of_parse_card_name(card, "matrixio,model");
-	if (ret)
-		goto out;
-
-//	ret = snd_soc_of_parse_audio_routing(card, "matrixio,audio-routing");
-//	if (ret)
-//		goto out;
-
 	ret = devm_snd_soc_register_card(&pdev->dev, card);
 	if (ret) {
 		dev_err(&pdev->dev, "Failed to register MATRIXIO card (%d)\n",
@@ -153,26 +122,22 @@ out:
 	return ret;
 }
 
-static int matrixio_codec_remove(struct platform_device *pdev) { return 0; }
-
-static const struct of_device_id snd_matrixio_codec_of_match[] = {
+static const struct of_device_id snd_matrixio_playback_of_match[] = {
     {
-	.compatible = "matrixio-codec",
+	.compatible = "matrixio-playback",
     },
     {},
 };
-MODULE_DEVICE_TABLE(of, snd_matrixio_codec_of_match);
+MODULE_DEVICE_TABLE(of, snd_matrixio_playback_of_match);
 
-static struct platform_driver matrixio_codec_driver = {
-    .driver = {.name = "matrixio-codec",
+static struct platform_driver matrixio_playback_driver = {
+    .driver = {.name = "matrixio-playback",
 	       .owner = THIS_MODULE,
-	       .of_match_table = snd_matrixio_codec_of_match},
-    .probe = matrixio_probe,
-
-    .remove = matrixio_codec_remove,
+	       .of_match_table = snd_matrixio_playback_of_match},
+    .probe = matrixio_playback_probe,
 };
 
-module_platform_driver(matrixio_codec_driver);
+module_platform_driver(matrixio_playback_driver);
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Andres Calderon <andres.calderon@admobilize.com>");
