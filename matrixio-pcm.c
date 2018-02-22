@@ -243,7 +243,7 @@ static int matrixio_pcm_platform_probe(struct platform_device *pdev)
 	ms->mio = dev_get_drvdata(pdev->dev.parent);
 
 	ms->capture_substream = 0;
-	
+
 	ms->playback_substream = 0;
 
 	mutex_init(&ms->lock);

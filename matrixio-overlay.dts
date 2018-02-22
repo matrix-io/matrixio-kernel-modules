@@ -15,7 +15,7 @@
 			#address-cells = <1>;
 			#size-cells = <0>;
 			status = "okay"; 
-			matrixio_core_0: matrixio_core@0 {
+			matrixio_core: matrixio_core@0 {
 				compatible = "matrixio-core";
 				spi-max-frequency = <10000000>;
 				spi-cs-high = <1>;
@@ -39,7 +39,7 @@
         fragment@3 {
                 target-path = "/";
                 __overlay__ {
-                        matrixio-everloop@0 {
+                        matrixio_everloop: matrixio_everloop@0 {
                                 compatible = "matrixio-everloop";
 
                         };
@@ -47,9 +47,9 @@
         };
 
         fragment@4 {
-                target = <&matrixio_core_0>;
+                target = <&matrixio_core>;
                 __overlay__ {
-                        matrixio-uart@0 {
+                        matrixio_uart: matrixio_uart@0 {
                                 compatible = "matrixio-uart";
 				interrupts = <5 1>; /* low-to-high edge triggered */
 				interrupt-parent = <&gpio>;
@@ -59,9 +59,9 @@
         };
 
         fragment@5 {
-                target = <&matrixio_core_0>;
+                target = <&matrixio_core>;
                 __overlay__ {
-                        matrixio-gpio@0 {
+                        matrixio_gpio: matrixio_gpio@0 {
                                 compatible = "matrixio-gpio";
                                 status = "okay";
                         };
@@ -69,9 +69,9 @@
         };
 
         fragment@6 {
-                target = <&matrixio_core_0>;
+                target = <&matrixio_core>;
                 __overlay__ {
-                        matrixio-pwm@0 {
+                        matrixio_pwm: matrixio_pwm@0 {
                                 compatible = "matrixio-pwm";
                                 status = "okay";
                         };
@@ -79,9 +79,9 @@
         };
 
 	fragment@7 {
-		target = <&matrixio_core_0>;
+		target = <&matrixio_core>;
 		__overlay__ {
-			matrixio-env@0 {
+			matrixio_env: matrixio_env@0 {
 				compatible = "matrixio-env";
 				status = "okay";
 			};
@@ -89,9 +89,9 @@
 	};
 
 	fragment@8 {
-		target = <&matrixio_core_0>;
+		target = <&matrixio_core>;
 		__overlay__ {
-			matrixio-imu@0 {
+			matrixio_imu: matrixio_imu@0 {
 				compatible = "matrixio-imu";
 				status = "okay";
 			};
@@ -99,7 +99,7 @@
 	};
 
         fragment@9 {
-                target = <&matrixio_core_0>;
+                target = <&matrixio_core>;
                 __overlay__ {
                         pcm-capture@0 {
                                 compatible = "matrixio-pcm";
@@ -111,7 +111,7 @@
         };
 
         fragment@10 {
-                target = <&matrixio_core_0>;
+                target = <&matrixio_core>;
                 __overlay__ {
                         matrix-codec@0 {
                                 compatible = "matrixio-codec";
