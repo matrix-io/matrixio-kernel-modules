@@ -25,13 +25,64 @@
 #include <sound/tlv.h>
 
 #include "matrixio-core.h"
+#include "matrixio-pcm.h"
 
-#define MATRIXIO_CHANNELS_MAX 8
-#define MATRIXIO_RATES SNDRV_PCM_RATE_8000_48000
-#define MATRIXIO_FORMATS SNDRV_PCM_FMTBIT_S16_LE
-#define MATRIXIO_MICARRAY_BASE 0x2000
-#define MATRIXIO_MICARRAY_BUFFER_SIZE (256 * MATRIXIO_CHANNELS_MAX * 2)
-#define MATRIXIO_FIFO_SIZE (MATRIXIO_MICARRAY_BUFFER_SIZE * 4)
+#define CTRL_VOL_MAX 500
+#define CTRL_VOL_MIN -10000
+
+typedef enum {
+	PCM_CAPTURE_VOLUME,
+	PCM_CAPTURE_MUTE,
+	PCM_CAPTURE_DEVICE,
+} SND_MATRIXIO_CTRL_T;
+
+static int snd_matrixio_ctl_info(struct snd_kcontrol *kcontrol,
+				 struct snd_ctl_elem_info *uinfo)
+{
+	if (kcontrol->private_value == PCM_CAPTURE_VOLUME) {
+		uinfo->type = SNDRV_CTL_ELEM_TYPE_INTEGER;
+		uinfo->count = 1;
+		uinfo->value.integer.min = CTRL_VOL_MIN;
+		uinfo->value.integer.max = CTRL_VOL_MAX;
+	} else if (kcontrol->private_value == PCM_CAPTURE_MUTE) {
+		uinfo->type = SNDRV_CTL_ELEM_TYPE_BOOLEAN;
+		uinfo->count = 1;
+		uinfo->value.integer.min = 0;
+		uinfo->value.integer.max = 1;
+	} else if (kcontrol->private_value == PCM_CAPTURE_DEVICE) {
+		uinfo->type = SNDRV_CTL_ELEM_TYPE_INTEGER;
+		uinfo->count = 1;
+		uinfo->value.integer.min = 0;
+		uinfo->value.integer.max = 3;
+	}
+	return 0;
+}
+
+static int snd_matrixio_ctl_get(struct snd_kcontrol *kcontrol,
+				struct snd_ctl_elem_value *ucontrol)
+{
+	return 0;
+}
+static int snd_matrixio_ctl_put(struct snd_kcontrol *kcontrol,
+				struct snd_ctl_elem_value *ucontrol)
+{
+	return 1;
+}
+
+static DECLARE_TLV_DB_SCALE(snd_matrixio_db_scale, CTRL_VOL_MIN, 1, 1);
+
+static struct snd_kcontrol_new snd_matrixio_ctl[] = {
+    {.iface = SNDRV_CTL_ELEM_IFACE_MIXER,
+     .name = "PCM Capture Volume",
+     .index = 0,
+     .access = SNDRV_CTL_ELEM_ACCESS_READWRITE | SNDRV_CTL_ELEM_ACCESS_TLV_READ,
+     .private_value = PCM_CAPTURE_VOLUME,
+     .info = snd_matrixio_ctl_info,
+     .get = snd_matrixio_ctl_get,
+     .put = snd_matrixio_ctl_put,
+     .count = 1,
+     .tlv = {.p = snd_matrixio_db_scale}},
+};
 
 static int matrixio_startup(struct snd_pcm_substream *substream) { return 0; }
 
@@ -81,6 +132,8 @@ static int matrixio_codec_hw_params(struct snd_pcm_substream *substream,
 
 static int matrixio_codec_set_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 {
+	printk(KERN_INFO "set fmt %d", fmt);
+
 	return 0;
 }
 
@@ -125,12 +178,6 @@ static const struct snd_soc_dai_ops matrixio_dai_ops = {
     //    .trigger = matrixio_codec_dai_trigger,
 };
 
-static const DECLARE_TLV_DB_SCALE(inpga_tlv, -1000, 100, 0);
-
-static const struct snd_kcontrol_new matrixio_snd_controls[] = {
-    SOC_SINGLE_TLV("MIC ARRAY Volume", 0x001, 6, 7, 0, inpga_tlv),
-};
-
 static const struct snd_soc_dapm_widget matrixio_dapm_widgets[] = {
     SND_SOC_DAPM_INPUT("MIC0"), SND_SOC_DAPM_INPUT("MIC1"),
     SND_SOC_DAPM_INPUT("MIC2"), SND_SOC_DAPM_INPUT("MIC3"),
@@ -149,13 +196,13 @@ static const struct snd_soc_codec_driver matrixio_soc_codec_driver = {
     .probe = matrixio_codec_probe,
     .component_driver =
 	{
-	    .controls = matrixio_snd_controls,
-	    .num_controls = ARRAY_SIZE(matrixio_snd_controls),
-	    .dapm_widgets = matrixio_dapm_widgets,
+	    .controls = snd_matrixio_ctl,
+	    .num_controls = ARRAY_SIZE(snd_matrixio_ctl),
+/*	    .dapm_widgets = matrixio_dapm_widgets,
 	    .num_dapm_widgets = ARRAY_SIZE(matrixio_dapm_widgets),
 	    .dapm_routes = matrixio_dapm_routes,
 	    .num_dapm_routes = ARRAY_SIZE(matrixio_dapm_routes),
-
+*/
 	},
 };
 

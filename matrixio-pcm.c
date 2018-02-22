@@ -28,12 +28,6 @@
 #include <sound/soc.h>
 #include <sound/tlv.h>
 
-#define MATRIXIO_CHANNELS_MAX 8
-#define MATRIXIO_RATES SNDRV_PCM_RATE_8000_48000
-#define MATRIXIO_FORMATS SNDRV_PCM_FMTBIT_S16_LE
-#define MATRIXIO_MICARRAY_BUFFER_SIZE (256 * 1 /*MATRIXIO_CHANNELS_MAX*/ * 2)
-#define MATRIXIO_FIFO_SIZE (MATRIXIO_MICARRAY_BUFFER_SIZE * 32)
-
 static struct matrixio_substream *ms;
 
 static uint16_t matrixio_buf[MATRIXIO_CHANNELS_MAX][8192];
