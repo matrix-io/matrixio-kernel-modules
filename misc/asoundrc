@@ -1,20 +1,31 @@
-
-pcm.sc {
-    type hw
-    card 2
-}
-
-pcm.!default
-{
+pcm.!default {
   type asym
-  playback.pcm {
-    type hw
-    card 0
-    device 0
-  }
-  capture.pcm {
-    type hw
-    card 2
-    device 0
+  capture.pcm "mic"
+  playback.pcm "speaker"
+}
+
+pcm.mic {
+   type softvol
+   slave {
+     pcm "array"
+   }
+   control {
+     name "MicArray Master"
+        card 0
+   }
+}
+
+pcm.speaker {
+  type plug
+  slave {
+    pcm "hw:0,0"
   }
 }
+
+pcm.array {
+  type plug
+  slave {
+    pcm "hw:2,0"
+  }
+}
+
