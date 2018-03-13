@@ -26,7 +26,7 @@
 
 #include "matrixio-core.h"
 
-#define MATRIXIO_RATES SNDRV_PCM_RATE_8000_48000
+#define MATRIXIO_RATES SNDRV_PCM_RATE_8000_96000
 #define MATRIXIO_FORMATS SNDRV_PCM_FMTBIT_S16_LE
 
 static int matrixio_startup(struct snd_pcm_substream *substream) { return 0; }
@@ -179,7 +179,7 @@ static struct snd_soc_dai_driver matrixio_dai_driver[] = {
 		.channels_max = 8,
 		.rates = MATRIXIO_RATES,
 		.rate_min = 8000,
-		.rate_max = 48000,
+		.rate_max = 96000,
 		.formats = MATRIXIO_FORMATS,
 	    },
 	.ops = &matrixio_dai_ops,

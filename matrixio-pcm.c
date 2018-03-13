@@ -29,25 +29,25 @@
 #include <sound/tlv.h>
 
 #define MATRIXIO_CHANNELS_MAX 8
-#define MATRIXIO_RATES SNDRV_PCM_RATE_8000_48000
+#define MATRIXIO_RATES SNDRV_PCM_RATE_8000_96000
 #define MATRIXIO_FORMATS SNDRV_PCM_FMTBIT_S16_LE
-#define MATRIXIO_MICARRAY_BUFFER_SIZE (256 * 1 /*MATRIXIO_CHANNELS_MAX*/ * 2)
+#define MATRIXIO_MICARRAY_BUFFER_SIZE (512 * 2)
 #define MATRIXIO_FIFO_SIZE (MATRIXIO_MICARRAY_BUFFER_SIZE * 32)
 
 static struct matrixio_substream *ms;
 
 static uint16_t matrixio_buf[MATRIXIO_CHANNELS_MAX][8192];
 
-static const uint16_t matrixio_params[][3] = {
-    {8000, 380, 0},  {12000, 253, 2}, {16000, 189, 3}, {22050, 134, 5},
-    {24000, 126, 5}, {32000, 94, 6},  {44100, 68, 7},  {48000, 62, 7}};
+static const uint32_t matrixio_params[][3] = {
+    {8000, 374, 32},  {12000, 249, 2}, {16000, 186, 3}, {22050, 135, 5},
+    {24000, 124, 5}, {32000, 92, 6},  {44100, 67, 7},  {48000, 61, 7},{96000,30,8}};
 
 static struct snd_pcm_hardware matrixio_pcm_capture_hw = {
     .info = SNDRV_PCM_INFO_INTERLEAVED | SNDRV_PCM_INFO_PAUSE,
     .formats = SNDRV_PCM_FMTBIT_S16_LE,
-    .rates = SNDRV_PCM_RATE_8000_48000,
+    .rates = SNDRV_PCM_RATE_8000_96000,
     .rate_min = 8000,
-    .rate_max = 48000,
+    .rate_max = 96000,
     .channels_min = 1,
     .channels_max = 8,
     .buffer_bytes_max = 32768,
@@ -68,11 +68,11 @@ static void matrixio_pcm_capture_work(struct work_struct *wk)
 	mutex_lock(&ms->lock);
 
 	for (c = 0; c < ms->channels; c++)
-		ret = matrixio_read(ms->mio, MATRIXIO_MICARRAY_BASE,
+		ret = matrixio_read(ms->mio, MATRIXIO_MICARRAY_BASE+c*MATRIXIO_MICARRAY_BUFFER_SIZE/2,
 				    MATRIXIO_MICARRAY_BUFFER_SIZE,
 				    &matrixio_buf[c][ms->position]);
 
-	ms->position += 256;
+	ms->position += 512; //TODO:parameter
 	mutex_unlock(&ms->lock);
 
 	snd_pcm_period_elapsed(ms->capture_substream);
@@ -157,11 +157,11 @@ static int matrixio_pcm_hw_params(struct snd_pcm_substream *substream,
 	for (i = 0; i < ARRAY_SIZE(matrixio_params); i++) {
 		if (rate == matrixio_params[i][0]) {
 			regmap_write(ms->mio->regmap,
-				     MATRIXIO_MICARRAY_BASE + 0x801,
+				     MATRIXIO_CONF_BASE + 0x06,
 				     matrixio_params[i][1]);
 
 			regmap_write(ms->mio->regmap,
-				     MATRIXIO_MICARRAY_BASE + 0x802,
+				     MATRIXIO_CONF_BASE + 0x07,
 				     matrixio_params[i][2]);
 			return 0;
 		}
