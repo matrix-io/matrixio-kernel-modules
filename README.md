@@ -29,7 +29,7 @@ git clone https://github.com/matrix-io/matrixio-kernel-modules
 cd matrixio-kernel-modules
 make && make install
 ```
-This modules has been tested in Strech with kernel **4.9.59-v7+**. It NOT support **4.14.26-v7+**. 
+This drivers only works with current stock raspbian kernel. https://www.raspberrypi.org/documentation/linux/kernel/updating.md
 
 ## Overlay Setup
 
