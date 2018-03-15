@@ -4,6 +4,8 @@ MATRIXIO Kernel Modules is the kernel drivers for MATRIX Creator and MATRIX Voic
 
 ## Install Dependencies
 
+This drivers only works with current stock raspbian kernel. https://www.raspberrypi.org/documentation/linux/kernel/updating.md
+
 ```
 # Add repo and key
 curl https://apt.matrix.one/doc/apt-key.gpg | sudo apt-key add -
@@ -29,8 +31,6 @@ git clone https://github.com/matrix-io/matrixio-kernel-modules
 cd matrixio-kernel-modules
 make && make install
 ```
-This drivers only works with current stock raspbian kernel. https://www.raspberrypi.org/documentation/linux/kernel/updating.md
-
 ## Overlay Setup
 
 Add in `/boot/config.txt`
