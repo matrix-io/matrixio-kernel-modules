@@ -117,5 +117,15 @@
                         };
                 };
         };
+
+        fragment@11 {
+                target-path = "/";
+                __overlay__ {
+                        matrixio-regmap@0 {
+                                compatible = "matrixio-regmap";
+
+                        };
+                };
+        };
 };
 

@@ -1,4 +1,4 @@
-DTC=dtc
+	DTC=dtc
 
 snd-soc-matrixio-objs := matrixio-codec.o
 snd-pcm-matrixio-objs := matrixio-pcm.o
@@ -12,6 +12,7 @@ obj-m += matrixio-pcm.o
 obj-m += matrixio-gpio.o
 obj-m += matrixio-env.o
 obj-m += matrixio-imu.o
+obj-m += matrixio-regmap.o
 
 all:	matrixio.dtbo
 	make -C /lib/modules/$(shell uname -r)/build M=$(PWD) modules
