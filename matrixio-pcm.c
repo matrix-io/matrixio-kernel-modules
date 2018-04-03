@@ -1,7 +1,7 @@
 /*
  * matrix-codec.c -- MATRIX microphone array audio driver
  *
- * Copyright 2017 MATRIX Labs
+ * Copyright 2018 MATRIX Labs
  *
  * Author: Andres Calderon <andres.calderon@admobilize.com>
  *
@@ -21,6 +21,7 @@
 #include <linux/moduleparam.h>
 #include <linux/of_irq.h>
 #include <linux/platform_device.h>
+#include <linux/version.h>
 #include <sound/core.h>
 #include <sound/initval.h>
 #include <sound/pcm.h>
@@ -32,15 +33,15 @@
 #define MATRIXIO_RATES SNDRV_PCM_RATE_8000_96000
 #define MATRIXIO_FORMATS SNDRV_PCM_FMTBIT_S16_LE
 #define MATRIXIO_MICARRAY_BUFFER_SIZE (512 * 2)
-#define MATRIXIO_FIFO_SIZE (MATRIXIO_MICARRAY_BUFFER_SIZE * 32)
 
 static struct matrixio_substream *ms;
 
 static uint16_t matrixio_buf[MATRIXIO_CHANNELS_MAX][8192];
 
 static const uint32_t matrixio_params[][3] = {
-    {8000, 374, 32},  {12000, 249, 2}, {16000, 186, 3}, {22050, 135, 5},
-    {24000, 124, 5}, {32000, 92, 6},  {44100, 67, 7},  {48000, 61, 7},{96000,30,10}};
+    {8000, 374, 32}, {12000, 249, 2}, {16000, 186, 3},
+    {22050, 135, 5}, {24000, 124, 5}, {32000, 92, 6},
+    {44100, 67, 7},  {48000, 61, 7},  {96000, 30, 10}};
 
 static struct snd_pcm_hardware matrixio_pcm_capture_hw = {
     .info = SNDRV_PCM_INFO_INTERLEAVED | SNDRV_PCM_INFO_PAUSE,
@@ -68,11 +69,13 @@ static void matrixio_pcm_capture_work(struct work_struct *wk)
 	mutex_lock(&ms->lock);
 
 	for (c = 0; c < ms->channels; c++)
-		ret = matrixio_read(ms->mio, MATRIXIO_MICARRAY_BASE+c*MATRIXIO_MICARRAY_BUFFER_SIZE/2,
-				    MATRIXIO_MICARRAY_BUFFER_SIZE,
-				    &matrixio_buf[c][ms->position]);
+		ret = matrixio_read(
+		    ms->mio, MATRIXIO_MICARRAY_BASE +
+				 c * (MATRIXIO_MICARRAY_BUFFER_SIZE >> 1),
+		    MATRIXIO_MICARRAY_BUFFER_SIZE,
+		    &matrixio_buf[c][ms->position]);
 
-	ms->position += 512; //TODO:parameter
+	ms->position += MATRIXIO_MICARRAY_BUFFER_SIZE >> 1;
 	mutex_unlock(&ms->lock);
 
 	snd_pcm_period_elapsed(ms->capture_substream);
@@ -156,12 +159,10 @@ static int matrixio_pcm_hw_params(struct snd_pcm_substream *substream,
 
 	for (i = 0; i < ARRAY_SIZE(matrixio_params); i++) {
 		if (rate == matrixio_params[i][0]) {
-			regmap_write(ms->mio->regmap,
-				     MATRIXIO_CONF_BASE + 0x06,
+			regmap_write(ms->mio->regmap, MATRIXIO_CONF_BASE + 0x06,
 				     matrixio_params[i][1]);
 
-			regmap_write(ms->mio->regmap,
-				     MATRIXIO_CONF_BASE + 0x07,
+			regmap_write(ms->mio->regmap, MATRIXIO_CONF_BASE + 0x07,
 				     matrixio_params[i][2]);
 			return 0;
 		}
@@ -193,6 +194,7 @@ matrixio_pcm_pointer(struct snd_pcm_substream *substream)
 	return ms->position;
 }
 
+#if LINUX_VERSION_CODE <= KERNEL_VERSION(4, 13, 0)
 static int matrixio_pcm_copy(struct snd_pcm_substream *substream, int channel,
 			     snd_pcm_uframes_t pos, void __user *buf,
 			     snd_pcm_uframes_t count)
@@ -206,6 +208,24 @@ static int matrixio_pcm_copy(struct snd_pcm_substream *substream, int channel,
 			    matrixio_buf[c][pos + i];
 	return copy_to_user(buf, buf_interleaved, count * 2 * ms->channels);
 }
+#else
+static int matrixio_pcm_copy(struct snd_pcm_substream *substream, int channel,
+			     snd_pcm_uframes_t pos, void __user *buf,
+			     snd_pcm_uframes_t bytes)
+{
+	int i, c;
+	static int16_t buf_interleaved[MATRIXIO_CHANNELS_MAX * 8192];
+	struct snd_pcm_runtime *runtime = substream->runtime;
+	int frame_pos = bytes_to_frames(runtime, pos);
+	int frame_count = bytes_to_frames(runtime, bytes);
+
+	for (i = 0; i < frame_count; i++)
+		for (c = 0; c < ms->channels; c++)
+			buf_interleaved[i * ms->channels + c] =
+			    matrixio_buf[c][frame_pos + i];
+	return copy_to_user(buf, buf_interleaved, bytes);
+}
+#endif
 
 static struct snd_pcm_ops matrixio_pcm_ops = {
     .open = matrixio_pcm_open,
@@ -214,7 +234,11 @@ static struct snd_pcm_ops matrixio_pcm_ops = {
     .hw_free = matrixio_pcm_hw_free,
     .prepare = matrixio_pcm_prepare,
     .pointer = matrixio_pcm_pointer,
+#if LINUX_VERSION_CODE <= KERNEL_VERSION(4, 13, 0)
     .copy = matrixio_pcm_copy,
+#else
+    .copy_user = matrixio_pcm_copy,
+#endif
     .close = matrixio_pcm_close,
 };
 
