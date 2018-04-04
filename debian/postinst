@@ -1,0 +1,7 @@
+#!/bin/bash -e
+
+echo "Enabling firmware loading at startup"
+dkms add -m matrixio -v 0.1
+dkms build -m matrixio -v 0.1
+dkms install -m matrixio -v 0.1
+

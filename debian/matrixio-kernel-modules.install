@@ -1,0 +1,6 @@
+Makefile usr/src/matrixio-0.1
+dkms.conf usr/src/matrixio-0.1
+matrixio-overlay.dts usr/src/matrixio-0.1
+*.c usr/src/matrixio-0.1
+*.h usr/src/matrixio-0.1
+overlay/matrixio.dtbo boot/overlays

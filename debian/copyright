@@ -1,0 +1,12 @@
+Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: matrix-creator-init
+Source: https://www.admobilize.com/
+
+Files: *
+Copyright: 2016 <Admobilize info@admobilize.com>
+License: <special license>
+ The firmware for the MCU is free and can be downloaded from this
+ repository: https://github.com/matrix-io/matrix-creator-mcu.
+ The firmware for the FPGA is not free, but a free version exists
+ in this repository:
+ https://github.com/matrix-io/matrix-creator-fpga/tree/master/creator_core
