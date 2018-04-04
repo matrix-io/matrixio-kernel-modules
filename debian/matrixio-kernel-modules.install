@@ -1,6 +1,7 @@
-Makefile usr/src/matrixio-0.1
+src/Makefile usr/src/matrixio-0.1
 dkms.conf usr/src/matrixio-0.1
-matrixio-overlay.dts usr/src/matrixio-0.1
-*.c usr/src/matrixio-0.1
-*.h usr/src/matrixio-0.1
+src/matrixio-overlay.dts usr/src/matrixio-0.1
+src/*.c usr/src/matrixio-0.1
+src/*.h usr/src/matrixio-0.1
 overlay/matrixio.dtbo boot/overlays
+kernel_modifications.txt usr/share/matrixlabs/matrixio-devices/config

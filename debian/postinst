@@ -5,3 +5,4 @@ dkms add -m matrixio -v 0.1
 dkms build -m matrixio -v 0.1
 dkms install -m matrixio -v 0.1
 
+cp /boot/config.txt /boot/config.txt.matrixio.bk && /usr/share/matrixlabs/matrixio-devices/matrixlabs_edit_settings.py /boot/config.txt.bk /usr/share/matrixlabs/matrixio-devices/config/kernel_modifications.txt > /boot/config.txt

@@ -4,5 +4,9 @@
 DPKG_EXPORT_BUILDFLAGS = 1
 include /usr/share/dpkg/default.mk
 
+override_dh_auto_build:
+
+override_dh_auto_install:
+
 %:
 	dh $@ 
