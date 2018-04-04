@@ -1,4 +1,4 @@
-	DTC=dtc
+DTC=dtc
 
 obj-m += matrixio-core.o
 obj-m += matrixio-uart.o
