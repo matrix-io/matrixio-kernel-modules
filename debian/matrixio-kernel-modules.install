@@ -6,4 +6,4 @@ src/*.h usr/src/matrixio-0.1
 overlay/matrixio.dtbo boot/overlays
 kernel_modifications.txt usr/share/matrixlabs/matrixio-devices/config
 misc/asound.conf etc/
-misc/matrixio.conf etc/modprobe.d/
+misc/matrixio.conf etc/modules-load.d/
