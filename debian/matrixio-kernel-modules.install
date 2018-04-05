@@ -1,0 +1,9 @@
+src/Makefile usr/src/matrixio-0.1
+dkms.conf usr/src/matrixio-0.1
+src/matrixio-overlay.dts usr/src/matrixio-0.1
+src/*.c usr/src/matrixio-0.1
+src/*.h usr/src/matrixio-0.1
+overlay/matrixio.dtbo boot/overlays
+kernel_modifications.txt usr/share/matrixlabs/matrixio-devices/config
+misc/asound.conf etc/
+misc/matrixio.conf etc/modules-load.d/

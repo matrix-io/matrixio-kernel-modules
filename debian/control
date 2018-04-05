@@ -1,0 +1,12 @@
+Source: matrixio-kernel-modules
+Section: embedded
+Priority: optional
+Maintainer: MATRIX Labs <info@matrix.one>
+Build-Depends: debhelper (>= 9)
+Standards-Version: 3.9.5
+Homepage: https://github.com/matrix-io/matrixio-kernel-modules
+
+Package: matrixio-kernel-modules
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends},matrixio-creator-init,raspberrypi-kernel-headers,raspberrypi-kernel,dkms
+Description: Install kernel modules for MATRIX devices.
