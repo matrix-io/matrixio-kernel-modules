@@ -2,9 +2,25 @@
 
 MATRIXIO Kernel Modules is the kernel drivers for MATRIX Creator and MATRIX Voice.
 
-## Install Dependencies
+## Option 1: Package Installation
+```
+# Add repo and key
+curl https://apt.matrix.one/doc/apt-key.gpg | sudo apt-key add -
+echo "deb https://apt.matrix.one/raspbian $(lsb_release -sc) main" | sudo tee /etc/apt/sources.list.d/matrixlabs.list
 
-This drivers only works with current stock raspbian kernel. https://www.raspberrypi.org/documentation/linux/kernel/updating.md
+# Update packages and install
+sudo apt-get update
+sudo apt-get upgrade
+
+# Installation MATRIX Packages
+sudo apt install matrixio-kernel-modules
+
+# Reboot
+sudo reboot
+```
+## Option 2: Cloning & compiling from sources
+
+### Install Dependencies
 
 ```
 # Add repo and key
@@ -25,20 +41,20 @@ sudo apt-get -y install raspberrypi-kernel-headers raspberrypi-kernel git
 sudo reboot
 ```
 
-## Cloning & Compiling
+### Cloning & Compiling
 ```
 git clone https://github.com/matrix-io/matrixio-kernel-modules
-cd matrixio-kernel-modules
+cd matrixio-kernel-modules/src
 make && make install
 ```
-## Overlay Setup
+### Overlay Setup
 
 Add in `/boot/config.txt`
 
 ```
 dtoverlay=matrixio
 ```
-Then reboot your device. It allows and activate the MATRIXIO Kernel modules. **MATRIX HAL and MALOS layer don't support this configuration**.
+Then reboot your device. It allows and activates the MATRIXIO Kernel modules. **MATRIX HAL and MALOS layer don't support this configuration**.
 
 ## Status
 
@@ -47,4 +63,3 @@ Then reboot your device. It allows and activate the MATRIXIO Kernel modules. **M
 * Sensors = Complete with IIO implementation.
 * Zwave UART = Unstable, It has a bug in the remove process. (Work)
 * ALSA - Microphones - Playback = **IN DEVELOPMENT**
-
