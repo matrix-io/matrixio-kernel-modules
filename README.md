@@ -12,6 +12,10 @@ echo "deb https://apt.matrix.one/raspbian $(lsb_release -sc) main" | sudo tee /e
 sudo apt-get update
 sudo apt-get upgrade
 
+# Reboot in case of Kernel Updates
+
+sudo reboot
+
 # Installation MATRIX Packages
 sudo apt install matrixio-kernel-modules
 
