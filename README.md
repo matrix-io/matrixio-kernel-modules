@@ -65,4 +65,4 @@ Add in `/boot/config.txt`
 ```
 dtoverlay=matrixio
 ```
-Then reboot your device. It allows and activates the MATRIXIO Kernel modules. **MATRIX HAL and MALOS layer don't support this configuration**.
+Then reboot your device. It allows and activates the MATRIXIO Kernel modules. 
