@@ -2,6 +2,13 @@
 
 MATRIXIO Kernel Modules is the kernel drivers for MATRIX Creator and MATRIX Voice.
 
+## Warning: Kernel Version
+This drivers **only** works with current stock raspbian kernel. To reverting back to current stock Raspbian kernel use:  
+
+```
+sudo apt-get install --reinstall raspberrypi-bootloader raspberrypi-kernel
+```
+
 ## Option 1: Package Installation
 ```
 # Add repo and key
