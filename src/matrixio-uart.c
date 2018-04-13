@@ -23,11 +23,6 @@ static struct work_struct work;
 static int force_end_work;
 static spinlock_t conf_lock;
 
-struct matrixio_status {
-	uint32_t version;
-	uint32_t device;
-};
-
 struct matrixio_uart_status {
 	uint8_t dummy : 8;
 	uint8_t fifo_empty : 1;
@@ -99,9 +94,6 @@ static void matrixio_uart_start_tx(struct uart_port *port)
 				      (void *)&uart_status);
 
 		} while (uart_status.uart_tx_busy);
-
-		dev_info(port->dev, "Data %c",
-			 port->state->xmit.buf[port->state->xmit.tail]);
 
 		matrixio_reg_write(
 		    matrixio, MATRIXIO_UART_BASE + 0x101,
@@ -225,7 +217,6 @@ static int matrixio_uart_probe(struct platform_device *pdev)
 	int ret;
 	struct device *dev = &pdev->dev;
 	struct device_node *np = dev->of_node;
-	struct matrixio_status matrixio_info;
 
 	matrixio = dev_get_drvdata(pdev->dev.parent);
 
@@ -239,13 +230,6 @@ static int matrixio_uart_probe(struct platform_device *pdev)
 			ret);
 		return ret;
 	}
-
-	matrixio_read(matrixio, 0, sizeof(matrixio_info),
-		      (void *)&matrixio_info);
-
-	dev_info(&pdev->dev,
-		 "MATRIXIO Device identify: %X -- MATRIXIO Fimware Info: %X \n",
-		 matrixio_info.version, matrixio_info.device);
 
 	spin_lock_init(&conf_lock);
 	irq = irq_of_parse_and_map(np, 0);
