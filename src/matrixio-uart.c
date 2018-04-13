@@ -31,13 +31,8 @@ struct matrixio_uart_status {
 };
 
 struct matrixio_uart_data {
-	uint8_t uart_rx : 8;
-	uint8_t empty : 8;
-};
-
-struct matrixio_uart_pointer {
-	uint8_t pointer_read : 8;
-	uint8_t pointer_write : 8;
+	uint8_t uart_rx;
+	uint8_t empty;
 };
 
 static const char driver_name[] = "ttyMATRIX";
