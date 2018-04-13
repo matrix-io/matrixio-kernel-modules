@@ -1,4 +1,3 @@
-#include "matrixio-core.h"
 #include <linux/delay.h>
 #include <linux/freezer.h>
 #include <linux/init.h>
@@ -14,6 +13,8 @@
 #include <linux/serial_core.h>
 #include <linux/tty_flip.h>
 
+#include "matrixio-core.h"
+
 static struct matrixio *matrixio;
 static struct uart_port port;
 static int irq;
@@ -22,12 +23,16 @@ static struct work_struct work;
 static int force_end_work;
 static spinlock_t conf_lock;
 
+struct matrixio_status {
+	uint32_t version;
+	uint32_t device;
+};
+
 struct matrixio_uart_status {
 	uint8_t dummy : 8;
-	uint8_t fifo_full : 1;
 	uint8_t fifo_empty : 1;
 	uint8_t uart_ucr : 2;
-	uint8_t uart_tx_busy : 4;
+	uint8_t uart_tx_busy : 5;
 };
 
 struct matrixio_uart_data {
@@ -55,8 +60,8 @@ static void matrixio_uart_work(struct work_struct *w)
 	struct matrixio_uart_data uart_data;
 
 	spin_lock(&conf_lock);
-	regmap_read(matrixio->regmap, MATRIXIO_UART_BASE,
-		    (unsigned int *)&uart_data);
+	matrixio_read(matrixio, MATRIXIO_UART_BASE, sizeof(uart_data),
+		      (void *)&uart_data);
 
 	if (!uart_data.empty) {
 		tty_insert_flip_char(&port.state->port,
@@ -89,14 +94,18 @@ static void matrixio_uart_start_tx(struct uart_port *port)
 	while (1) {
 
 		do {
-			regmap_read(matrixio->regmap,
-				    MATRIXIO_UART_BASE + 0x100,
-				    (unsigned int *)&uart_status);
+			matrixio_read(matrixio, MATRIXIO_UART_BASE + 0x100,
+				      sizeof(uart_status),
+				      (void *)&uart_status);
 
 		} while (uart_status.uart_tx_busy);
 
-		regmap_write(matrixio->regmap, MATRIXIO_UART_BASE + 0x101,
-			     port->state->xmit.buf[port->state->xmit.tail]);
+		dev_info(port->dev, "Data %c",
+			 port->state->xmit.buf[port->state->xmit.tail]);
+
+		matrixio_reg_write(
+		    matrixio, MATRIXIO_UART_BASE + 0x101,
+		    port->state->xmit.buf[port->state->xmit.tail]);
 		port->state->xmit.tail =
 		    (port->state->xmit.tail + 1) & (UART_XMIT_SIZE - 1);
 		port->icount.tx++;
@@ -121,8 +130,8 @@ static int matrixio_uart_startup(struct uart_port *port)
 
 	spin_lock(&conf_lock);
 
-	regmap_write(matrixio->regmap, MATRIXIO_UART_BASE + 0x102, 1);
-	regmap_write(matrixio->regmap, MATRIXIO_UART_BASE + 0x102, 0);
+	matrixio_reg_write(matrixio, MATRIXIO_UART_BASE + 0x102, 1);
+	matrixio_reg_write(matrixio, MATRIXIO_UART_BASE + 0x102, 0);
 
 	spin_unlock(&conf_lock);
 
@@ -147,8 +156,8 @@ static int matrixio_uart_startup(struct uart_port *port)
 		return -EBUSY;
 	}
 
-	printk(KERN_INFO "MATRIX Creator TTY has been loaded (IRQ=%d,%d)", irq,
-	       ret);
+	dev_info(port->dev, "MATRIX Creator TTY has been loaded (IRQ=%d,%d)",
+		 irq, ret);
 
 	return 0;
 }
@@ -216,6 +225,8 @@ static int matrixio_uart_probe(struct platform_device *pdev)
 	int ret;
 	struct device *dev = &pdev->dev;
 	struct device_node *np = dev->of_node;
+	struct matrixio_status matrixio_info;
+
 	matrixio = dev_get_drvdata(pdev->dev.parent);
 
 	if (np)
@@ -224,10 +235,18 @@ static int matrixio_uart_probe(struct platform_device *pdev)
 	ret = uart_register_driver(&matrixio_uart_driver);
 
 	if (ret != 0) {
-		dev_err(matrixio->dev, "Failed to register MATRIXIO UART: %d\n",
+		dev_err(&pdev->dev, "Failed to register MATRIXIO UART: %d\n",
 			ret);
 		return ret;
 	}
+
+	matrixio_read(matrixio, 0, sizeof(matrixio_info),
+		      (void *)&matrixio_info);
+
+	dev_info(&pdev->dev,
+		 "MATRIXIO Device identify: %X -- MATRIXIO Fimware Info: %X \n",
+		 matrixio_info.version, matrixio_info.device);
+
 	spin_lock_init(&conf_lock);
 	irq = irq_of_parse_and_map(np, 0);
 

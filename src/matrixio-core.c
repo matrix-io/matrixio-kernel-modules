@@ -129,6 +129,7 @@ int matrixio_reg_write(void *context, unsigned int reg, unsigned int val)
 	return matrixio_write((struct matrixio *)(context), reg,
 			      sizeof(int16_t), &data);
 }
+EXPORT_SYMBOL(matrixio_reg_write);
 
 static int matrixio_register_devices(struct matrixio *matrixio)
 {
