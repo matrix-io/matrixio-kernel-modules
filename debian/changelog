@@ -1,8 +1,14 @@
-matrixio-kernel-modules (0.1.3) unstable; urgency=low
+matrixio-kernel-modules (0.1.4) unstable; urgency=low
 
   * Bug Fix: Zwave UART Has been fixed
 
  -- Andres Calderon <andres.calderon@admobilize.com>  Fri, 13 Apr 2018 17:00:00 -0500
+
+matrixio-kernel-modules (0.1.3) unstable; urgency=low
+
+  * Bug Fix: kernel overlay fixed
+
+ -- Andres Calderon <andres.calderon@admobilize.com>  Sat, 14 Apr 2018 19:00:00 -0500
 
 matrixio-kernel-modules (0.1.2) unstable; urgency=low
 
