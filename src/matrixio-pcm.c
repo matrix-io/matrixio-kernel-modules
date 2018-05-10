@@ -33,6 +33,7 @@
 #define MATRIXIO_RATES SNDRV_PCM_RATE_8000_96000
 #define MATRIXIO_FORMATS SNDRV_PCM_FMTBIT_S16_LE
 #define MATRIXIO_MICARRAY_BUFFER_SIZE (512 * 2)
+#define MATRIXIO_FIR_TAP_SIZE 128
 
 static struct matrixio_substream *ms;
 
@@ -42,6 +43,21 @@ static const uint32_t matrixio_params[][3] = {
     {8000, 374, 32}, {12000, 249, 2}, {16000, 186, 3},
     {22050, 135, 5}, {24000, 124, 5}, {32000, 92, 6},
     {44100, 67, 7},  {48000, 61, 7},  {96000, 30, 10}};
+
+static const int16_t matrixio_fir_coeff[] = {
+    -66,   -66,    -90,    33,    70,    -53,   -79,   80,     131,    -40,
+    -85,   132,    188,    -84,   -170,  132,   196,   -220,   -345,   109,
+    216,   -355,   -483,   220,   419,   -339,  -469,  538,    804,    -268,
+    -488,  809,    1058,   -506,  -906,  733,   976,   -1155,  -1674,  563,
+    993,   -1670,  -2154,  1041,  1850,  -1485, -1998, 2361,   3492,   -1125,
+    -2142, 3489,   4791,   -2149, -4410, 3175,  5203,  -5485,  -10220, 1777,
+    7856,  -9552,  -23683, -2362, 32767, 32767, -2362, -23683, -9552,  7856,
+    1777,  -10220, -5485,  5203,  3175,  -4410, -2149, 4791,   3489,   -2142,
+    -1125, 3492,   2361,   -1998, -1485, 1850,  1041,  -2154,  -1670,  993,
+    563,   -1674,  -1155,  976,   733,   -906,  -506,  1058,   809,    -488,
+    -268,  804,    538,    -469,  -339,  419,   220,   -483,   -355,   216,
+    109,   -345,   -220,   196,   132,   -170,  -84,   188,    132,    -85,
+    -40,   131,    80,     -79,   -53,   70,    33,    -90};
 
 static struct snd_pcm_hardware matrixio_pcm_capture_hw = {
     .info = SNDRV_PCM_INFO_INTERLEAVED | SNDRV_PCM_INFO_PAUSE,
@@ -69,11 +85,12 @@ static void matrixio_pcm_capture_work(struct work_struct *wk)
 	mutex_lock(&ms->lock);
 
 	for (c = 0; c < ms->channels; c++)
-		ret = matrixio_read(
-		    ms->mio, MATRIXIO_MICARRAY_BASE +
-				 c * (MATRIXIO_MICARRAY_BUFFER_SIZE >> 1),
-		    MATRIXIO_MICARRAY_BUFFER_SIZE,
-		    &matrixio_buf[c][ms->position]);
+		ret =
+		    matrixio_read(ms->mio,
+				  MATRIXIO_MICARRAY_BASE +
+				      c * (MATRIXIO_MICARRAY_BUFFER_SIZE >> 1),
+				  MATRIXIO_MICARRAY_BUFFER_SIZE,
+				  &matrixio_buf[c][ms->position]);
 
 	ms->position += MATRIXIO_MICARRAY_BUFFER_SIZE >> 1;
 	mutex_unlock(&ms->lock);
@@ -245,7 +262,8 @@ static struct snd_pcm_ops matrixio_pcm_ops = {
 static int matrixio_pcm_new(struct snd_soc_pcm_runtime *rtd) { return 0; }
 
 static const struct snd_soc_platform_driver matrixio_soc_platform = {
-    .ops = &matrixio_pcm_ops, .pcm_new = matrixio_pcm_new,
+    .ops = &matrixio_pcm_ops,
+    .pcm_new = matrixio_pcm_new,
 };
 
 static int matrixio_pcm_platform_probe(struct platform_device *pdev)
@@ -278,6 +296,17 @@ static int matrixio_pcm_platform_probe(struct platform_device *pdev)
 	dev_set_drvdata(&pdev->dev, ms);
 
 	dev_notice(&pdev->dev, "MATRIXIO audio drive loaded (IRQ=%d)", ms->irq);
+
+	ret = matrixio_write(ms->mio, MATRIXIO_MICARRAY_BASE,
+			     MATRIXIO_FIR_TAP_SIZE * sizeof(int16_t),
+			     &matrixio_fir_coeff[0]);
+
+	if (ret) {
+		dev_err(&pdev->dev,
+			"MATRIXIO sound FIR setup failed, error: %d", ret);
+		return ret;
+	}
+
 	return 0;
 }
 

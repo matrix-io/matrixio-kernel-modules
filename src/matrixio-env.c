@@ -46,7 +46,8 @@ static const struct iio_chan_spec matrixio_env_channels[] = {
 	.info_mask_separate = BIT(IIO_CHAN_INFO_RAW),
     },
     {
-	.type = IIO_UVINDEX, .info_mask_separate = BIT(IIO_CHAN_INFO_PROCESSED),
+	.type = IIO_UVINDEX,
+	.info_mask_separate = BIT(IIO_CHAN_INFO_PROCESSED),
     },
     {
 	.type = IIO_TEMP,
@@ -55,14 +56,16 @@ static const struct iio_chan_spec matrixio_env_channels[] = {
 	.info_mask_separate = BIT(IIO_CHAN_INFO_RAW),
     },
     {
-	.type = IIO_PRESSURE, .info_mask_separate = BIT(IIO_CHAN_INFO_RAW),
+	.type = IIO_PRESSURE,
+	.info_mask_separate = BIT(IIO_CHAN_INFO_RAW),
     },
     {
 	.type = IIO_HUMIDITYRELATIVE,
 	.info_mask_separate = BIT(IIO_CHAN_INFO_RAW),
     },
     {
-	.type = IIO_DISTANCE, .info_mask_separate = BIT(IIO_CHAN_INFO_RAW),
+	.type = IIO_DISTANCE,
+	.info_mask_separate = BIT(IIO_CHAN_INFO_RAW),
     }};
 
 static int matrixio_env_to_uv_index(unsigned val)
@@ -139,7 +142,8 @@ static int matrixio_env_read_raw(struct iio_dev *indio_dev,
 }
 
 static const struct iio_info matrixio_env_info = {
-    .read_raw = matrixio_env_read_raw, .driver_module = THIS_MODULE,
+    .read_raw = matrixio_env_read_raw,
+    .driver_module = THIS_MODULE,
 };
 
 static int matrixio_env_probe(struct platform_device *pdev)

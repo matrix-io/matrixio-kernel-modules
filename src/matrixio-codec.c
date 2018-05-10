@@ -38,7 +38,8 @@ static int matrixio_hw_params(struct snd_pcm_substream *substream,
 }
 
 static struct snd_soc_ops matrixio_snd_ops = {
-    .startup = matrixio_startup, .hw_params = matrixio_hw_params,
+    .startup = matrixio_startup,
+    .hw_params = matrixio_hw_params,
 };
 
 static struct snd_soc_dai_link matrixio_snd_soc_dai[] = {
@@ -128,8 +129,10 @@ static const struct snd_kcontrol_new matrixio_snd_controls[] = {
 };
 
 static const struct snd_soc_dapm_widget matrixio_dapm_widgets[] = {
-    SND_SOC_DAPM_INPUT("MIC0"), SND_SOC_DAPM_INPUT("MIC1"),
-    SND_SOC_DAPM_INPUT("MIC2"), SND_SOC_DAPM_INPUT("MIC3"),
+    SND_SOC_DAPM_INPUT("MIC0"),
+    SND_SOC_DAPM_INPUT("MIC1"),
+    SND_SOC_DAPM_INPUT("MIC2"),
+    SND_SOC_DAPM_INPUT("MIC3"),
 };
 
 static const struct snd_soc_dapm_route matrixio_dapm_routes[] = {};
