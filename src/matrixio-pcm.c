@@ -33,7 +33,7 @@
 #define MATRIXIO_RATES SNDRV_PCM_RATE_8000_96000
 #define MATRIXIO_FORMATS SNDRV_PCM_FMTBIT_S16_LE
 #define MATRIXIO_MICARRAY_BUFFER_SIZE (512 * 2)
-#define MATRIXIO_FIR_TAP_SIZE 128
+#define MATRIXIO_FIR_TAP_SIZE (128*2)
 
 static struct matrixio_substream *ms;
 
@@ -143,6 +143,14 @@ static int matrixio_pcm_open(struct snd_pcm_substream *substream)
 	if (ret) {
 		destroy_workqueue(ms->wq);
 		return -EBUSY;
+	}
+	
+	ret = matrixio_write(ms->mio, MATRIXIO_MICARRAY_BASE,
+			     MATRIXIO_FIR_TAP_SIZE,
+			     &matrixio_fir_coeff[0]);
+
+	if (ret) {
+		return ret;
 	}
 
 	return 0;
@@ -297,15 +305,7 @@ static int matrixio_pcm_platform_probe(struct platform_device *pdev)
 
 	dev_notice(&pdev->dev, "MATRIXIO audio drive loaded (IRQ=%d)", ms->irq);
 
-	ret = matrixio_write(ms->mio, MATRIXIO_MICARRAY_BASE,
-			     MATRIXIO_FIR_TAP_SIZE * sizeof(int16_t),
-			     &matrixio_fir_coeff[0]);
-
-	if (ret) {
-		dev_err(&pdev->dev,
-			"MATRIXIO sound FIR setup failed, error: %d", ret);
-		return ret;
-	}
+	
 
 	return 0;
 }
