@@ -1,9 +1,11 @@
+#define FIR_ORDER 128
+
 struct FIRCoeff {
-  uint32_t rate_;
-  int16_t coeff_[];
+	uint32_t rate_;
+	int16_t coeff_[FIR_ORDER];
 };
 
-FIRCoeff FIR_Coeff[] = {
+struct FIRCoeff FIR_Coeff[10] = {
     {8000,
      {-26,   -2,    -26,  -1,    -17,   -19,   0,     -30,  1,     -13,   -24,
       14,    -33,   10,   5,     -23,   51,    -20,   37,   53,    -12,   116,

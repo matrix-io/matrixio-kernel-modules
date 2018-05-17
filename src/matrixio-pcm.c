@@ -12,8 +12,8 @@
  */
 
 #include "matrixio-pcm.h"
-#include "matrixio-core.h"
 #include "fir_coeff.h"
+#include "matrixio-core.h"
 
 #include <linux/cdev.h>
 #include <linux/fs.h>
@@ -34,7 +34,7 @@
 #define MATRIXIO_RATES SNDRV_PCM_RATE_8000_96000
 #define MATRIXIO_FORMATS SNDRV_PCM_FMTBIT_S16_LE
 #define MATRIXIO_MICARRAY_BUFFER_SIZE (512 * 2)
-#define MATRIXIO_FIR_TAP_SIZE (128*2)
+#define MATRIXIO_FIR_TAP_SIZE (128 * 2)
 
 static struct matrixio_substream *ms;
 
@@ -71,12 +71,11 @@ static void matrixio_pcm_capture_work(struct work_struct *wk)
 	mutex_lock(&ms->lock);
 
 	for (c = 0; c < ms->channels; c++)
-		ret =
-		    matrixio_read(ms->mio,
-				  MATRIXIO_MICARRAY_BASE +
-				      c * (MATRIXIO_MICARRAY_BUFFER_SIZE >> 1),
-				  MATRIXIO_MICARRAY_BUFFER_SIZE,
-				  &matrixio_buf[c][ms->position]);
+		ret = matrixio_read(
+		    ms->mio, MATRIXIO_MICARRAY_BASE +
+				 c * (MATRIXIO_MICARRAY_BUFFER_SIZE >> 1),
+		    MATRIXIO_MICARRAY_BUFFER_SIZE,
+		    &matrixio_buf[c][ms->position]);
 
 	ms->position += MATRIXIO_MICARRAY_BUFFER_SIZE >> 1;
 	mutex_unlock(&ms->lock);
@@ -130,14 +129,6 @@ static int matrixio_pcm_open(struct snd_pcm_substream *substream)
 		destroy_workqueue(ms->wq);
 		return -EBUSY;
 	}
-	
-	ret = matrixio_write(ms->mio, MATRIXIO_MICARRAY_BASE,
-			     MATRIXIO_FIR_TAP_SIZE,
-			     &matrixio_fir_coeff[0]);
-
-	if (ret) {
-		return ret;
-	}
 
 	return 0;
 }
@@ -175,22 +166,20 @@ static int matrixio_pcm_hw_params(struct snd_pcm_substream *substream,
 
 			regmap_write(ms->mio->regmap, MATRIXIO_CONF_BASE + 0x07,
 				     matrixio_params[i][2]);
-			return 0;
+			break;
 		}
 	}
 
-  for (i = 0;; i++) {
-    if (FIR_Coeff[i].rate_ == 0) break;
-    if (FIR_Coeff[i].rate_ == rate) {
-    ret = matrixio_write(ms->mio, MATRIXIO_MICARRAY_BASE,
-           MATRIXIO_FIR_TAP_SIZE * sizeof(int16_t),
-           &FIR_Coeff[i].coeff_[0]]);
-    if (ret) {
-    dev_err(&pdev->dev,
-      "MATRIXIO sound FIR setup failed, error: %d", ret);
-  }
-    }
-  }
+	for (i = 0;; i++) {
+		if (FIR_Coeff[i].rate_ == 0)
+			break;
+		if (FIR_Coeff[i].rate_ == rate) {
+			matrixio_write(ms->mio, MATRIXIO_MICARRAY_BASE,
+				       MATRIXIO_FIR_TAP_SIZE,
+				       &FIR_Coeff[i].coeff_[0]);
+			return 0;
+		}
+	}
 
 	return -EINVAL;
 }
@@ -269,8 +258,7 @@ static struct snd_pcm_ops matrixio_pcm_ops = {
 static int matrixio_pcm_new(struct snd_soc_pcm_runtime *rtd) { return 0; }
 
 static const struct snd_soc_platform_driver matrixio_soc_platform = {
-    .ops = &matrixio_pcm_ops,
-    .pcm_new = matrixio_pcm_new,
+    .ops = &matrixio_pcm_ops, .pcm_new = matrixio_pcm_new,
 };
 
 static int matrixio_pcm_platform_probe(struct platform_device *pdev)
@@ -303,12 +291,6 @@ static int matrixio_pcm_platform_probe(struct platform_device *pdev)
 	dev_set_drvdata(&pdev->dev, ms);
 
 	dev_notice(&pdev->dev, "MATRIXIO audio drive loaded (IRQ=%d)", ms->irq);
-
-<<<<<<< HEAD
-	
-=======
-	
->>>>>>> 6df1be6e3ab195c2073c9b053b6c418a6a68e9c4
 
 	return 0;
 }

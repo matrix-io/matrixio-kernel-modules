@@ -76,9 +76,8 @@ static int matrixio_everloop_probe(struct platform_device *pdev)
 	    device_create(el->cl, NULL, el->devt, NULL, "matrixio_everloop");
 
 	if (IS_ERR(el->device)) {
-		dev_err(&pdev->dev,
-			"Unable to create device "
-			"for matrix; errno = %ld\n",
+		dev_err(&pdev->dev, "Unable to create device "
+				    "for matrix; errno = %ld\n",
 			PTR_ERR(el->device));
 	}
 	cdev_init(&el->cdev, &matrixio_everloop_file_operations);
