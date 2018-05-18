@@ -12,6 +12,7 @@
  */
 
 #include "matrixio-pcm.h"
+#include "fir_coeff.h"
 #include "matrixio-core.h"
 
 #include <linux/cdev.h>
@@ -33,6 +34,7 @@
 #define MATRIXIO_RATES SNDRV_PCM_RATE_8000_96000
 #define MATRIXIO_FORMATS SNDRV_PCM_FMTBIT_S16_LE
 #define MATRIXIO_MICARRAY_BUFFER_SIZE (512 * 2)
+#define MATRIXIO_FIR_TAP_SIZE (128 * 2)
 
 static struct matrixio_substream *ms;
 
@@ -164,6 +166,17 @@ static int matrixio_pcm_hw_params(struct snd_pcm_substream *substream,
 
 			regmap_write(ms->mio->regmap, MATRIXIO_CONF_BASE + 0x07,
 				     matrixio_params[i][2]);
+			break;
+		}
+	}
+
+	for (i = 0;; i++) {
+		if (FIR_Coeff[i].rate_ == 0)
+			break;
+		if (FIR_Coeff[i].rate_ == rate) {
+			matrixio_write(ms->mio, MATRIXIO_MICARRAY_BASE,
+				       MATRIXIO_FIR_TAP_SIZE,
+				       &FIR_Coeff[i].coeff_[0]);
 			return 0;
 		}
 	}
@@ -278,6 +291,7 @@ static int matrixio_pcm_platform_probe(struct platform_device *pdev)
 	dev_set_drvdata(&pdev->dev, ms);
 
 	dev_notice(&pdev->dev, "MATRIXIO audio drive loaded (IRQ=%d)", ms->irq);
+
 	return 0;
 }
 
