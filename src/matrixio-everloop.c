@@ -22,7 +22,7 @@ ssize_t matrixio_everloop_write(struct file *pfile, const char __user *buffer,
 {
 	struct everloop_data *el = pfile->private_data;
 
-		matrixio_write(el->mio, MATRIXIO_EVERLOOP_BASE,length,buffer);
+	matrixio_write(el->mio, MATRIXIO_EVERLOOP_BASE, length, (void *)buffer);
 
 	return length;
 }
