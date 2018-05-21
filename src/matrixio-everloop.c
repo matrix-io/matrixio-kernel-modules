@@ -21,13 +21,9 @@ ssize_t matrixio_everloop_write(struct file *pfile, const char __user *buffer,
 				size_t length, loff_t *offset)
 {
 	struct everloop_data *el = pfile->private_data;
-	int i;
-	uint16_t value;
-	for (i = 0; i < length; i = i + 2) {
-		value = buffer[i + 1] | buffer[i] << 8;
-		regmap_write(el->mio->regmap, MATRIXIO_EVERLOOP_BASE + (i >> 1),
-			     value);
-	}
+
+	matrixio_write(el->mio, MATRIXIO_EVERLOOP_BASE, length, (void *)buffer);
+
 	return length;
 }
 

@@ -1,6 +1,7 @@
 matrixio-kernel-modules (0.1.4) unstable; urgency=low
 
   * Bug Fix: Zwave UART Has been fixed
+  * Bug Fix: Change led order from GRWB to RGBW and use buffer write function.
   * Support microphone core: 128 Taps FIR filter.
 
  -- Kevin Patino <kevin.patino@admobilize.com>  Fri, 18 May 2018 17:00:00 -0500
