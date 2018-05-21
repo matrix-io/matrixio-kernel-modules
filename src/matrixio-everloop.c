@@ -24,7 +24,7 @@ ssize_t matrixio_everloop_write(struct file *pfile, const char __user *buffer,
 	int i;
 	uint16_t value;
 	for (i = 0; i < length; i = i + 2) {
-		value = buffer[i + 1] | buffer[i] << 8;
+		value = buffer[i + 1] << 8 | buffer[i];
 		regmap_write(el->mio->regmap, MATRIXIO_EVERLOOP_BASE + (i >> 1),
 			     value);
 	}
