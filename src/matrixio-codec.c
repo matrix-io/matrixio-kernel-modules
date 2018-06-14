@@ -29,17 +29,6 @@
 #define MATRIXIO_RATES SNDRV_PCM_RATE_8000_96000
 #define MATRIXIO_FORMATS SNDRV_PCM_FMTBIT_S16_LE
 
-static int matrixio_startup(struct snd_pcm_substream *substream) { return 0; }
-
-static int matrixio_hw_params(struct snd_pcm_substream *substream,
-			      struct snd_pcm_hw_params *params)
-{
-	return 0;
-}
-
-static struct snd_soc_ops matrixio_snd_ops = {
-    .startup = matrixio_startup, .hw_params = matrixio_hw_params,
-};
 
 static struct snd_soc_dai_link matrixio_snd_soc_dai[] = {
     /*  {
@@ -58,7 +47,6 @@ static struct snd_soc_dai_link matrixio_snd_soc_dai[] = {
 	.cpu_dai_name = "matrixio-mic.0",
 	.platform_name = "matrixio-pcm",
 	.codec_name = "snd-soc-dummy",
-	.ops = &matrixio_snd_ops,
     }};
 
 static struct snd_soc_card matrixio_soc_card = {
@@ -68,22 +56,16 @@ static struct snd_soc_card matrixio_soc_card = {
     .num_links = ARRAY_SIZE(matrixio_snd_soc_dai),
 };
 
-static const DECLARE_TLV_DB_SCALE(inpga_tlv, -1000, 100, 0);
-
 static const struct snd_kcontrol_new matrixio_snd_controls[] = {
-    SOC_SINGLE_TLV("MIC ARRAY Volume", 0x001, 6, 7, 0, inpga_tlv),
 };
 
 static const struct snd_soc_dapm_widget matrixio_dapm_widgets[] = {
-    SND_SOC_DAPM_INPUT("MIC0"), SND_SOC_DAPM_INPUT("MIC1"),
-    SND_SOC_DAPM_INPUT("MIC2"), SND_SOC_DAPM_INPUT("MIC3"),
 };
 
 static const struct snd_soc_dapm_route matrixio_dapm_routes[] = {};
 
 static int matrixio_codec_probe(struct snd_soc_codec *codec)
 {
-	// snd_soc_codec_init_regmap(codec, ms->mio->regmap);
 	return 0;
 }
 
@@ -98,7 +80,6 @@ static const struct snd_soc_codec_driver matrixio_soc_codec_driver = {
 	    .num_dapm_widgets = ARRAY_SIZE(matrixio_dapm_widgets),
 	    .dapm_routes = matrixio_dapm_routes,
 	    .num_dapm_routes = ARRAY_SIZE(matrixio_dapm_routes),
-
 	},
 };
 
