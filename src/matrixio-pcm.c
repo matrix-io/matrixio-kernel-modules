@@ -41,7 +41,7 @@ static struct matrixio_substream *ms;
 static uint16_t matrixio_buf[MATRIXIO_CHANNELS_MAX][8192];
 
 static const uint32_t matrixio_params[][3] = {
-    {8000, 374, 32}, {12000, 249, 2}, {16000, 186, 3},
+    {8000, 374, 1}, {12000, 249, 2}, {16000, 186, 3},
     {22050, 135, 5}, {24000, 124, 5}, {32000, 92, 6},
     {44100, 67, 7},  {48000, 61, 7},  {96000, 30, 10}};
 
