@@ -68,59 +68,6 @@ static struct snd_soc_card matrixio_soc_card = {
     .num_links = ARRAY_SIZE(matrixio_snd_soc_dai),
 };
 
-static int matrixio_codec_hw_params(struct snd_pcm_substream *substream,
-				    struct snd_pcm_hw_params *params,
-				    struct snd_soc_dai *dai)
-{
-	return 0;
-}
-
-static int matrixio_codec_set_fmt(struct snd_soc_dai *dai, unsigned int fmt)
-{
-	return 0;
-}
-
-static int matrixio_codec_prepare(struct snd_pcm_substream *substream,
-				  struct snd_soc_dai *dai)
-{
-	return 0;
-}
-
-static int matrixio_codec_dai_startup(struct snd_pcm_substream *substream,
-				      struct snd_soc_dai *dai)
-{
-	struct matrixio_substream *ms = snd_soc_dai_get_drvdata(dai);
-
-	return 0;
-}
-
-static int matrixio_codec_dai_digital_mute(struct snd_soc_dai *codec_dai,
-					   int mute)
-{
-	return 0;
-}
-
-static int matrixio_codec_dai_trigger(struct snd_pcm_substream *substream,
-				      int cmd, struct snd_soc_dai *codec_dai)
-{
-	return 0;
-}
-
-static void matrixio_codec_dai_shutdown(struct snd_pcm_substream *substream,
-					struct snd_soc_dai *codec_dai)
-{
-}
-
-static const struct snd_soc_dai_ops matrixio_dai_ops = {
-    .hw_params = matrixio_codec_hw_params,
-    //    .prepare = matrixio_codec_prepare,
-    .set_fmt = matrixio_codec_set_fmt,
-    //    .digital_mute = matrixio_codec_dai_digital_mute,
-    .startup = matrixio_codec_dai_startup,
-    //    .shutdown = matrixio_codec_dai_shutdown,
-    //    .trigger = matrixio_codec_dai_trigger,
-};
-
 static const DECLARE_TLV_DB_SCALE(inpga_tlv, -1000, 100, 0);
 
 static const struct snd_kcontrol_new matrixio_snd_controls[] = {
@@ -156,7 +103,7 @@ static const struct snd_soc_codec_driver matrixio_soc_codec_driver = {
 };
 
 static struct snd_soc_dai_driver matrixio_dai_driver[] = {
-    /* {
+    {
 	.name = "matrixio-pcm-out.0",
 	.playback =
 	    {
@@ -168,8 +115,7 @@ static struct snd_soc_dai_driver matrixio_dai_driver[] = {
 		.rate_max = 48000,
 		.formats = MATRIXIO_FORMATS,
 	    },
-	.ops = &matrixio_dai_ops,
-    },*/
+    },
     {
 	.name = "matrixio-mic.0",
 	.capture =
@@ -182,7 +128,6 @@ static struct snd_soc_dai_driver matrixio_dai_driver[] = {
 		.rate_max = 96000,
 		.formats = MATRIXIO_FORMATS,
 	    },
-	.ops = &matrixio_dai_ops,
     }};
 
 static int matrixio_probe(struct platform_device *pdev)
