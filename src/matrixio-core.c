@@ -141,11 +141,17 @@ static int matrixio_register_devices(struct matrixio *matrixio)
 		.pdata_size = sizeof(*matrixio),
 	    },
 	    {
-		.name = "matrixio-pcm",
-		.of_compatible = "matrixio-pcm",
+		.name = "matrixio-mic",
+		.of_compatible = "matrixio-mic",
 		.platform_data = matrixio,
 		.pdata_size = sizeof(*matrixio),
 	    },
+            {
+                .name = "matrixio-playback",
+                .of_compatible = "matrixio-playback",
+                .platform_data = matrixio,
+                .pdata_size = sizeof(*matrixio),
+            },
 	    {
 		.name = "matrixio-codec",
 		.of_compatible = "matrixio-codec",
