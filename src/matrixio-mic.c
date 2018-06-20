@@ -11,7 +11,7 @@
  *  option) any later version.
  */
 
-#include "matrixio-mic.h"
+#include "matrixio-pcm.h"
 #include "fir_coeff.h"
 #include "matrixio-core.h"
 
@@ -80,14 +80,14 @@ static void matrixio_pcm_capture_work(struct work_struct *wk)
 	ms->position += MATRIXIO_MICARRAY_BUFFER_SIZE >> 1;
 	mutex_unlock(&ms->lock);
 
-	snd_pcm_period_elapsed(ms->capture_substream);
+	snd_pcm_period_elapsed(ms->substream);
 }
 
 static irqreturn_t matrixio_pcm_interrupt(int irq, void *irq_data)
 {
 	struct matrixio_substream *ms = irq_data;
 
-	if (ms->capture_substream == 0)
+	if (ms->substream == 0)
 		return IRQ_NONE;
 
 	queue_work(ms->wq, &ms->work);
@@ -105,11 +105,11 @@ static int matrixio_pcm_open(struct snd_pcm_substream *substream)
 
 	snd_pcm_set_sync(substream);
 
-	if (ms->capture_substream != NULL) {
+	if (ms->substream != NULL) {
 		return -EBUSY;
 	}
 
-	ms->capture_substream = substream;
+	ms->substream = substream;
 
 	ms->position = 0;
 
@@ -141,7 +141,7 @@ static int matrixio_pcm_close(struct snd_pcm_substream *substream)
 
 	destroy_workqueue(ms->wq);
 
-	ms->capture_substream = 0;
+	ms->substream = 0;
 
 	return 0;
 }
@@ -274,7 +274,7 @@ static int matrixio_pcm_platform_probe(struct platform_device *pdev)
 
 	ms->mio = dev_get_drvdata(pdev->dev.parent);
 
-	ms->capture_substream = 0;
+	ms->substream = 0;
 
 	mutex_init(&ms->lock);
 

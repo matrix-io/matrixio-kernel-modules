@@ -12,9 +12,10 @@
  */
 
 #include "matrixio-core.h"
-#include "matrixio-mic.h"
+#include "matrixio-pcm.h"
 
 #include <linux/cdev.h>
+#include <linux/delay.h>
 #include <linux/fs.h>
 #include <linux/init.h>
 #include <linux/module.h>
@@ -33,14 +34,19 @@
 #define MATRIXIO_FORMATS SNDRV_PCM_FMTBIT_S16_LE
 #define MATRIXIO_MICARRAY_BUFFER_SIZE (512 * 2)
 
+const uint32_t kMaxWriteLength = 1024;
+
+const uint32_t kFIFOSize = 4096;
+
 static struct matrixio_substream *ms;
 
 static uint16_t matrixio_buf[MATRIXIO_CHANNELS_MAX][8192];
 
-static const uint32_t pcm_sampling_frequencies[][2] = {
-	    {8000, 975},  {16000, 492}, {32000, 245}, {44100, 177},
-	    {48000, 163}, {88200, 88}, {96000, 81}};
-
+static const struct playback_params pcm_sampling_frequencies[] = {
+    {8000, 1000000 / 8000, 975},   {16000, 1000000 / 16000, 492},
+    {32000, 1000000 / 32000, 245}, {44100, 1000000 / 44100, 177},
+    {48000, 1000000 / 48000, 163}, {88200, 1000000 / 88200, 88},
+    {96000, 1000000 / 96000, 81}};
 
 static struct snd_pcm_hardware matrixio_playback_capture_hw = {
     .info = SNDRV_PCM_INFO_INTERLEAVED | SNDRV_PCM_INFO_PAUSE,
@@ -57,6 +63,26 @@ static struct snd_pcm_hardware matrixio_playback_capture_hw = {
     .periods_max = 8,
 };
 
+static void matrixio_pcm_capture_work(struct work_struct *wk)
+{
+	struct matrixio_substream *ms;
+	uint16_t fifo_status;
+
+	ms = container_of(wk, struct matrixio_substream, work);
+
+	mutex_lock(&ms->lock);
+
+	if (fifo_status>kFIFOSize * 3 /  4) {
+		udelay(ms->playback_params->period*kMaxWriteLength);
+	}
+
+	ms->position += kMaxWriteLength;
+
+	mutex_unlock(&ms->lock);
+
+	snd_pcm_period_elapsed(ms->substream);
+}
+
 static int matrixio_playback_open(struct snd_pcm_substream *substream)
 {
 	int ret;
@@ -70,11 +96,11 @@ static int matrixio_playback_open(struct snd_pcm_substream *substream)
 
 	snd_pcm_set_sync(substream);
 
-	if (ms->capture_substream != NULL) {
+	if (ms->substream != NULL) {
 		return -EBUSY;
 	}
 
-	ms->capture_substream = substream;
+	ms->substream = substream;
 
 	ms->position = 0;
 
@@ -83,7 +109,7 @@ static int matrixio_playback_open(struct snd_pcm_substream *substream)
 
 static int matrixio_playback_close(struct snd_pcm_substream *substream)
 {
-	ms->capture_substream = 0;
+	ms->substream = 0;
 
 	return 0;
 }
@@ -102,18 +128,20 @@ static int matrixio_playback_hw_params(struct snd_pcm_substream *substream,
 		return -EINVAL;
 
 	rate = params_rate(hw_params);
-/*
-	for (i = 0; i < ARRAY_SIZE(matrixio_params); i++) {
-		if (rate == matrixio_params[i][0]) {
-			regmap_write(ms->mio->regmap, MATRIXIO_CONF_BASE + 0x06,
-				     matrixio_params[i][1]);
+	/*
+		for (i = 0; i < ARRAY_SIZE(matrixio_params); i++) {
+			if (rate == matrixio_params[i][0]) {
+				regmap_write(ms->mio->regmap, MATRIXIO_CONF_BASE
+	   + 0x06,
+					     matrixio_params[i][1]);
 
-			regmap_write(ms->mio->regmap, MATRIXIO_CONF_BASE + 0x07,
-				     matrixio_params[i][2]);
-			break;
+				regmap_write(ms->mio->regmap, MATRIXIO_CONF_BASE
+	   + 0x07,
+					     matrixio_params[i][2]);
+				break;
+			}
 		}
-	}
-*/
+	*/
 	return 0;
 	return -EINVAL;
 }
@@ -161,7 +189,7 @@ static int matrixio_playback_copy(struct snd_pcm_substream *substream,
 				  void __user *buf, snd_pcm_uframes_t bytes)
 {
 	int i, c;
-	printk(" copy %d %d", pos,  bytes);
+	printk(" copy %d %d", pos, bytes);
 
 	static int16_t buf_interleaved[MATRIXIO_CHANNELS_MAX * 8192];
 	struct snd_pcm_runtime *runtime = substream->runtime;
@@ -172,7 +200,7 @@ static int matrixio_playback_copy(struct snd_pcm_substream *substream,
 		for (c = 0; c < ms->channels; c++)
 			buf_interleaved[i * ms->channels + c] =
 			    matrixio_buf[c][frame_pos + i];
-	//return copy_to_user(buf, buf_interleaved, bytes);
+	// return copy_to_user(buf, buf_interleaved, bytes);
 	return frame_count;
 }
 #endif
@@ -211,7 +239,7 @@ static int matrixio_playback_platform_probe(struct platform_device *pdev)
 
 	ms->mio = dev_get_drvdata(pdev->dev.parent);
 
-	ms->capture_substream = 0;
+	ms->substream = 0;
 
 	mutex_init(&ms->lock);
 
