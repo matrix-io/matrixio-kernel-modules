@@ -63,7 +63,7 @@ static struct snd_pcm_hardware matrixio_playback_capture_hw = {
     .periods_max = 8,
 };
 
-static void matrixio_pcm_capture_work(struct work_struct *wk)
+static void matrixio_pcm_playback_work(struct work_struct *wk)
 {
 	struct matrixio_substream *ms;
 	uint16_t fifo_status;
@@ -72,8 +72,8 @@ static void matrixio_pcm_capture_work(struct work_struct *wk)
 
 	mutex_lock(&ms->lock);
 
-	if (fifo_status>kFIFOSize * 3 /  4) {
-		udelay(ms->playback_params->period*kMaxWriteLength);
+	if (fifo_status > kFIFOSize * 3 / 4) {
+		udelay(ms->playback_params->period * kMaxWriteLength);
 	}
 
 	ms->position += kMaxWriteLength;
@@ -104,11 +104,25 @@ static int matrixio_playback_open(struct snd_pcm_substream *substream)
 
 	ms->position = 0;
 
+	sprintf(workqueue_name, "matrixio_playback");
+
+	ms->wq = create_singlethread_workqueue(workqueue_name);
+
+	if (!ms->wq) {
+		return -ENOMEM;
+	}
+
+	INIT_WORK(&ms->work, matrixio_pcm_playback_work);
+
 	return 0;
 }
 
 static int matrixio_playback_close(struct snd_pcm_substream *substream)
 {
+	flush_workqueue(ms->wq);
+
+	destroy_workqueue(ms->wq);
+
 	ms->substream = 0;
 
 	return 0;
@@ -201,6 +215,9 @@ static int matrixio_playback_copy(struct snd_pcm_substream *substream,
 			buf_interleaved[i * ms->channels + c] =
 			    matrixio_buf[c][frame_pos + i];
 	// return copy_to_user(buf, buf_interleaved, bytes);
+
+	queue_work(ms->wq, &ms->work);
+
 	return frame_count;
 }
 #endif
@@ -236,6 +253,8 @@ static int matrixio_playback_platform_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "data allocation");
 		return -ENOMEM;
 	}
+
+	platform_set_drvdata(pdev, ms);
 
 	ms->mio = dev_get_drvdata(pdev->dev.parent);
 
