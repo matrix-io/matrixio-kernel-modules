@@ -87,7 +87,7 @@ static int matrixio_playback_open(struct snd_pcm_substream *substream)
 {
 	int ret;
 
-	char workqueue_name[12];
+	char workqueue_name[32];
 
 	printk(
 	    " open open open -----------------------------------------------");
@@ -203,19 +203,20 @@ static int matrixio_playback_copy(struct snd_pcm_substream *substream,
 				  void __user *buf, snd_pcm_uframes_t bytes)
 {
 	int i, c;
-	printk(" copy %d %d", pos, bytes);
 
-	static int16_t buf_interleaved[MATRIXIO_CHANNELS_MAX * 8192];
 	struct snd_pcm_runtime *runtime = substream->runtime;
+
 	int frame_pos = bytes_to_frames(runtime, pos);
 	int frame_count = bytes_to_frames(runtime, bytes);
+	printk("copy %d %d", pos, bytes);
 
+	/*
 	for (i = 0; i < frame_count; i++)
 		for (c = 0; c < ms->channels; c++)
 			buf_interleaved[i * ms->channels + c] =
 			    matrixio_buf[c][frame_pos + i];
 	// return copy_to_user(buf, buf_interleaved, bytes);
-
+*/
 	queue_work(ms->wq, &ms->work);
 
 	return frame_count;
@@ -253,8 +254,6 @@ static int matrixio_playback_platform_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "data allocation");
 		return -ENOMEM;
 	}
-
-	platform_set_drvdata(pdev, ms);
 
 	ms->mio = dev_get_drvdata(pdev->dev.parent);
 
