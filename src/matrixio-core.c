@@ -122,6 +122,7 @@ int matrixio_reg_read(void *context, unsigned int reg, unsigned int *val)
 	return matrixio_read((struct matrixio *)(context), reg, sizeof(int16_t),
 			     &val);
 }
+EXPORT_SYMBOL(matrixio_reg_read);
 
 int matrixio_reg_write(void *context, unsigned int reg, unsigned int val)
 {
