@@ -18,6 +18,7 @@
 #include <linux/delay.h>
 #include <linux/fs.h>
 #include <linux/init.h>
+#include <linux/kthread.h>
 #include <linux/module.h>
 #include <linux/moduleparam.h>
 #include <linux/platform_device.h>
@@ -28,6 +29,7 @@
 #include <sound/pcm_params.h>
 #include <sound/soc.h>
 #include <sound/tlv.h>
+#include <linux/kfifo.h>
 
 #define MATRIXIO_CHANNELS_MAX 8
 #define MATRIXIO_RATES SNDRV_PCM_RATE_8000_96000
@@ -35,13 +37,15 @@
 #define MATRIXIO_MICARRAY_BUFFER_SIZE (512 * 2)
 #define kFIFOSize 4096
 
+static struct semaphore sem;
+
 const uint16_t kConfBaseAddress = 0x0000;
 
 const uint16_t kMaxVolumenValue = 25;
 
 static struct matrixio_substream *ms;
 
-static uint16_t matrixio_pb_buf[kFIFOSize * 2]; // dual channel
+static uint16_t matrixio_pb_buf[4 * kFIFOSize * 2]; // dual channel
 
 static int matrixio_buf_size;
 
@@ -65,6 +69,8 @@ static struct snd_pcm_hardware matrixio_playback_capture_hw = {
     .periods_min = 4,
     .periods_max = 8,
 };
+
+struct task_struct *playback_task;
 
 static uint16_t matrixio_fifo_status(void)
 {
@@ -119,6 +125,16 @@ static uint16_t matrixio_set_volumen(int volumen_percentage)
 	return 1;
 }
 
+static int thread_pcm_playback(void *data)
+{
+	while (!kthread_should_stop()) {
+		down(&sem);
+		printk(". ");
+	}
+
+	return 0;
+}
+
 static void matrixio_pcm_playback_work(struct work_struct *wk)
 {
 	//	struct matrixio_substream *ms;
@@ -157,8 +173,6 @@ static void matrixio_pcm_playback_work(struct work_struct *wk)
 
 static int matrixio_playback_open(struct snd_pcm_substream *substream)
 {
-	char workqueue_name[32];
-
 	snd_soc_set_runtime_hwparams(substream, &matrixio_playback_capture_hw);
 
 	snd_pcm_set_sync(substream);
@@ -171,26 +185,25 @@ static int matrixio_playback_open(struct snd_pcm_substream *substream)
 
 	ms->position = 0;
 
-	sprintf(workqueue_name, "matrixio_playback");
-
-	ms->wq = create_singlethread_workqueue(workqueue_name);
-
-	if (!ms->wq) {
-		return -ENOMEM;
-	}
 	matrixio_flush();
+
 	matrixio_headphone();
+
 	matrixio_set_volumen(50);
-	INIT_WORK(&ms->work, matrixio_pcm_playback_work);
+
+	sema_init(&sem, 1);
+
+	playback_task = kthread_run(&thread_pcm_playback, (void *)ms,
+				    "matrixio_pcm_playback");
 
 	return 0;
 }
 
 static int matrixio_playback_close(struct snd_pcm_substream *substream)
 {
-	flush_workqueue(ms->wq);
+	up(&sem);
 
-	destroy_workqueue(ms->wq);
+	kthread_stop(playback_task);
 
 	ms->substream = 0;
 
@@ -239,7 +252,12 @@ matrixio_playback_pointer(struct snd_pcm_substream *substream)
 	struct snd_pcm_runtime *runtime = substream->runtime;
 
 	mutex_lock(&ms->lock);
-	ms->position = ms->position < runtime->buffer_size ? ms->position : 0;
+	ms->position =
+	    ms->position < frames_to_bytes(runtime, runtime->buffer_size)
+		? ms->position
+		: 0;
+	printk(" pointer, pos=%d", ms->position);
+
 	mutex_unlock(&ms->lock);
 
 	return ms->position;
@@ -266,19 +284,20 @@ static int matrixio_playback_copy(struct snd_pcm_substream *substream,
 				  int channel, snd_pcm_uframes_t pos,
 				  void __user *buf, snd_pcm_uframes_t bytes)
 {
-	int i, c;
+	int ret;
 
 	struct snd_pcm_runtime *runtime = substream->runtime;
 
 	int frame_pos = bytes_to_frames(runtime, pos);
 	int frame_count = bytes_to_frames(runtime, bytes);
-	printk("copy pos:%d bytes:%d", pos, bytes);
+	printk("copy, pos:%d bytes:%d", pos, bytes);
 
-	copy_from_user(matrixio_pb_buf, buf, bytes);
+	//	copy_from_user(matrixio_pb_buf[pos], buf, bytes);
+
+	ret = kfifo_to_user(&kfifo, buf, bytes, &copied);
 
 	matrixio_buf_size = bytes;
-
-	queue_work(ms->wq, &ms->work);
+	up(&sem);
 
 	return frame_count;
 }
