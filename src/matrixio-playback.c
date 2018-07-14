@@ -18,6 +18,7 @@
 #include <linux/delay.h>
 #include <linux/fs.h>
 #include <linux/init.h>
+#include <linux/kfifo.h>
 #include <linux/kthread.h>
 #include <linux/module.h>
 #include <linux/moduleparam.h>
@@ -29,7 +30,6 @@
 #include <sound/pcm_params.h>
 #include <sound/soc.h>
 #include <sound/tlv.h>
-#include <linux/kfifo.h>
 
 #define MATRIXIO_CHANNELS_MAX 8
 #define MATRIXIO_RATES SNDRV_PCM_RATE_8000_96000
@@ -45,9 +45,9 @@ const uint16_t kMaxVolumenValue = 25;
 
 static struct matrixio_substream *ms;
 
-static uint16_t matrixio_pb_buf[4 * kFIFOSize * 2]; // dual channel
+typedef STRUCT_KFIFO_REC_2(4 * MATRIXIO_MICARRAY_BUFFER_SIZE) pcm_pb_fifo;
 
-static int matrixio_buf_size;
+static pcm_pb_fifo fifo;
 
 static const struct playback_params pcm_sampling_frequencies[] = {
     {8000, 1000000 / 8000, 975},   {16000, 1000000 / 16000, 492},
@@ -144,12 +144,11 @@ static void matrixio_pcm_playback_work(struct work_struct *wk)
 	//	ms = container_of(wk, struct matrixio_substream, work);
 
 	mutex_lock(&ms->lock);
-
+#if 0
 	fifo_status = matrixio_fifo_status();
 
 	printk(" fifo_status %d", fifo_status);
 	printk(" period %d", ms->playback_params->period);
-	printk(" bytes %d", matrixio_buf_size);
 
 	fifo_test = kFIFOSize - (matrixio_buf_size / 2);
 	printk(" fifo_test %d", fifo_test);
@@ -165,7 +164,7 @@ static void matrixio_pcm_playback_work(struct work_struct *wk)
 	printk(" fifo_status2 %d", fifo_status);
 
 	ms->position += matrixio_buf_size >> 1;
-
+#endif
 	mutex_unlock(&ms->lock);
 
 	snd_pcm_period_elapsed(ms->substream);
@@ -285,6 +284,7 @@ static int matrixio_playback_copy(struct snd_pcm_substream *substream,
 				  void __user *buf, snd_pcm_uframes_t bytes)
 {
 	int ret;
+	unsigned int copied;
 
 	struct snd_pcm_runtime *runtime = substream->runtime;
 
@@ -292,11 +292,8 @@ static int matrixio_playback_copy(struct snd_pcm_substream *substream,
 	int frame_count = bytes_to_frames(runtime, bytes);
 	printk("copy, pos:%d bytes:%d", pos, bytes);
 
-	//	copy_from_user(matrixio_pb_buf[pos], buf, bytes);
+	ret = kfifo_to_user(&fifo, buf, bytes, &copied);
 
-	ret = kfifo_to_user(&kfifo, buf, bytes, &copied);
-
-	matrixio_buf_size = bytes;
 	up(&sem);
 
 	return frame_count;
