@@ -74,6 +74,7 @@ struct task_struct *playback_task;
 
 static uint16_t matrixio_fifo_status(void)
 {
+	printk("matrix-playback: matrixio_fifo_status");
 	uint16_t write_pointer;
 	uint16_t read_pointer;
 
@@ -89,6 +90,7 @@ static uint16_t matrixio_fifo_status(void)
 
 static uint16_t matrixio_headphone(void)
 {
+	printk("matrix-playback: matrixio_headphone");
 	uint16_t headphone = 0x0001;
 
 	return matrixio_write(ms->mio, MATRIXIO_CONF_BASE + 11,
@@ -97,6 +99,7 @@ static uint16_t matrixio_headphone(void)
 
 static uint16_t matrixio_flush(void)
 {
+	printk("matrix-playback: matrixio_flush");
 	uint16_t flush_data = 0x0001;
 
 	matrixio_write(ms->mio, MATRIXIO_CONF_BASE + 12, sizeof(uint16_t),
@@ -110,6 +113,7 @@ static uint16_t matrixio_flush(void)
 
 static uint16_t matrixio_set_volumen(int volumen_percentage)
 {
+	printk("matrix-playback: matrixio_set_volumen");
 	uint16_t volumen_constant;
 
 	if (volumen_percentage > 100)
@@ -122,11 +126,13 @@ static uint16_t matrixio_set_volumen(int volumen_percentage)
 
 static int thread_pcm_playback(void *data)
 {
+	printk("matrix-playback: thread_pcm_playback");
 	int ret;
 	uint16_t fifo_status;
 	static unsigned char matrixio_pb_buf[MATRIXIO_MICARRAY_BUFFER_SIZE];
 
 	while (!kthread_should_stop()) {
+		printk("matrix-playback: going DOWN");
 		down(&sem);
 
 		if (ms->playback_params == 0)
@@ -173,6 +179,7 @@ static int thread_pcm_playback(void *data)
 
 static int matrixio_playback_open(struct snd_pcm_substream *substream)
 {
+	printk("matrix-playback: matrixio_playback_open");
 	snd_soc_set_runtime_hwparams(substream, &matrixio_playback_capture_hw);
 
 	snd_pcm_set_sync(substream);
@@ -203,6 +210,9 @@ static int matrixio_playback_open(struct snd_pcm_substream *substream)
 
 static int matrixio_playback_close(struct snd_pcm_substream *substream)
 {
+	printk("matrix-playback: matrixio_playback_close");
+	printk("matrix-playback: UP ");
+
 	up(&sem);
 
 	kthread_stop(playback_task);
@@ -217,6 +227,7 @@ static int matrixio_playback_close(struct snd_pcm_substream *substream)
 static int matrixio_playback_hw_params(struct snd_pcm_substream *substream,
 				       struct snd_pcm_hw_params *hw_params)
 {
+	printk("matrix-playback: matrixio_playback_hw_params");
 	int i;
 	int rate;
 
@@ -248,6 +259,7 @@ static int matrixio_playback_hw_free(struct snd_pcm_substream *substream)
 
 static int matrixio_playback_prepare(struct snd_pcm_substream *substream)
 {
+	printk("matrix-playback: matrixio_playback_prepare");
 	ms->position = 0;
 	return 0;
 }
@@ -255,6 +267,8 @@ static int matrixio_playback_prepare(struct snd_pcm_substream *substream)
 static snd_pcm_uframes_t
 matrixio_playback_pointer(struct snd_pcm_substream *substream)
 {
+	printk("matrix-playback: matrixio_playback_pointer");
+
 	struct snd_pcm_runtime *runtime = substream->runtime;
 
 	mutex_lock(&ms->lock);
@@ -281,6 +295,8 @@ static int matrixio_playback_copy(struct snd_pcm_substream *substream,
 				  int channel, snd_pcm_uframes_t pos,
 				  void __user *buf, snd_pcm_uframes_t bytes)
 {
+	printk("matrix-playback: matrixio_playback_copy");
+
 	int ret;
 	unsigned int copied;
 
@@ -294,6 +310,7 @@ static int matrixio_playback_copy(struct snd_pcm_substream *substream,
 
 	printk("      %d,%d", ret, copied);
 
+	printk("matrix-playback: UP ");
 	up(&sem);
 
 	return frame_count;
@@ -315,7 +332,12 @@ static struct snd_pcm_ops matrixio_playback_ops = {
     .close = matrixio_playback_close,
 };
 
-static int matrixio_playback_new(struct snd_soc_pcm_runtime *rtd) { return 0; }
+static int matrixio_playback_new(struct snd_soc_pcm_runtime *rtd)
+{
+	printk("matrix-playback: matrixio_playback_copy");
+
+	return 0;
+}
 
 static const struct snd_soc_platform_driver matrixio_soc_platform = {
     .ops = &matrixio_playback_ops, .pcm_new = matrixio_playback_new,
@@ -323,6 +345,8 @@ static const struct snd_soc_platform_driver matrixio_soc_platform = {
 
 static int matrixio_playback_platform_probe(struct platform_device *pdev)
 {
+	printk("matrix-playback: matrixio_playback_platform_probe");
+
 	int ret;
 
 	ms = devm_kzalloc(&pdev->dev, sizeof(struct matrixio_substream),
@@ -345,6 +369,7 @@ static int matrixio_playback_platform_probe(struct platform_device *pdev)
 			"MATRIXIO sound SoC register platform error: %d", ret);
 		return ret;
 	}
+	dev_notice(&pdev->dev, "MATRIXIO playback driver loaded");
 
 	dev_set_drvdata(&pdev->dev, ms);
 
