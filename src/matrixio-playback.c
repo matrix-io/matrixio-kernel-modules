@@ -36,6 +36,7 @@
 #define MATRIXIO_FORMATS SNDRV_PCM_FMTBIT_S16_LE
 #define MATRIXIO_MICARRAY_BUFFER_SIZE (512 * 2)
 #define kFIFOSize 4096
+#define KERNEL_FIFO_SIZE 32768
 
 static struct semaphore sem;
 
@@ -45,9 +46,7 @@ const uint16_t kMaxVolumenValue = 25;
 
 static struct matrixio_substream *ms;
 
-typedef STRUCT_KFIFO_REC_2(32768) fifo_32k;
-
-static fifo_32k pcm_fifo;
+static DECLARE_KFIFO(pcm_fifo, unsigned char, KERNEL_FIFO_SIZE);
 
 static const struct playback_params pcm_sampling_frequencies[] = {
     {8000, 1000000 / 8000, 975},   {16000, 1000000 / 16000, 492},
