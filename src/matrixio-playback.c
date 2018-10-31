@@ -82,7 +82,7 @@ static uint16_t matrixio_fifo_status(void)
 	matrixio_read(ms->mio, MATRIXIO_PLAYBACK_BASE + 0x803, sizeof(uint16_t),
 		      &write_pointer);
 
-	if (write_pointer > read_pointer)
+	if (write_pointer >= read_pointer)
 		return write_pointer - read_pointer;
 	return kFIFOSize - read_pointer + write_pointer;
 }
