@@ -145,8 +145,9 @@ static int thread_pcm_playback(void *data)
 			printk(" fifo_status %d", fifo_status);
 			printk(" period %d", ms->playback_params->period);
 
+			/* When FIFO is empty go sem.down to wait for more frames */
 			if (kfifo_len(&pcm_fifo) == 0)
-				continue;
+				break;
 
 			printk(" +++++++++++1");
 			if (fifo_status > kFIFOSize * 3 / 4) {
