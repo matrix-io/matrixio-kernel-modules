@@ -280,7 +280,7 @@ matrixio_playback_pointer(struct snd_pcm_substream *substream)
 
 	mutex_unlock(&ms->lock);
 
-	return kfifo_len(&pcm_fifo);
+	return bytes_to_frames(runtime, ms->position);
 }
 
 #if LINUX_VERSION_CODE <= KERNEL_VERSION(4, 13, 0)
