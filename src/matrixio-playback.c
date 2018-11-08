@@ -164,9 +164,6 @@ static int thread_pcm_playback(void *data)
 				       MATRIXIO_MICARRAY_BUFFER_SIZE,
 				       (void *)matrixio_pb_buf);
 
-			fifo_status = matrixio_fifo_status();
-
-			printk(" fifo_status2 %d", fifo_status);
 
 			ms->position += MATRIXIO_MICARRAY_BUFFER_SIZE;
 
