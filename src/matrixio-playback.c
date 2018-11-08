@@ -131,41 +131,47 @@ static int thread_pcm_playback(void *data)
 	static unsigned char matrixio_pb_buf[MATRIXIO_MICARRAY_BUFFER_SIZE];
 
 	while (!kthread_should_stop()) {
-		printk("matrix-playback: going DOWN");
+		printk("  thread_pcm_playback  DOWN()");
 		down(&sem);
+		printk("  thread_pcm_playback  wake UP from DOWN!!");
 
 		if (ms->playback_params == 0)
 			continue;
 
 		do {
 			fifo_status = matrixio_fifo_status();
-
-			printk(" len/size %d/%d", kfifo_len(&pcm_fifo),
-			       kfifo_size(&pcm_fifo));
 			printk(" fifo_status %d", fifo_status);
-			printk(" period %d", ms->playback_params->period);
+
+			printk(" kfifo_len: %d", kfifo_len(&pcm_fifo));
+			printk(" kfifo_size: %d", kfifo_size(&pcm_fifo));
+			printk(" period: %d", ms->playback_params->period);
 
 			/* When FIFO is empty go sem.down to wait for more frames */
 			if (kfifo_len(&pcm_fifo) == 0)
 				break;
 
-			printk(" +++++++++++1");
 			if (fifo_status > kFIFOSize * 3 / 4) {
+				printk(" thread_pcm_playback udelay %d",
+				       MATRIXIO_MICARRAY_BUFFER_SIZE *
+					   ms->playback_params->bit_time);
 				udelay(MATRIXIO_MICARRAY_BUFFER_SIZE *
 				       ms->playback_params->bit_time);
 			}
 
-			printk(" +++++++++++2");
+			printk("  thread_pcm_playback - copying to intermediate buffer");
 			ret = kfifo_out(&pcm_fifo, matrixio_pb_buf,
 					MATRIXIO_MICARRAY_BUFFER_SIZE);
 
-			printk(" -----------3");
+			printk("  thread_pcm_playback - copying to FPGA");
 			matrixio_write(ms->mio, MATRIXIO_PLAYBACK_BASE,
 				       MATRIXIO_MICARRAY_BUFFER_SIZE,
 				       (void *)matrixio_pb_buf);
+			printk("  thread_pcm_playback - wrote to FPGA");
 
 
 			ms->position += MATRIXIO_MICARRAY_BUFFER_SIZE;
+			printk("  thread_pcm_playback new position: %d",
+			       ms->position);
 
 			snd_pcm_period_elapsed(ms->substream);
 		} while (kfifo_len(&pcm_fifo) >= MATRIXIO_MICARRAY_BUFFER_SIZE);
@@ -208,7 +214,7 @@ static int matrixio_playback_open(struct snd_pcm_substream *substream)
 static int matrixio_playback_close(struct snd_pcm_substream *substream)
 {
 	printk("matrix-playback: matrixio_playback_close");
-	printk("matrix-playback: UP ");
+	printk("  matrixio_playback_close  UP()");
 
 	up(&sem);
 
@@ -239,7 +245,7 @@ static int matrixio_playback_hw_params(struct snd_pcm_substream *substream,
 			ms->playback_params =
 			    (struct playback_params
 				 *)&pcm_sampling_frequencies[i];
-			printk(" *** BIT TIME %d",
+			printk("  matrixio_playback_hw_params  *** BIT TIME %d",
 			       pcm_sampling_frequencies[i].bit_time);
 			return matrixio_reg_write(
 			    ms->mio, MATRIXIO_CONF_BASE + 9,
@@ -301,13 +307,15 @@ static int matrixio_playback_copy(struct snd_pcm_substream *substream,
 
 	// int frame_pos = bytes_to_frames(runtime, pos);
 	int frame_count = bytes_to_frames(runtime, bytes);
-	printk("copy, pos:%d bytes:%d", pos, bytes);
 
 	ret = kfifo_from_user(&pcm_fifo, buf, bytes, &copied);
-
-	printk("      %d,%d", ret, copied);
-
-	printk("matrix-playback: UP ");
+	printk("  matrixio_playback_copy  Position: %d", pos);
+	printk("  matrixio_playback_copy  bytes   : %d", bytes);
+	printk("  matrixio_playback_copy  frames  : %d", frame_count);
+	printk("  matrixio_playback_copy  FIFO len: %d", kfifo_len(&pcm_fifo));
+	printk("  matrixio_playback_copy  returned: %d", ret);
+	printk("  matrixio_playback_copy  copied  : %d", copied);
+	printk("  matrixio_playback_copy  UP() ");
 	up(&sem);
 
 	return frame_count;
