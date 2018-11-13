@@ -156,6 +156,7 @@ static int thread_pcm_playback(void *data)
 					   ms->playback_params->bit_time);
 				udelay(MATRIXIO_MICARRAY_BUFFER_SIZE *
 				       ms->playback_params->bit_time);
+				continue;
 			}
 
 			printk("  thread_pcm_playback - copying to intermediate buffer");
