@@ -36,6 +36,7 @@
 #define MATRIXIO_FORMATS SNDRV_PCM_FMTBIT_S16_LE
 #define MATRIXIO_MICARRAY_BUFFER_SIZE (512 * 2)
 #define kFIFOSize 4096
+#define KERNEL_FIFO_SIZE 32768
 
 static struct semaphore sem;
 
@@ -45,9 +46,7 @@ const uint16_t kMaxVolumenValue = 25;
 
 static struct matrixio_substream *ms;
 
-typedef STRUCT_KFIFO_REC_2(32768) fifo_32k;
-
-static fifo_32k pcm_fifo;
+static DECLARE_KFIFO(pcm_fifo, unsigned char, KERNEL_FIFO_SIZE);
 
 static const struct playback_params pcm_sampling_frequencies[] = {
     {8000, 1000000 / 8000, 975},   {16000, 1000000 / 16000, 492},
@@ -82,7 +81,7 @@ static uint16_t matrixio_fifo_status(void)
 	matrixio_read(ms->mio, MATRIXIO_PLAYBACK_BASE + 0x803, sizeof(uint16_t),
 		      &write_pointer);
 
-	if (write_pointer > read_pointer)
+	if (write_pointer >= read_pointer)
 		return write_pointer - read_pointer;
 	return kFIFOSize - read_pointer + write_pointer;
 }
@@ -135,32 +134,23 @@ static int thread_pcm_playback(void *data)
 		do {
 			fifo_status = matrixio_fifo_status();
 
-			printk(" len/size %d/%d", kfifo_len(&pcm_fifo),
-			       kfifo_size(&pcm_fifo));
-			printk(" fifo_status %d", fifo_status);
-			printk(" period %d", ms->playback_params->period);
-
+			/* When FIFO is empty go sem.down to wait for more frames */
 			if (kfifo_len(&pcm_fifo) == 0)
-				continue;
+				break;
 
-			printk(" +++++++++++1");
 			if (fifo_status > kFIFOSize * 3 / 4) {
 				udelay(MATRIXIO_MICARRAY_BUFFER_SIZE *
 				       ms->playback_params->bit_time);
+				continue;
 			}
 
-			printk(" +++++++++++2");
 			ret = kfifo_out(&pcm_fifo, matrixio_pb_buf,
 					MATRIXIO_MICARRAY_BUFFER_SIZE);
 
-			printk(" -----------3");
 			matrixio_write(ms->mio, MATRIXIO_PLAYBACK_BASE,
 				       MATRIXIO_MICARRAY_BUFFER_SIZE,
 				       (void *)matrixio_pb_buf);
 
-			fifo_status = matrixio_fifo_status();
-
-			printk(" fifo_status2 %d", fifo_status);
 
 			ms->position += MATRIXIO_MICARRAY_BUFFER_SIZE;
 
@@ -231,8 +221,6 @@ static int matrixio_playback_hw_params(struct snd_pcm_substream *substream,
 			ms->playback_params =
 			    (struct playback_params
 				 *)&pcm_sampling_frequencies[i];
-			printk(" *** BIT TIME %d",
-			       pcm_sampling_frequencies[i].bit_time);
 			return matrixio_reg_write(
 			    ms->mio, MATRIXIO_CONF_BASE + 9,
 			    pcm_sampling_frequencies[i].bit_time);
@@ -262,11 +250,10 @@ matrixio_playback_pointer(struct snd_pcm_substream *substream)
 	    ms->position < frames_to_bytes(runtime, runtime->buffer_size)
 		? ms->position
 		: 0;
-	printk(" pointer, pos=%d", ms->position);
 
 	mutex_unlock(&ms->lock);
 
-	return kfifo_len(&pcm_fifo);
+	return bytes_to_frames(runtime, ms->position);
 }
 
 #if LINUX_VERSION_CODE <= KERNEL_VERSION(4, 13, 0)
@@ -288,12 +275,8 @@ static int matrixio_playback_copy(struct snd_pcm_substream *substream,
 
 	// int frame_pos = bytes_to_frames(runtime, pos);
 	int frame_count = bytes_to_frames(runtime, bytes);
-	printk("copy, pos:%d bytes:%d", pos, bytes);
 
 	ret = kfifo_from_user(&pcm_fifo, buf, bytes, &copied);
-
-	printk("      %d,%d", ret, copied);
-
 	up(&sem);
 
 	return frame_count;

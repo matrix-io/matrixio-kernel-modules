@@ -25,7 +25,7 @@ struct matrixio_substream {
 	struct snd_pcm *pcm;
 	struct playback_params *playback_params;
 
-	snd_pcm_uframes_t position;
+	snd_pcm_uframes_t position; /* position in buffer in bytes*/
 	int channels;
 };
 
