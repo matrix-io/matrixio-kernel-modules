@@ -29,23 +29,21 @@
 #define MATRIXIO_RATES SNDRV_PCM_RATE_8000_96000
 #define MATRIXIO_FORMATS SNDRV_PCM_FMTBIT_S16_LE
 
-
 static struct snd_soc_dai_link matrixio_snd_soc_dai[] = {
-    /*  {
-	  .name = "matrixio.pcm.0",
-	  .stream_name = "matrixio.pcm.0",
-	  .codec_dai_name = "snd-soc-dummy-dai",
-	  .cpu_dai_name = "matrixio-pcm-out.0",
-	  .platform_name = "matrixio-pcm",
-	  .codec_name = "snd-soc-dummy",
-	  .ops = &matrixio_snd_ops,
-      },*/
     {
 	.name = "matrixio.mic.0",
 	.stream_name = "matrixio.mic.0",
 	.codec_dai_name = "snd-soc-dummy-dai",
 	.cpu_dai_name = "matrixio-mic.0",
-	.platform_name = "matrixio-pcm",
+	.platform_name = "matrixio-mic",
+	.codec_name = "snd-soc-dummy",
+    },
+    {
+	.name = "matrixio.pcm-out.0",
+	.stream_name = "matrixio.pcm-out.0",
+	.codec_dai_name = "snd-soc-dummy-dai",
+	.cpu_dai_name = "matrixio-pcm-out.0",
+	.platform_name = "matrixio-playback",
 	.codec_name = "snd-soc-dummy",
     }};
 
@@ -56,18 +54,13 @@ static struct snd_soc_card matrixio_soc_card = {
     .num_links = ARRAY_SIZE(matrixio_snd_soc_dai),
 };
 
-static const struct snd_kcontrol_new matrixio_snd_controls[] = {
-};
+static const struct snd_kcontrol_new matrixio_snd_controls[] = {};
 
-static const struct snd_soc_dapm_widget matrixio_dapm_widgets[] = {
-};
+static const struct snd_soc_dapm_widget matrixio_dapm_widgets[] = {};
 
 static const struct snd_soc_dapm_route matrixio_dapm_routes[] = {};
 
-static int matrixio_codec_probe(struct snd_soc_codec *codec)
-{
-	return 0;
-}
+static int matrixio_codec_probe(struct snd_soc_codec *codec) { return 0; }
 
 static const struct snd_soc_codec_driver matrixio_soc_codec_driver = {
 

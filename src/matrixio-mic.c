@@ -41,7 +41,7 @@ static struct matrixio_substream *ms;
 static uint16_t matrixio_buf[MATRIXIO_CHANNELS_MAX][8192];
 
 static const uint32_t matrixio_params[][3] = {
-    {8000, 374, 1}, {12000, 249, 2}, {16000, 186, 3},
+    {8000, 374, 1},  {12000, 249, 2}, {16000, 186, 3},
     {22050, 135, 5}, {24000, 124, 5}, {32000, 92, 6},
     {44100, 67, 7},  {48000, 61, 7},  {96000, 30, 10}};
 
@@ -80,14 +80,14 @@ static void matrixio_pcm_capture_work(struct work_struct *wk)
 	ms->position += MATRIXIO_MICARRAY_BUFFER_SIZE >> 1;
 	mutex_unlock(&ms->lock);
 
-	snd_pcm_period_elapsed(ms->capture_substream);
+	snd_pcm_period_elapsed(ms->substream);
 }
 
 static irqreturn_t matrixio_pcm_interrupt(int irq, void *irq_data)
 {
 	struct matrixio_substream *ms = irq_data;
 
-	if (ms->capture_substream == 0)
+	if (ms->substream == 0)
 		return IRQ_NONE;
 
 	queue_work(ms->wq, &ms->work);
@@ -105,11 +105,11 @@ static int matrixio_pcm_open(struct snd_pcm_substream *substream)
 
 	snd_pcm_set_sync(substream);
 
-	if (ms->capture_substream != NULL) {
+	if (ms->substream != NULL) {
 		return -EBUSY;
 	}
 
-	ms->capture_substream = substream;
+	ms->substream = substream;
 
 	ms->position = 0;
 
@@ -141,7 +141,7 @@ static int matrixio_pcm_close(struct snd_pcm_substream *substream)
 
 	destroy_workqueue(ms->wq);
 
-	ms->capture_substream = 0;
+	ms->substream = 0;
 
 	return 0;
 }
@@ -274,7 +274,7 @@ static int matrixio_pcm_platform_probe(struct platform_device *pdev)
 
 	ms->mio = dev_get_drvdata(pdev->dev.parent);
 
-	ms->capture_substream = 0;
+	ms->substream = 0;
 
 	mutex_init(&ms->lock);
 
@@ -297,14 +297,14 @@ static int matrixio_pcm_platform_probe(struct platform_device *pdev)
 
 static const struct of_device_id snd_matrixio_pcm_of_match[] = {
     {
-	.compatible = "matrixio-pcm",
+	.compatible = "matrixio-mic",
     },
     {},
 };
 MODULE_DEVICE_TABLE(of, snd_matrixio_pcm_of_match);
 
 static struct platform_driver matrixio_codec_driver = {
-    .driver = {.name = "matrixio-pcm",
+    .driver = {.name = "matrixio-mic",
 	       .owner = THIS_MODULE,
 	       .of_match_table = snd_matrixio_pcm_of_match},
     .probe = matrixio_pcm_platform_probe,

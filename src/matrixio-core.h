@@ -26,6 +26,7 @@
 #define MATRIXIO_EVERLOOP_BASE 0x3000
 #define MATRIXIO_GPIO_BASE 0x4000
 #define MATRIXIO_MCU_BASE 0x5000
+#define MATRIXIO_PLAYBACK_BASE 0x6000
 
 struct matrixio {
 	struct device *dev;

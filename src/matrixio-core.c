@@ -122,6 +122,7 @@ int matrixio_reg_read(void *context, unsigned int reg, unsigned int *val)
 	return matrixio_read((struct matrixio *)(context), reg, sizeof(int16_t),
 			     &val);
 }
+EXPORT_SYMBOL(matrixio_reg_read);
 
 int matrixio_reg_write(void *context, unsigned int reg, unsigned int val)
 {
@@ -141,11 +142,17 @@ static int matrixio_register_devices(struct matrixio *matrixio)
 		.pdata_size = sizeof(*matrixio),
 	    },
 	    {
-		.name = "matrixio-pcm",
-		.of_compatible = "matrixio-pcm",
+		.name = "matrixio-mic",
+		.of_compatible = "matrixio-mic",
 		.platform_data = matrixio,
 		.pdata_size = sizeof(*matrixio),
 	    },
+            {
+                .name = "matrixio-playback",
+                .of_compatible = "matrixio-playback",
+                .platform_data = matrixio,
+                .pdata_size = sizeof(*matrixio),
+            },
 	    {
 		.name = "matrixio-codec",
 		.of_compatible = "matrixio-codec",
