@@ -1,3 +1,11 @@
+matrixio-kernel-modules (0.1.5) unstable; urgency=low
+
+  * Support for audio playback on MATRIX Voice.
+    - Supported Frequencies: 8kHz, 16kHz, 44100Hz, 48kHz
+    - Supported Bit depth: unsigned 16 bit
+
+ -- Yoel Ramos Castillo <yoel.castillo@matrixlabs.ai>  Fri, 16 Nov 2018 17:00:00 -0500
+
 matrixio-kernel-modules (0.1.4) unstable; urgency=low
 
   * Bug Fix: Zwave UART Has been fixed
