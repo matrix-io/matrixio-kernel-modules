@@ -2,7 +2,6 @@
 *.ko
 *.o
 *.d
-*.dtbo
 *.symvers
 *.order
 *.mod.c

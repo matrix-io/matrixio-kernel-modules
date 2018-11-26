@@ -48,7 +48,7 @@ static struct snd_soc_dai_link matrixio_snd_soc_dai[] = {
     }};
 
 static struct snd_soc_card matrixio_soc_card = {
-    .name = "MATRIXIO SOUND",
+    .name = "MATRIXIO-SOUND",
     .owner = THIS_MODULE,
     .dai_link = matrixio_snd_soc_dai,
     .num_links = ARRAY_SIZE(matrixio_snd_soc_dai),

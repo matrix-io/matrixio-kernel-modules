@@ -1,3 +1,12 @@
+matrixio-kernel-modules (0.1.6) unstable; urgency=low
+
+  * Update Matrix Sound Card Name
+  * It now allows volume and audio output to be set externally.
+  * Added helper app for hardware volume control and audio output selection. 
+  * Added example of how to use softvol plugin in the asound.conf file.
+
+ -- Yoel Ramos Castillo <yoel.castillo@matrixlabs.ai>  Mon, 26 Nov 2018 17:00:00 -0500
+
 matrixio-kernel-modules (0.1.5) unstable; urgency=low
 
   * Support for audio playback on MATRIX Voice.
