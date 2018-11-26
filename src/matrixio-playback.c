@@ -177,10 +177,6 @@ static int matrixio_playback_open(struct snd_pcm_substream *substream)
 
 	matrixio_flush();
 
-	matrixio_headphone();
-
-	matrixio_set_volumen(50);
-
 	sema_init(&sem, 1);
 
 	kfifo_reset(&pcm_fifo);
