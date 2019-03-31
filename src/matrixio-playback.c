@@ -42,8 +42,6 @@ static struct semaphore sem;
 
 const uint16_t kConfBaseAddress = 0x0000;
 
-const uint16_t kMaxVolumenValue = 25;
-
 static struct matrixio_substream *ms;
 
 static DECLARE_KFIFO(pcm_fifo, unsigned char, KERNEL_FIFO_SIZE);
@@ -86,14 +84,6 @@ static uint16_t matrixio_fifo_status(void)
 	return kFIFOSize - read_pointer + write_pointer;
 }
 
-static uint16_t matrixio_headphone(void)
-{
-	uint16_t headphone = 0x0001;
-
-	return matrixio_write(ms->mio, MATRIXIO_CONF_BASE + 11,
-			      sizeof(uint16_t), &headphone);
-}
-
 static uint16_t matrixio_flush(void)
 {
 	uint16_t flush_data = 0x0001;
@@ -105,18 +95,6 @@ static uint16_t matrixio_flush(void)
 
 	return matrixio_write(ms->mio, MATRIXIO_CONF_BASE + 12,
 			      sizeof(uint16_t), &flush_data);
-}
-
-static uint16_t matrixio_set_volumen(int volumen_percentage)
-{
-	uint16_t volumen_constant;
-
-	if (volumen_percentage > 100)
-		return 0;
-
-	volumen_constant = (100 - volumen_percentage) * kMaxVolumenValue / 100;
-	return matrixio_write(ms->mio, MATRIXIO_CONF_BASE + 0x08,
-			      sizeof(uint16_t), &volumen_constant);
 }
 
 static int thread_pcm_playback(void *data)
@@ -294,16 +272,102 @@ static struct snd_pcm_ops matrixio_playback_ops = {
     .close = matrixio_playback_close,
 };
 
+static int matrixio_playback_select_info(struct snd_kcontrol *kcontrol,
+                                         struct snd_ctl_elem_info *uinfo)
+{
+    static const char *texts[2] = {
+        "Speaker", "Headphone"
+    };
+    return snd_ctl_enum_info(uinfo, 1, 2, texts);
+}
+
+static int matrixio_playback_select_get(struct snd_kcontrol *kcontrol,
+                         struct snd_ctl_elem_value *ucontrol)
+{
+	uint16_t config = 0;
+	matrixio_read(ms->mio, MATRIXIO_CONF_BASE + 11,
+		      sizeof(uint16_t), &config);
+	ucontrol->value.integer.value[0] = config;
+	return 0;
+}
+
+static int matrixio_playback_select_put(struct snd_kcontrol *kcontrol,
+					struct snd_ctl_elem_value *ucontrol)
+{
+	uint16_t config = ucontrol->value.integer.value[0] ? 0x0001 : 0x0000;
+	matrixio_write(ms->mio, MATRIXIO_CONF_BASE + 11,
+			sizeof(uint16_t), &config);
+	return 1;
+}
+
+#define MAX_VOLUME 29
+
+static int matrixio_volume_info(struct snd_kcontrol *kcontrol,
+				struct snd_ctl_elem_info *uinfo)
+{
+	uinfo->type = SNDRV_CTL_ELEM_TYPE_INTEGER;
+	uinfo->count = 1;
+	uinfo->value.integer.min = 0;
+	uinfo->value.integer.max = MAX_VOLUME;
+	uinfo->value.integer.step = 1;
+	return 0;
+}
+
+static int matrixio_volume_get(struct snd_kcontrol *kcontrol,
+                         struct snd_ctl_elem_value *ucontrol)
+{
+	uint16_t volume_regvalue;
+	matrixio_read(ms->mio, MATRIXIO_CONF_BASE + 0x08,
+			      sizeof(uint16_t), &volume_regvalue);
+	ucontrol->value.integer.value[0] = MAX_VOLUME - volume_regvalue;
+	return 0;
+}
+
+static int matrixio_volume_put(struct snd_kcontrol *kcontrol,
+                         struct snd_ctl_elem_value *ucontrol)
+{
+	uint16_t volume_regvalue = MAX_VOLUME - ucontrol->value.integer.value[0]; 
+	matrixio_write(ms->mio, MATRIXIO_CONF_BASE + 0x08,
+			      sizeof(uint16_t), &volume_regvalue);
+	return 1;
+}
+
+//static DECLARE_TLV_DB_SCALE(matrixio_volume_db_scale, 2000, -125, 0);
+
+static const struct snd_kcontrol_new matrixio_snd_controls[] = {
+{
+    .iface = SNDRV_CTL_ELEM_IFACE_MIXER,
+    .name = "Master Playback Switch",
+    .index = 0,
+    .access = SNDRV_CTL_ELEM_ACCESS_READWRITE,
+    .info = matrixio_playback_select_info,
+    .get = matrixio_playback_select_get,
+    .put = matrixio_playback_select_put,
+},
+{
+    .iface = SNDRV_CTL_ELEM_IFACE_MIXER,
+    .name = "Playback Volume",
+    .index = 1,
+    .access = SNDRV_CTL_ELEM_ACCESS_READWRITE,
+    .info = matrixio_volume_info,
+    .get = matrixio_volume_get,
+    .put = matrixio_volume_put,
+}};
+
 static int matrixio_playback_new(struct snd_soc_pcm_runtime *rtd) { return 0; }
 
 static const struct snd_soc_platform_driver matrixio_soc_platform = {
     .ops = &matrixio_playback_ops, .pcm_new = matrixio_playback_new,
+    .component_driver = {
+	    .controls = matrixio_snd_controls,
+	    .num_controls = ARRAY_SIZE(matrixio_snd_controls),
+    }
 };
 
 static int matrixio_playback_platform_probe(struct platform_device *pdev)
 {
 	int ret;
-
+	
 	ms = devm_kzalloc(&pdev->dev, sizeof(struct matrixio_substream),
 			  GFP_KERNEL);
 	if (!ms) {
