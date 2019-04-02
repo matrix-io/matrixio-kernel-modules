@@ -337,7 +337,7 @@ static int matrixio_volume_put(struct snd_kcontrol *kcontrol,
 static const struct snd_kcontrol_new matrixio_snd_controls[] = {
 {
     .iface = SNDRV_CTL_ELEM_IFACE_MIXER,
-    .name = "Master Playback Switch",
+    .name = "Master_Playback_Switch",
     .index = 0,
     .access = SNDRV_CTL_ELEM_ACCESS_READWRITE,
     .info = matrixio_playback_select_info,
@@ -346,7 +346,7 @@ static const struct snd_kcontrol_new matrixio_snd_controls[] = {
 },
 {
     .iface = SNDRV_CTL_ELEM_IFACE_MIXER,
-    .name = "Playback Volume",
+    .name = "Playback_Volume",
     .index = 1,
     .access = SNDRV_CTL_ELEM_ACCESS_READWRITE,
     .info = matrixio_volume_info,
