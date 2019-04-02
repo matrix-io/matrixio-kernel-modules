@@ -300,7 +300,7 @@ static int matrixio_playback_select_put(struct snd_kcontrol *kcontrol,
 	return 1;
 }
 
-#define MAX_VOLUME 29
+#define MAX_VOLUME 32
 
 static int matrixio_volume_info(struct snd_kcontrol *kcontrol,
 				struct snd_ctl_elem_info *uinfo)
