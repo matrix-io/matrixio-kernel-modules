@@ -6,4 +6,5 @@
 *.order
 *.mod.c
 *.mod
+*.dtbo
 

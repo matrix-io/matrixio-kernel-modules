@@ -1,0 +1,8 @@
+#!/bin/bash
+
+# removing config file for loading the modules on boot
+rm -f /etc/modules-load.d/matrixio.conf
+# comment the dtoverlay in config file
+sed 's/^ *[# ]*#* *dtoverlay *= *matrixio.*/# dtoverlay=matrixio/' -i /boot/config.txt
+# restoring previously backed-up asound.conf file
+[ -f '/etc/asound.conf.bk' ] && mv /etc/asound.conf.bk /etc/asound.conf
