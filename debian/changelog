@@ -1,11 +1,10 @@
 matrixio-kernel-modules (0.1.6) unstable; urgency=low
 
+  * Added support for controlling speaker/headphone audio output via alsamixer (from osmaa)
+  * Added support for controlling 32 steps volume via alsamixer (from osmaa)
   * Update Matrix Sound Card Name
-  * It now allows volume and audio output to be set externally.
-  * Added helper app for hardware volume control and audio output selection. 
-  * Added example of how to use softvol plugin in the asound.conf file.
 
- -- Yoel Ramos Castillo <yoel.castillo@matrixlabs.ai>  Mon, 26 Nov 2018 17:00:00 -0500
+ -- Yoel Ramos Castillo <yoel.castillo@matrixlabs.ai>  Wed, 10 Apr 2019 10:00:00 -0500
 
 matrixio-kernel-modules (0.1.5) unstable; urgency=low
 

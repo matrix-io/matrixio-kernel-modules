@@ -1,4 +1,0 @@
-#!/bin/bash
-
-# backing up previous asound.conf files if it exists
-mv -f /etc/asound.conf /etc/asound.conf.bk
