@@ -17,7 +17,7 @@ pipeline:
     when:
       branch: [master]
       event: [ push, tag ]
-    image: gcr.io/admobilize-testing/creator-builder-${RCHITECTURE}-${DISTRIBUTION}-${CODENAME}:${IMAGE_TAG}
+    image: gcr.io/admobilize-testing/creator-builder-${ARCHITECTURE}-${DISTRIBUTION}-${CODENAME}:${IMAGE_TAG}
     commands: 
       - curl https://apt.matrix.one/doc/apt-key.gpg | apt-key add -
       - export COMPONENT=$([ "${DRONE_BUILD_EVENT}" = "tag" ] && echo "main" || echo "unstable")
