@@ -74,10 +74,10 @@ matrix:
   include: 
     - CODENAME: jessie
       DISTRIBUTION: raspbian
-      ARCHITECTURE: armv7hf
+      ARCHITECTURE: armhf
       IMAGE_TAG: 93353637
 
     - CODENAME: stretch
       DISTRIBUTION: raspbian
-      ARCHITECTURE: armv7hf
+      ARCHITECTURE: armhf
       IMAGE_TAG: 93353637
