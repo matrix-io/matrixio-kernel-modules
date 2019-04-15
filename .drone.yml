@@ -15,7 +15,6 @@ pipeline:
   build-debs:
     when:
       branch: [master]
-      event: [ push, tag ]
     image: gcr.io/admobilize-testing/creator-builder-${ARCHITECTURE}-${DISTRIBUTION}-${CODENAME}:${IMAGE_TAG}
     commands:
       - curl https://apt.matrix.one/doc/apt-key.gpg | apt-key add -
