@@ -2,10 +2,9 @@ pipeline:
   # Make sure the host machine is able to emulate arm devices
   arm-support:
     when:
-      success: true
       branch: [master]
       matrix:
-        ARCHITECTURE: armv7hf
+        ARCHITECTURE: armhf
     privileged: true
     image: gcr.io/admobilize-testing/gce-builder:latest
     commands:
@@ -18,11 +17,10 @@ pipeline:
       branch: [master]
       event: [ push, tag ]
     image: gcr.io/admobilize-testing/creator-builder-${ARCHITECTURE}-${DISTRIBUTION}-${CODENAME}:${IMAGE_TAG}
-    commands: 
+    commands:
       - curl https://apt.matrix.one/doc/apt-key.gpg | apt-key add -
       - export COMPONENT=$([ "${DRONE_BUILD_EVENT}" = "tag" ] && echo "main" || echo "unstable")
-      - echo "deb https://apt.matrix.one/raspbian ${CODENAME} $COMPONENT" 
-           > /etc/apt/sources.list.d/matrixlabs.list
+      - echo "deb https://apt.matrix.one/raspbian ${CODENAME} $COMPONENT" > /etc/apt/sources.list.d/matrixlabs.list
       - apt-get update
       - debuild -us -uc -b
       - mv ../*.deb .
@@ -31,6 +29,7 @@ pipeline:
     when:
       branch: master 
       event: [ push, tag ]
+      status: success
     image: gcr.io/admobilize-testing/gce-builder:latest
     secrets: [aws_access_key_id, aws_secret_access_key, gpg_key, gpg_pass]
     commands:
