@@ -13,12 +13,9 @@ pipeline:
       - test ! -e /proc/sys/fs/binfmt_misc/arm && echo ':arm:M::\x7fELF\x01\x01\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x02\x00\x28\x00:\xff\xff\xff\xff\xff\xff\xff\x00\xff\xff\xff\xff\xff\xff\xff\xff\xfe\xff\xff\xff:/usr/bin/qemu-arm-static:' > /proc/sys/fs/binfmt_misc/register || echo 'arm file already exists'
 
   build-debs:
-    when:
-      branch: [master]
     image: gcr.io/admobilize-testing/creator-builder-${ARCHITECTURE}-${DISTRIBUTION}-${CODENAME}:${IMAGE_TAG}
     privileged: true
     commands:
-      - mount binfmt_misc -t binfmt_misc /proc/sys/fs/binfmt_misc
       - curl https://apt.matrix.one/doc/apt-key.gpg | apt-key add -
       - export COMPONENT=$([ "${DRONE_BUILD_EVENT}" = "tag" ] && echo "main" || echo "unstable")
       - echo "deb https://apt.matrix.one/raspbian ${CODENAME} $COMPONENT" > /etc/apt/sources.list.d/matrixlabs.list
@@ -75,9 +72,9 @@ matrix:
     - CODENAME: jessie
       DISTRIBUTION: raspbian
       ARCHITECTURE: armhf
-      IMAGE_TAG: 93353637
+      IMAGE_TAG: 3181f193
 
     - CODENAME: stretch
       DISTRIBUTION: raspbian
       ARCHITECTURE: armhf
-      IMAGE_TAG: 93353637
+      IMAGE_TAG: 3181f193
