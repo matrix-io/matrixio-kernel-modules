@@ -65,4 +65,12 @@ Add in `/boot/config.txt`
 ```
 dtoverlay=matrixio
 ```
-Then reboot your device. It allows and activates the MATRIXIO Kernel modules. 
+
+Finally, load the remaining required modules
+```
+sudo cp ~/matrixio-kernel-modules/misc/matrixio.conf /etc/modules-load.d/
+sudo cp ~/matrixio-kernel-modules/misc/asound.conf /etc/
+sudo reboot
+```
+
+The reboot in the last step allows and activates the MATRIXIO Kernel modules. 
