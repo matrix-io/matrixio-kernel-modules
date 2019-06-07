@@ -172,7 +172,7 @@ static int matrixio_imu_read_raw(struct iio_dev *indio_dev,
 static const struct iio_info matrixio_imu_info = {
     .read_raw = matrixio_imu_read_raw,
     .write_raw = matrixio_imu_write_raw,
-    .driver_module = THIS_MODULE,
+    // .driver_module = THIS_MODULE,
 };
 
 static int matrixio_imu_probe(struct platform_device *pdev)

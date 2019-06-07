@@ -60,20 +60,17 @@ static const struct snd_soc_dapm_widget matrixio_dapm_widgets[] = {};
 
 static const struct snd_soc_dapm_route matrixio_dapm_routes[] = {};
 
-static int matrixio_codec_probe(struct snd_soc_codec *codec) { return 0; }
+static int matrixio_codec_probe(struct snd_soc_component *codec) { return 0; }
 
-static const struct snd_soc_codec_driver matrixio_soc_codec_driver = {
+static const struct snd_soc_component_driver matrixio_soc_codec_driver = {
 
     .probe = matrixio_codec_probe,
-    .component_driver =
-	{
-	    .controls = matrixio_snd_controls,
-	    .num_controls = ARRAY_SIZE(matrixio_snd_controls),
-	    .dapm_widgets = matrixio_dapm_widgets,
-	    .num_dapm_widgets = ARRAY_SIZE(matrixio_dapm_widgets),
-	    .dapm_routes = matrixio_dapm_routes,
-	    .num_dapm_routes = ARRAY_SIZE(matrixio_dapm_routes),
-	},
+	.controls = matrixio_snd_controls,
+	.num_controls = ARRAY_SIZE(matrixio_snd_controls),
+	.dapm_widgets = matrixio_dapm_widgets,
+	.num_dapm_widgets = ARRAY_SIZE(matrixio_dapm_widgets),
+	.dapm_routes = matrixio_dapm_routes,
+	.num_dapm_routes = ARRAY_SIZE(matrixio_dapm_routes),
 };
 
 static struct snd_soc_dai_driver matrixio_dai_driver[] = {
@@ -108,7 +105,7 @@ static int matrixio_probe(struct platform_device *pdev)
 {
 	int ret;
 
-	ret = snd_soc_register_codec(&pdev->dev, &matrixio_soc_codec_driver,
+	ret = snd_soc_register_component(&pdev->dev, &matrixio_soc_codec_driver,
 				     matrixio_dai_driver,
 				     ARRAY_SIZE(matrixio_dai_driver));
 	if (ret) {
@@ -129,7 +126,7 @@ static int matrixio_probe(struct platform_device *pdev)
 	return ret;
 }
 
-static int matrixio_codec_remove(struct platform_device *pdev) { return 0; }
+// static int matrixio_codec_remove(struct platform_device *pdev) { return 0; }
 
 static const struct of_device_id snd_matrixio_codec_of_match[] = {
     {
@@ -145,7 +142,7 @@ static struct platform_driver matrixio_codec_driver = {
 	       .of_match_table = snd_matrixio_codec_of_match},
     .probe = matrixio_probe,
 
-    .remove = matrixio_codec_remove,
+    // .remove = matrixio_codec_remove,
 };
 
 module_platform_driver(matrixio_codec_driver);

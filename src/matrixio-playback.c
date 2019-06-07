@@ -67,6 +67,22 @@ static struct snd_pcm_hardware matrixio_playback_capture_hw = {
     .periods_max = 8,
 };
 
+static struct snd_soc_dai_driver matrixio_dai_driver[] = {
+    {
+	.name = "matrixio-pcm-out.0",
+	.playback =
+	    {
+		.stream_name = "matrixio-pcm-out.0",
+		.channels_min = 2,
+		.channels_max = 2,
+		.rates = MATRIXIO_RATES,
+		.rate_min = 8000,
+		.rate_max = 48000,
+		.formats = MATRIXIO_FORMATS,
+	    },
+    }
+};
+
 struct task_struct *playback_task;
 
 static uint16_t matrixio_fifo_status(void)
@@ -356,12 +372,10 @@ static const struct snd_kcontrol_new matrixio_snd_controls[] = {
 
 static int matrixio_playback_new(struct snd_soc_pcm_runtime *rtd) { return 0; }
 
-static const struct snd_soc_platform_driver matrixio_soc_platform = {
+static const struct snd_soc_component_driver matrixio_soc_platform = {
     .ops = &matrixio_playback_ops, .pcm_new = matrixio_playback_new,
-    .component_driver = {
-	    .controls = matrixio_snd_controls,
-	    .num_controls = ARRAY_SIZE(matrixio_snd_controls),
-    }
+	.controls = matrixio_snd_controls,
+	.num_controls = ARRAY_SIZE(matrixio_snd_controls),
 };
 
 static int matrixio_playback_platform_probe(struct platform_device *pdev)
@@ -382,7 +396,7 @@ static int matrixio_playback_platform_probe(struct platform_device *pdev)
 	mutex_init(&ms->lock);
 
 	ret =
-	    devm_snd_soc_register_platform(&pdev->dev, &matrixio_soc_platform);
+	    devm_snd_soc_register_component(&pdev->dev, &matrixio_soc_platform, matrixio_dai_driver, ARRAY_SIZE(matrixio_dai_driver));
 	if (ret) {
 		dev_err(&pdev->dev,
 			"MATRIXIO sound SoC register platform error: %d", ret);

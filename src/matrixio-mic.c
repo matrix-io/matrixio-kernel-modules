@@ -60,6 +60,22 @@ static struct snd_pcm_hardware matrixio_pcm_capture_hw = {
     .periods_max = 8,
 };
 
+static struct snd_soc_dai_driver matrixio_dai_driver[] = {
+    {
+	.name = "matrixio-mic.0",
+	.capture =
+	    {
+		.stream_name = "matrixio-mic.0",
+		.channels_min = 1,
+		.channels_max = 8,
+		.rates = MATRIXIO_RATES,
+		.rate_min = 8000,
+		.rate_max = 96000,
+		.formats = MATRIXIO_FORMATS,
+	    },
+    }
+};
+
 static void matrixio_pcm_capture_work(struct work_struct *wk)
 {
 	int c;
@@ -257,7 +273,7 @@ static struct snd_pcm_ops matrixio_pcm_ops = {
 
 static int matrixio_pcm_new(struct snd_soc_pcm_runtime *rtd) { return 0; }
 
-static const struct snd_soc_platform_driver matrixio_soc_platform = {
+static const struct snd_soc_component_driver matrixio_soc_platform = {
     .ops = &matrixio_pcm_ops, .pcm_new = matrixio_pcm_new,
 };
 
@@ -281,7 +297,7 @@ static int matrixio_pcm_platform_probe(struct platform_device *pdev)
 	ms->irq = irq_of_parse_and_map(pdev->dev.of_node, 0);
 
 	ret =
-	    devm_snd_soc_register_platform(&pdev->dev, &matrixio_soc_platform);
+	    devm_snd_soc_register_component(&pdev->dev, &matrixio_soc_platform, matrixio_dai_driver, ARRAY_SIZE(matrixio_dai_driver));
 	if (ret) {
 		dev_err(&pdev->dev,
 			"MATRIXIO sound SoC register platform error: %d", ret);
