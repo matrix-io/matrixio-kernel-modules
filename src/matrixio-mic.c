@@ -145,7 +145,8 @@ static int matrixio_pcm_open(struct snd_pcm_substream *substream)
 		destroy_workqueue(ms->wq);
 		return -EBUSY;
 	}
-
+	printk(KERN_ALERT "DEBUG: Passed %s %d \n",__FUNCTION__,__LINE__);
+	printk(KERN_ALERT "FIN: Passed %s %d \n",__FUNCTION__,__LINE__);
 	return 0;
 }
 
