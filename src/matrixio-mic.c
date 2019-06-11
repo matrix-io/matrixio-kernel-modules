@@ -78,6 +78,7 @@ static struct snd_soc_dai_driver matrixio_dai_driver[] = {
 
 static void matrixio_pcm_capture_work(struct work_struct *wk)
 {
+	printk(KERN_ALERT "DEBUG: Passed %s %d \n",__FUNCTION__,__LINE__);
 	int c;
 	int ret;
 	struct matrixio_substream *ms;
@@ -101,21 +102,24 @@ static void matrixio_pcm_capture_work(struct work_struct *wk)
 
 static irqreturn_t matrixio_pcm_interrupt(int irq, void *irq_data)
 {
+	printk(KERN_ALERT "DEBUG: Passed %s %d \n",__FUNCTION__,__LINE__);
 	struct matrixio_substream *ms = irq_data;
 
 	if (ms->substream == 0)
 		return IRQ_NONE;
 
-	queue_work(ms->wq, &ms->work);
+	// queue_work(ms->wq, &ms->work);
+	schedule_work(&ms->work);
 
 	return IRQ_HANDLED;
 }
 
 static int matrixio_pcm_open(struct snd_pcm_substream *substream)
 {
+	printk(KERN_ALERT "DEBUG: Passed %s %d \n",__FUNCTION__,__LINE__);
 	int ret;
 
-	char workqueue_name[12];
+	// char workqueue_name[12];
 
 	snd_soc_set_runtime_hwparams(substream, &matrixio_pcm_capture_hw);
 
@@ -129,34 +133,34 @@ static int matrixio_pcm_open(struct snd_pcm_substream *substream)
 
 	ms->position = 0;
 
-	sprintf(workqueue_name, "matrixio_pcm");
+	// sprintf(workqueue_name, "matrixio_pcm");
 
-	ms->wq = create_singlethread_workqueue(workqueue_name);
+	// ms->wq = create_singlethread_workqueue(workqueue_name);
 
-	if (!ms->wq) {
-		return -ENOMEM;
-	}
+	// if (!ms->wq) {
+	// 	return -ENOMEM;
+	// }
 
 	INIT_WORK(&ms->work, matrixio_pcm_capture_work);
 
 	ret = request_irq(ms->irq, matrixio_pcm_interrupt, 0,
 			  "matrixio-capture", ms);
 	if (ret) {
-		destroy_workqueue(ms->wq);
+		// destroy_workqueue(ms->wq);
+		// cancel_work_sync(ms->wq);
 		return -EBUSY;
 	}
 	printk(KERN_ALERT "DEBUG: Passed %s %d \n",__FUNCTION__,__LINE__);
-	printk(KERN_ALERT "FIN: Passed %s %d \n",__FUNCTION__,__LINE__);
 	return 0;
 }
 
 static int matrixio_pcm_close(struct snd_pcm_substream *substream)
 {
 	free_irq(ms->irq, ms);
+	cancel_work_sync(&ms->work);
+	// flush_workqueue(ms->wq);
 
-	flush_workqueue(ms->wq);
-
-	destroy_workqueue(ms->wq);
+	// destroy_workqueue(ms->wq);
 
 	ms->substream = 0;
 
