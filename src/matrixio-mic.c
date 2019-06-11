@@ -78,7 +78,7 @@ static struct snd_soc_dai_driver matrixio_dai_driver[] = {
 
 static void matrixio_pcm_capture_work(struct work_struct *wk)
 {
-	printk(KERN_ALERT "DEBUG: Passed %s %d \n",__FUNCTION__,__LINE__);
+	// printk(KERN_ALERT "DEBUG: Passed %s %d \n",__FUNCTION__,__LINE__);
 	int c;
 	int ret;
 	struct matrixio_substream *ms;
@@ -100,10 +100,10 @@ static void matrixio_pcm_capture_work(struct work_struct *wk)
 	snd_pcm_period_elapsed(ms->substream);
 }
 
-static irqreturn_t matrixio_pcm_interrupt(int irq, void *irq_data)
+static irqreturn_t matrixio_pcm_interrupt(int irq, void* irq_data )
 {
-	printk(KERN_ALERT "DEBUG: Passed %s %d \n",__FUNCTION__,__LINE__);
-	struct matrixio_substream *ms = irq_data;
+	// printk(KERN_ALERT "DEBUG: Passed %s %d \n",__FUNCTION__,__LINE__);
+	// struct matrixio_substream *ms = irq_data;
 
 	if (ms->substream == 0)
 		return IRQ_NONE;
@@ -116,7 +116,7 @@ static irqreturn_t matrixio_pcm_interrupt(int irq, void *irq_data)
 
 static int matrixio_pcm_open(struct snd_pcm_substream *substream)
 {
-	printk(KERN_ALERT "DEBUG: Passed %s %d \n",__FUNCTION__,__LINE__);
+	// printk(KERN_ALERT "DEBUG: Passed %s %d \n",__FUNCTION__,__LINE__);
 	int ret;
 
 	// char workqueue_name[12];
@@ -150,7 +150,7 @@ static int matrixio_pcm_open(struct snd_pcm_substream *substream)
 		// cancel_work_sync(ms->wq);
 		return -EBUSY;
 	}
-	printk(KERN_ALERT "DEBUG: Passed %s %d \n",__FUNCTION__,__LINE__);
+	// printk(KERN_ALERT "DEBUG: Passed %s %d \n",__FUNCTION__,__LINE__);
 	return 0;
 }
 

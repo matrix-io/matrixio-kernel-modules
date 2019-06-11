@@ -104,7 +104,7 @@ static struct snd_soc_dai_driver matrixio_dai_driver[] = {
 
 static int matrixio_probe(struct platform_device *pdev)
 {
-	printk(KERN_ALERT "DEBUG: Passed %s %d \n",__FUNCTION__,__LINE__);
+	// printk(KERN_ALERT "DEBUG: Passed %s %d \n",__FUNCTION__,__LINE__);
 	struct snd_soc_card *card = &matrixio_soc_card;
 	// struct snd_soc_dai_link *dailink = matrixio_snd_soc_dai;
 	int ret;
