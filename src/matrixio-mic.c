@@ -60,25 +60,8 @@ static struct snd_pcm_hardware matrixio_pcm_capture_hw = {
     .periods_max = 8,
 };
 
-static struct snd_soc_dai_driver matrixio_dai_driver[] = {
-    {
-	.name = "matrixio-mic.0",
-	.capture =
-	    {
-		.stream_name = "matrixio-mic.0",
-		.channels_min = 1,
-		.channels_max = 8,
-		.rates = MATRIXIO_RATES,
-		.rate_min = 8000,
-		.rate_max = 96000,
-		.formats = MATRIXIO_FORMATS,
-	    },
-    }
-};
-
 static void matrixio_pcm_capture_work(struct work_struct *wk)
 {
-	// printk(KERN_ALERT "DEBUG: Passed %s %d \n",__FUNCTION__,__LINE__);
 	int c;
 	int ret;
 	struct matrixio_substream *ms;
@@ -102,13 +85,9 @@ static void matrixio_pcm_capture_work(struct work_struct *wk)
 
 static irqreturn_t matrixio_pcm_interrupt(int irq, void* irq_data )
 {
-	// printk(KERN_ALERT "DEBUG: Passed %s %d \n",__FUNCTION__,__LINE__);
-	// struct matrixio_substream *ms = irq_data;
-
 	if (ms->substream == 0)
 		return IRQ_NONE;
 
-	// queue_work(ms->wq, &ms->work);
 	schedule_work(&ms->work);
 
 	return IRQ_HANDLED;
@@ -116,10 +95,7 @@ static irqreturn_t matrixio_pcm_interrupt(int irq, void* irq_data )
 
 static int matrixio_pcm_open(struct snd_pcm_substream *substream)
 {
-	// printk(KERN_ALERT "DEBUG: Passed %s %d \n",__FUNCTION__,__LINE__);
 	int ret;
-
-	// char workqueue_name[12];
 
 	snd_soc_set_runtime_hwparams(substream, &matrixio_pcm_capture_hw);
 
@@ -133,24 +109,14 @@ static int matrixio_pcm_open(struct snd_pcm_substream *substream)
 
 	ms->position = 0;
 
-	// sprintf(workqueue_name, "matrixio_pcm");
-
-	// ms->wq = create_singlethread_workqueue(workqueue_name);
-
-	// if (!ms->wq) {
-	// 	return -ENOMEM;
-	// }
-
 	INIT_WORK(&ms->work, matrixio_pcm_capture_work);
 
 	ret = request_irq(ms->irq, matrixio_pcm_interrupt, 0,
 			  "matrixio-capture", ms);
 	if (ret) {
-		// destroy_workqueue(ms->wq);
-		// cancel_work_sync(ms->wq);
 		return -EBUSY;
 	}
-	// printk(KERN_ALERT "DEBUG: Passed %s %d \n",__FUNCTION__,__LINE__);
+
 	return 0;
 }
 
@@ -158,10 +124,6 @@ static int matrixio_pcm_close(struct snd_pcm_substream *substream)
 {
 	free_irq(ms->irq, ms);
 	cancel_work_sync(&ms->work);
-	// flush_workqueue(ms->wq);
-
-	// destroy_workqueue(ms->wq);
-
 	ms->substream = 0;
 
 	return 0;
@@ -302,7 +264,7 @@ static int matrixio_pcm_platform_probe(struct platform_device *pdev)
 	ms->irq = irq_of_parse_and_map(pdev->dev.of_node, 0);
 
 	ret =
-	    devm_snd_soc_register_component(&pdev->dev, &matrixio_soc_platform, matrixio_dai_driver, ARRAY_SIZE(matrixio_dai_driver));
+	    devm_snd_soc_register_component(&pdev->dev, &matrixio_soc_platform, NULL, 0);
 	if (ret) {
 		dev_err(&pdev->dev,
 			"MATRIXIO sound SoC register platform error: %d", ret);

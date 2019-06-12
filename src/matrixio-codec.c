@@ -104,15 +104,12 @@ static struct snd_soc_dai_driver matrixio_dai_driver[] = {
 
 static int matrixio_probe(struct platform_device *pdev)
 {
-	// printk(KERN_ALERT "DEBUG: Passed %s %d \n",__FUNCTION__,__LINE__);
 	struct snd_soc_card *card = &matrixio_soc_card;
-	// struct snd_soc_dai_link *dailink = matrixio_snd_soc_dai;
 	int ret;
-	// int id;
 
 	card->dev = &pdev->dev;
 
-	ret = snd_soc_register_component(&pdev->dev, &matrixio_soc_codec_driver,
+	ret = devm_snd_soc_register_component(&pdev->dev, &matrixio_soc_codec_driver,
 				     matrixio_dai_driver,
 				     ARRAY_SIZE(matrixio_dai_driver));
 	if (ret) {
@@ -120,15 +117,6 @@ static int matrixio_probe(struct platform_device *pdev)
 			ret);
 		return ret;
 	}
-
-	// matrixio_soc_card.dev = &pdev->dev;
-
-	// ret = snd_soc_register_card(&pdev->dev, &matrixio_soc_card);
-	// if (ret) {
-	// 	dev_err(&pdev->dev, "Failed to register MATRIXIO card (%d)\n",
-	// 		ret);
-	// 	return ret;
-	// }
 
 	ret = snd_soc_register_card(card);
 	if (ret) {
