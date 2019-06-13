@@ -152,6 +152,9 @@ static struct platform_driver matrixio_codec_driver = {
 
 module_platform_driver(matrixio_codec_driver);
 
+MODULE_SOFTDEP("pre: matrixio-mic");
+MODULE_SOFTDEP("pre: matrixio-playback");
+
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Andres Calderon <andres.calderon@admobilize.com>");
 MODULE_DESCRIPTION("MATRIXIO audio module");
