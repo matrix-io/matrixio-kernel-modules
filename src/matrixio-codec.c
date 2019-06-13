@@ -52,7 +52,7 @@ static struct snd_soc_card matrixio_soc_card = {
     .owner = THIS_MODULE,
     .dai_link = matrixio_snd_soc_dai,
     .num_links = ARRAY_SIZE(matrixio_snd_soc_dai),
-	.fully_routed =true,
+    .fully_routed = true,
 };
 
 static const struct snd_kcontrol_new matrixio_snd_controls[] = {};
@@ -66,12 +66,12 @@ static int matrixio_codec_probe(struct snd_soc_component *codec) { return 0; }
 static const struct snd_soc_component_driver matrixio_soc_codec_driver = {
 
     .probe = matrixio_codec_probe,
-	.controls = matrixio_snd_controls,
-	.num_controls = ARRAY_SIZE(matrixio_snd_controls),
-	.dapm_widgets = matrixio_dapm_widgets,
-	.num_dapm_widgets = ARRAY_SIZE(matrixio_dapm_widgets),
-	.dapm_routes = matrixio_dapm_routes,
-	.num_dapm_routes = ARRAY_SIZE(matrixio_dapm_routes),
+    .controls = matrixio_snd_controls,
+    .num_controls = ARRAY_SIZE(matrixio_snd_controls),
+    .dapm_widgets = matrixio_dapm_widgets,
+    .num_dapm_widgets = ARRAY_SIZE(matrixio_dapm_widgets),
+    .dapm_routes = matrixio_dapm_routes,
+    .num_dapm_routes = ARRAY_SIZE(matrixio_dapm_routes),
 };
 
 static struct snd_soc_dai_driver matrixio_dai_driver[] = {
@@ -109,16 +109,16 @@ static int matrixio_probe(struct platform_device *pdev)
 
 	card->dev = &pdev->dev;
 
-	ret = devm_snd_soc_register_component(&pdev->dev, &matrixio_soc_codec_driver,
-				     matrixio_dai_driver,
-				     ARRAY_SIZE(matrixio_dai_driver));
+	ret = devm_snd_soc_register_component(
+	    &pdev->dev, &matrixio_soc_codec_driver, matrixio_dai_driver,
+	    ARRAY_SIZE(matrixio_dai_driver));
 	if (ret) {
 		dev_err(&pdev->dev, "Failed to register MATRIXIO codec: %d\n",
 			ret);
 		return ret;
 	}
 
-	ret = snd_soc_register_card(card);
+	ret = devm_snd_soc_register_card(&pdev->dev, card);
 	if (ret) {
 		dev_err(&pdev->dev, "Failed to register MATRIXIO card (%d)\n",
 			ret);
@@ -139,11 +139,12 @@ static const struct of_device_id snd_matrixio_codec_of_match[] = {
 MODULE_DEVICE_TABLE(of, snd_matrixio_codec_of_match);
 
 static struct platform_driver matrixio_codec_driver = {
-    .driver = {
-		.name = "matrixio-codec",
+    .driver =
+	{
+	    .name = "matrixio-codec",
 	    .owner = THIS_MODULE,
 	    .of_match_table = of_match_ptr(snd_matrixio_codec_of_match),
-		.pm		= &snd_soc_pm_ops,
+	    .pm = &snd_soc_pm_ops,
 	},
     .probe = matrixio_probe,
     .remove = matrixio_codec_remove,
