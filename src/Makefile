@@ -14,8 +14,8 @@ obj-m += matrixio-regmap.o
 all:	matrixio.dtbo
 	make -C /lib/modules/$(shell uname -r)/build M=$(PWD) modules
 
-matrixio.dtbo: matrixio-overlay.dts
-	$(DTC) -W no-unit_address_vs_reg -@ -I dts -O dtb -o matrixio.dtbo matrixio-overlay.dts
+matrixio.dtbo: matrixio.dts
+	$(DTC) -W no-unit_address_vs_reg -@ -I dts -O dtb -o matrixio.dtbo matrixio.dts
 
 install: matrixio.dtbo
 	sudo cp matrixio.dtbo /boot/overlays

@@ -1,3 +1,5 @@
+#include <linux/types.h>
+
 #define FIR_ORDER 128
 
 struct FIRCoeff {

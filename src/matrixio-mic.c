@@ -11,9 +11,9 @@
  *  option) any later version.
  */
 
-#include "matrixio-pcm.h"
 #include "fir_coeff.h"
 #include "matrixio-core.h"
+#include "matrixio-pcm.h"
 
 #include <linux/cdev.h>
 #include <linux/fs.h>
@@ -85,12 +85,10 @@ static void matrixio_pcm_capture_work(struct work_struct *wk)
 
 static irqreturn_t matrixio_pcm_interrupt(int irq, void *irq_data)
 {
-	struct matrixio_substream *ms = irq_data;
-
 	if (ms->substream == 0)
 		return IRQ_NONE;
 
-	queue_work(ms->wq, &ms->work);
+	schedule_work(&ms->work);
 
 	return IRQ_HANDLED;
 }
@@ -98,8 +96,6 @@ static irqreturn_t matrixio_pcm_interrupt(int irq, void *irq_data)
 static int matrixio_pcm_open(struct snd_pcm_substream *substream)
 {
 	int ret;
-
-	char workqueue_name[12];
 
 	snd_soc_set_runtime_hwparams(substream, &matrixio_pcm_capture_hw);
 
@@ -113,20 +109,11 @@ static int matrixio_pcm_open(struct snd_pcm_substream *substream)
 
 	ms->position = 0;
 
-	sprintf(workqueue_name, "matrixio_pcm");
-
-	ms->wq = create_singlethread_workqueue(workqueue_name);
-
-	if (!ms->wq) {
-		return -ENOMEM;
-	}
-
 	INIT_WORK(&ms->work, matrixio_pcm_capture_work);
 
 	ret = request_irq(ms->irq, matrixio_pcm_interrupt, 0,
 			  "matrixio-capture", ms);
 	if (ret) {
-		destroy_workqueue(ms->wq);
 		return -EBUSY;
 	}
 
@@ -136,11 +123,7 @@ static int matrixio_pcm_open(struct snd_pcm_substream *substream)
 static int matrixio_pcm_close(struct snd_pcm_substream *substream)
 {
 	free_irq(ms->irq, ms);
-
-	flush_workqueue(ms->wq);
-
-	destroy_workqueue(ms->wq);
-
+	cancel_work_sync(&ms->work);
 	ms->substream = 0;
 
 	return 0;
@@ -207,21 +190,6 @@ matrixio_pcm_pointer(struct snd_pcm_substream *substream)
 	return ms->position;
 }
 
-#if LINUX_VERSION_CODE <= KERNEL_VERSION(4, 13, 0)
-static int matrixio_pcm_copy(struct snd_pcm_substream *substream, int channel,
-			     snd_pcm_uframes_t pos, void __user *buf,
-			     snd_pcm_uframes_t count)
-{
-	int i, c;
-	static int16_t buf_interleaved[MATRIXIO_CHANNELS_MAX * 8192];
-
-	for (i = 0; i < count; i++)
-		for (c = 0; c < ms->channels; c++)
-			buf_interleaved[i * ms->channels + c] =
-			    matrixio_buf[c][pos + i];
-	return copy_to_user(buf, buf_interleaved, count * 2 * ms->channels);
-}
-#else
 static int matrixio_pcm_copy(struct snd_pcm_substream *substream, int channel,
 			     snd_pcm_uframes_t pos, void __user *buf,
 			     snd_pcm_uframes_t bytes)
@@ -238,7 +206,6 @@ static int matrixio_pcm_copy(struct snd_pcm_substream *substream, int channel,
 			    matrixio_buf[c][frame_pos + i];
 	return copy_to_user(buf, buf_interleaved, bytes);
 }
-#endif
 
 static struct snd_pcm_ops matrixio_pcm_ops = {
     .open = matrixio_pcm_open,
@@ -247,17 +214,13 @@ static struct snd_pcm_ops matrixio_pcm_ops = {
     .hw_free = matrixio_pcm_hw_free,
     .prepare = matrixio_pcm_prepare,
     .pointer = matrixio_pcm_pointer,
-#if LINUX_VERSION_CODE <= KERNEL_VERSION(4, 13, 0)
-    .copy = matrixio_pcm_copy,
-#else
     .copy_user = matrixio_pcm_copy,
-#endif
     .close = matrixio_pcm_close,
 };
 
 static int matrixio_pcm_new(struct snd_soc_pcm_runtime *rtd) { return 0; }
 
-static const struct snd_soc_platform_driver matrixio_soc_platform = {
+static const struct snd_soc_component_driver matrixio_soc_platform = {
     .ops = &matrixio_pcm_ops, .pcm_new = matrixio_pcm_new,
 };
 
@@ -280,8 +243,8 @@ static int matrixio_pcm_platform_probe(struct platform_device *pdev)
 
 	ms->irq = irq_of_parse_and_map(pdev->dev.of_node, 0);
 
-	ret =
-	    devm_snd_soc_register_platform(&pdev->dev, &matrixio_soc_platform);
+	ret = devm_snd_soc_register_component(&pdev->dev,
+					      &matrixio_soc_platform, NULL, 0);
 	if (ret) {
 		dev_err(&pdev->dev,
 			"MATRIXIO sound SoC register platform error: %d", ret);
