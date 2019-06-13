@@ -1,3 +1,9 @@
+matrixio-kernel-modules (0.1.7) unstable; urgency=low
+
+  * Bug Fix: compatibility with the [4.19 kernel version](https://pimylifeup.com/raspberry-pi-kernel-updated-to-4-19/)
+
+ -- Leonardo Urrego <leonardo.urrego@admobilize.com>  Thu, 13 Jun 2019 12:00:00 -0500
+
 matrixio-kernel-modules (0.1.6) unstable; urgency=low
 
   * Added support for controlling speaker/headphone audio output via alsamixer (from osmaa)
