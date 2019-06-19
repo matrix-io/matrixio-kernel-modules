@@ -14,18 +14,21 @@ sudo apt-get install --reinstall raspberrypi-bootloader raspberrypi-kernel
 # Add repo and key
 curl https://apt.matrix.one/doc/apt-key.gpg | sudo apt-key add -
 echo "deb https://apt.matrix.one/raspbian $(lsb_release -sc) main" | sudo tee /etc/apt/sources.list.d/matrixlabs.list
-
+```
+```
 # Update packages and install
 sudo apt-get update
 sudo apt-get upgrade
-
+```
+```
 # Reboot in case of Kernel Updates
-
 sudo reboot
-
+```
+```
 # Installation MATRIX Packages
 sudo apt install matrixio-kernel-modules
-
+```
+```
 # Reboot
 sudo reboot
 ```
@@ -37,17 +40,21 @@ sudo reboot
 # Add repo and key
 curl https://apt.matrix.one/doc/apt-key.gpg | sudo apt-key add -
 echo "deb https://apt.matrix.one/raspbian $(lsb_release -sc) main" | sudo tee /etc/apt/sources.list.d/matrixlabs.list
-
+```
+```
 # Update packages and install
 sudo apt-get update
 sudo apt-get upgrade
-
+```
+```
 # Installation MATRIX Pacakages
 sudo apt install matrixio-creator-init
-
+```
+```
 # Installation Kernel Packages
 sudo apt-get -y install raspberrypi-kernel-headers raspberrypi-kernel git 
-
+```
+```
 # Reboot
 sudo reboot
 ```
