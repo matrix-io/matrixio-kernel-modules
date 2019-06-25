@@ -69,7 +69,7 @@ pipeline:
 
 matrix:
   include: 
-    - CODENAME: jessie
+    - CODENAME: stretch
       DISTRIBUTION: raspbian
       ARCHITECTURE: armhf
       IMAGE_TAG: 3181f193
@@ -77,4 +77,5 @@ matrix:
     - CODENAME: buster
       DISTRIBUTION: raspbian
       ARCHITECTURE: armhf
-      IMAGE_TAG: 3181f193
+      IMAGE_TAG:  bc0d1b2c 
+
