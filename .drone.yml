@@ -72,11 +72,12 @@ matrix:
     - CODENAME: stretch
       DISTRIBUTION: raspbian
       ARCHITECTURE: armhf
-      IMAGE_TAG: 01c4e5c0
+      IMAGE_TAG: 1d4798c3 
 
     - CODENAME: buster
       DISTRIBUTION: raspbian
       ARCHITECTURE: armhf
-      IMAGE_TAG: 01c4e5c0
+      IMAGE_TAG: 1d4798c3
+
  
 
