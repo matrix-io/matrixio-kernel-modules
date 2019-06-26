@@ -1,3 +1,10 @@
+matrixio-kernel-modules (0.1.8) unstable; urgency=low
+
+  * Raspbian Buster support added
+  * Raspbian Jessie support removed
+
+ -- Andres Calderon <andres.calderon@admobilize.com>  Tue, 25 Jun 2019 22:00:00 -0500
+
 matrixio-kernel-modules (0.1.7) unstable; urgency=low
 
   * Bug Fix: compatibility with the [4.19 kernel version](https://pimylifeup.com/raspberry-pi-kernel-updated-to-4-19/)
