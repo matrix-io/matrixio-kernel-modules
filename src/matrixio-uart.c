@@ -41,7 +41,8 @@ static const char tty_dev_name[] = "ttyMATRIX";
 static irqreturn_t uart_rxint(int irq, void *id)
 {
 	if (!freezing(current))
-		queue_work(workqueue, &work);
+	 	schedule_work(&work);
+		// queue_work(workqueue, &work);
 	return IRQ_HANDLED;
 }
 
@@ -113,7 +114,7 @@ static void matrixio_uart_break_ctl(struct uart_port *port, int break_state) {}
 static int matrixio_uart_startup(struct uart_port *port)
 {
 	int ret;
-	char workqueue_name[12];
+	// char workqueue_name[12];
 
 	spin_lock(&conf_lock);
 
@@ -122,14 +123,14 @@ static int matrixio_uart_startup(struct uart_port *port)
 
 	spin_unlock(&conf_lock);
 
-	sprintf(workqueue_name, "matrixio_uart");
+	// sprintf(workqueue_name, "matrixio_uart");
 
-	workqueue = create_freezable_workqueue(workqueue_name);
+	// workqueue = create_freezable_workqueue(workqueue_name);
 
-	if (!workqueue) {
-		dev_err(port->dev, "cannot create workqueue");
-		return -EBUSY;
-	}
+	// if (!workqueue) {
+	// 	dev_err(port->dev, "cannot create workqueue");
+	// 	return -EBUSY;
+	// }
 
 	force_end_work = 0;
 
@@ -139,7 +140,7 @@ static int matrixio_uart_startup(struct uart_port *port)
 
 	if (ret) {
 		dev_err(port->dev, "can't request irq %d\n", irq);
-		destroy_workqueue(workqueue);
+		// destroy_workqueue(workqueue);
 		return -EBUSY;
 	}
 
@@ -151,8 +152,9 @@ static int matrixio_uart_startup(struct uart_port *port)
 
 static void matrixio_uart_shutdown(struct uart_port *port)
 {
-	flush_workqueue(workqueue);
-	destroy_workqueue(workqueue);
+	cancel_work_sync(&work);
+	// flush_workqueue(workqueue);
+	// destroy_workqueue(workqueue);
 	free_irq(irq, matrixio);
 }
 
