@@ -19,7 +19,7 @@ static struct matrixio *matrixio;
 static struct uart_port port;
 static int irq;
 // static struct workqueue_struct *workqueue;
-// static struct work_struct work;
+static struct work_struct work;
 // static int force_end_work;
 static spinlock_t conf_lock;
 
@@ -40,34 +40,34 @@ static const char tty_dev_name[] = "ttyMATRIX";
 
 static irqreturn_t uart_rxint(int irq, void *dev_id)
 {
-	int pass_counter = 0;
+	// int pass_counter = 0;
 	// struct uart_port *tmpPort = dev_id;
-	struct matrixio_uart_data uart_data;
+	// struct matrixio_uart_data uart_data;
 	
-	printk(KERN_ALERT "DEBUG_PAS %s %d \n",__FUNCTION__,__LINE__);
 
+	// printk(KERN_ALERT "DEBUG_PAS %s %d \n",__FUNCTION__,__LINE__);
 	// while (1) {
-		spin_lock(&conf_lock);
-		matrixio_read(matrixio, MATRIXIO_UART_BASE, sizeof(uart_data),
-		      (void *)&uart_data);
+		// spin_lock(&conf_lock);
+		// matrixio_read(matrixio, MATRIXIO_UART_BASE, sizeof(uart_data),
+		//       (void *)&uart_data);
 
-		if (!uart_data.empty) {
-			tty_insert_flip_char(&port.state->port,
-						(unsigned int)uart_data.uart_rx,
-						TTY_NORMAL);
-			tty_flip_buffer_push(&port.state->port);
-		}
-			spin_unlock(&conf_lock);
+		// if (!uart_data.empty) {
+		// 	tty_insert_flip_char(&port.state->port,
+		// 				(unsigned int)uart_data.uart_rx,
+		// 				TTY_NORMAL);
+		// 	tty_flip_buffer_push(&port.state->port);
+		// }
+		// 	spin_unlock(&conf_lock);
 
 	// 	if (pass_counter++ > 256)
 	// 		break;
 	// }
 
-	return pass_counter ? IRQ_HANDLED : IRQ_NONE;
-	// if (!freezing(current))
-	//  	schedule_work(&work);
+	// return pass_counter ? IRQ_HANDLED : IRQ_NONE;
+	if (!freezing(current))
+	 	schedule_work(&work);
 		// queue_work(workqueue, &work);
-	// return IRQ_HANDLED;
+	return IRQ_HANDLED;
 }
 
 static void matrixio_uart_work(struct work_struct *w)
@@ -75,7 +75,7 @@ static void matrixio_uart_work(struct work_struct *w)
 	struct matrixio_uart_data uart_data;
 
 	printk(KERN_ALERT "DEBUG_INI %s %d \n",__FUNCTION__,__LINE__);
-	spin_lock(&conf_lock);
+	spin_lock_irq(&conf_lock);
 	matrixio_read(matrixio, MATRIXIO_UART_BASE, sizeof(uart_data),
 		      (void *)&uart_data);
 
@@ -86,7 +86,7 @@ static void matrixio_uart_work(struct work_struct *w)
 		tty_flip_buffer_push(&port.state->port);
 	}
 	printk(KERN_ALERT "DEBUG_END %s %d \n",__FUNCTION__,__LINE__);
-	spin_unlock(&conf_lock);
+	spin_unlock_irq(&conf_lock);
 }
 
 static unsigned int matrixio_uart_tx_empty(struct uart_port *port) { 
@@ -175,7 +175,7 @@ static int matrixio_uart_startup(struct uart_port *port)
 
 	// force_end_work = 0;
 
-	// INIT_WORK(&work, matrixio_uart_work);
+	INIT_WORK(&work, matrixio_uart_work);
 
 	ret = request_irq(irq, uart_rxint, 0, driver_name, matrixio);
 
@@ -195,7 +195,7 @@ static int matrixio_uart_startup(struct uart_port *port)
 static void matrixio_uart_shutdown(struct uart_port *port)
 {
 	printk(KERN_ALERT "DEBUG_INI %s %d \n",__FUNCTION__,__LINE__);
-	// cancel_work_sync(&work);
+	cancel_work_sync(&work);
 	// flush_workqueue(workqueue);
 	// destroy_workqueue(workqueue);
 	free_irq(irq, matrixio);
@@ -258,7 +258,7 @@ static struct uart_driver matrixio_uart_driver = {
     .owner = THIS_MODULE,
     .driver_name = driver_name,
     .dev_name = tty_dev_name,
-    .major = 204,
+    .major = TTY_MAJOR,
     .minor = 209,
     .nr = 1,
 };
@@ -325,6 +325,7 @@ static struct platform_driver matrixio_uart_platform_driver = {
 	{
 	    .name = "matrixio-uart",
 	    .of_match_table = of_match_ptr(matrixio_uart_dt_ids),
+		.owner = THIS_MODULE,
 	},
     .probe = matrixio_uart_probe,
     .remove = matrixio_uart_remove,
