@@ -48,7 +48,6 @@ static void matrixio_uart_work(struct work_struct *w)
 {
 	struct matrixio_uart_data uart_data;
 
-	printk(KERN_ALERT "DEBUG_INI %s %d \n",__FUNCTION__,__LINE__);
 	spin_lock_irq(&conf_lock);
 	matrixio_read(matrixio, MATRIXIO_UART_BASE, sizeof(uart_data),
 		      (void *)&uart_data);
@@ -59,7 +58,6 @@ static void matrixio_uart_work(struct work_struct *w)
 				     TTY_NORMAL);
 		tty_flip_buffer_push(&port.state->port);
 	}
-	printk(KERN_ALERT "DEBUG_END %s %d \n",__FUNCTION__,__LINE__);
 	spin_unlock_irq(&conf_lock);
 }
 
@@ -138,18 +136,15 @@ static int matrixio_uart_startup(struct uart_port *port)
 	dev_info(port->dev, "MATRIX Creator TTY has been loaded (IRQ=%d,%d)",
 		 irq, ret);
 
-	printk(KERN_ALERT "DEBUG_END %s %d \n",__FUNCTION__,__LINE__);
 	return 0;
 }
 
 static void matrixio_uart_shutdown(struct uart_port *port)
 {
-	printk(KERN_ALERT "DEBUG_INI %s %d \n",__FUNCTION__,__LINE__);
 	flush_workqueue(workqueue);
 	destroy_workqueue(workqueue);
 	cancel_work_sync(&work);
 	free_irq(irq, matrixio);
-	printk(KERN_ALERT "DEBUG_END %s %d \n",__FUNCTION__,__LINE__);
 }
 
 static void matrixio_uart_set_termios(struct uart_port *port,
@@ -209,7 +204,6 @@ static int matrixio_uart_probe(struct platform_device *pdev)
 	int ret;
 	struct device *dev = &pdev->dev;
 	struct device_node *np = dev->of_node;
-	printk(KERN_ALERT "DEBUG_INI %s %d \n",__FUNCTION__,__LINE__);
 	matrixio = dev_get_drvdata(pdev->dev.parent);
 
 	if (np)
@@ -242,17 +236,14 @@ static int matrixio_uart_probe(struct platform_device *pdev)
 		dev_err(matrixio->dev, "Failed to add port: %d\n", ret);
 		return ret;
 	}
-	printk(KERN_ALERT "DEBUG_END %s %d \n",__FUNCTION__,__LINE__);
 	return ret;
 }
 
 static int matrixio_uart_remove(struct platform_device *pdev)
 {
-	printk(KERN_ALERT "DEBUG_INI %s %d \n",__FUNCTION__,__LINE__);
 	uart_remove_one_port(&matrixio_uart_driver, &port);
 	port.dev = NULL;
 	uart_unregister_driver(&matrixio_uart_driver);
-	printk(KERN_ALERT "DEBUG_END %s %d \n",__FUNCTION__,__LINE__);
 	return 0;
 }
 
