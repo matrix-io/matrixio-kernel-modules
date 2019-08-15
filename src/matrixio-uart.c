@@ -18,9 +18,8 @@
 static struct matrixio *matrixio;
 static struct uart_port port;
 static int irq;
-// static struct workqueue_struct *workqueue;
+static struct workqueue_struct *workqueue;
 static struct work_struct work;
-// static int force_end_work;
 static spinlock_t conf_lock;
 
 struct matrixio_uart_status {
@@ -40,33 +39,8 @@ static const char tty_dev_name[] = "ttyMATRIX";
 
 static irqreturn_t uart_rxint(int irq, void *dev_id)
 {
-	// int pass_counter = 0;
-	// struct uart_port *tmpPort = dev_id;
-	// struct matrixio_uart_data uart_data;
-	
-
-	// printk(KERN_ALERT "DEBUG_PAS %s %d \n",__FUNCTION__,__LINE__);
-	// while (1) {
-		// spin_lock(&conf_lock);
-		// matrixio_read(matrixio, MATRIXIO_UART_BASE, sizeof(uart_data),
-		//       (void *)&uart_data);
-
-		// if (!uart_data.empty) {
-		// 	tty_insert_flip_char(&port.state->port,
-		// 				(unsigned int)uart_data.uart_rx,
-		// 				TTY_NORMAL);
-		// 	tty_flip_buffer_push(&port.state->port);
-		// }
-		// 	spin_unlock(&conf_lock);
-
-	// 	if (pass_counter++ > 256)
-	// 		break;
-	// }
-
-	// return pass_counter ? IRQ_HANDLED : IRQ_NONE;
 	if (!freezing(current))
-	 	schedule_work(&work);
-		// queue_work(workqueue, &work);
+		queue_work(workqueue, &work);
 	return IRQ_HANDLED;
 }
 
@@ -89,30 +63,20 @@ static void matrixio_uart_work(struct work_struct *w)
 	spin_unlock_irq(&conf_lock);
 }
 
-static unsigned int matrixio_uart_tx_empty(struct uart_port *port) { 
-	printk(KERN_ALERT "DEBUG_PAS %s %d \n",__FUNCTION__,__LINE__);
-	return 1; }
+static unsigned int matrixio_uart_tx_empty(struct uart_port *port) { return 1; }
 
-static void matrixio_uart_set_mctrl(struct uart_port *port, unsigned int mctrl)
-{
-	printk(KERN_ALERT "DEBUG_PAS %s %d \n",__FUNCTION__,__LINE__);
-}
+static void matrixio_uart_set_mctrl(struct uart_port *port, unsigned int mctrl) {}
 
 static unsigned int matrixio_uart_get_mctrl(struct uart_port *port)
 {
-	printk(KERN_ALERT "DEBUG_PAS %s %d \n",__FUNCTION__,__LINE__);
 	return TIOCM_CAR | TIOCM_DSR | TIOCM_CTS;
 }
 
-static void matrixio_uart_stop_tx(struct uart_port *port) {
-	printk(KERN_ALERT "DEBUG_PAS %s %d \n",__FUNCTION__,__LINE__);	
-}
+static void matrixio_uart_stop_tx(struct uart_port *port) {}
 
 static void matrixio_uart_start_tx(struct uart_port *port)
 {
 	struct matrixio_uart_status uart_status;
-
-	printk(KERN_ALERT "*DEBUG_INI %s %d \n",__FUNCTION__,__LINE__);
 	spin_lock(&conf_lock);
 
 	while (1) {
@@ -126,7 +90,6 @@ static void matrixio_uart_start_tx(struct uart_port *port)
 		    matrixio, MATRIXIO_UART_BASE + 0x101,
 		    port->state->xmit.buf[port->state->xmit.tail]);
 		if(port->state->xmit.buf[port->state->xmit.tail])
-			printk(KERN_INFO "DEBUG_DATA %x %s %d \n",port->state->xmit.buf[port->state->xmit.tail],__FUNCTION__,__LINE__);
 		port->state->xmit.tail =
 		    (port->state->xmit.tail + 1) & (UART_XMIT_SIZE - 1);
 		port->icount.tx++;
@@ -135,27 +98,18 @@ static void matrixio_uart_start_tx(struct uart_port *port)
 			break;
 	}
 
-	printk(KERN_ALERT "DEBUG_END %s %d \n",__FUNCTION__,__LINE__);
 	spin_unlock(&conf_lock);
 }
 
-static void matrixio_uart_stop_rx(struct uart_port *port) {
-	printk(KERN_ALERT "DEBUG_PAS %s %d \n",__FUNCTION__,__LINE__);
-}
+static void matrixio_uart_stop_rx(struct uart_port *port) {}
 
-static void matrixio_uart_enable_ms(struct uart_port *port) {
-	printk(KERN_ALERT "DEBUG_PAS %s %d \n",__FUNCTION__,__LINE__);
-}
+static void matrixio_uart_enable_ms(struct uart_port *port) {}
 
-static void matrixio_uart_break_ctl(struct uart_port *port, int break_state) {
-	printk(KERN_ALERT "DEBUG_PAS %s %d \n",__FUNCTION__,__LINE__);
-}
+static void matrixio_uart_break_ctl(struct uart_port *port, int break_state) {}
 
 static int matrixio_uart_startup(struct uart_port *port)
 {
 	int ret;
-	// char workqueue_name[12];
-	printk(KERN_ALERT "DEBUG_INI %s %d \n",__FUNCTION__,__LINE__);
 
 	spin_lock(&conf_lock);
 
@@ -164,16 +118,12 @@ static int matrixio_uart_startup(struct uart_port *port)
 
 	spin_unlock(&conf_lock);
 
-	// sprintf(workqueue_name, "matrixio_uart");
+	workqueue = create_singlethread_workqueue("matrixio_uart");
 
-	// workqueue = create_freezable_workqueue(workqueue_name);
-
-	// if (!workqueue) {
-	// 	dev_err(port->dev, "cannot create workqueue");
-	// 	return -EBUSY;
-	// }
-
-	// force_end_work = 0;
+	if (!workqueue) {
+		dev_err(port->dev, "cannot create workqueue");
+		return -EBUSY;
+	}
 
 	INIT_WORK(&work, matrixio_uart_work);
 
@@ -181,7 +131,7 @@ static int matrixio_uart_startup(struct uart_port *port)
 
 	if (ret) {
 		dev_err(port->dev, "can't request irq %d\n", irq);
-		// destroy_workqueue(workqueue);
+		destroy_workqueue(workqueue);
 		return -EBUSY;
 	}
 
@@ -195,9 +145,9 @@ static int matrixio_uart_startup(struct uart_port *port)
 static void matrixio_uart_shutdown(struct uart_port *port)
 {
 	printk(KERN_ALERT "DEBUG_INI %s %d \n",__FUNCTION__,__LINE__);
+	flush_workqueue(workqueue);
+	destroy_workqueue(workqueue);
 	cancel_work_sync(&work);
-	// flush_workqueue(workqueue);
-	// destroy_workqueue(workqueue);
 	free_irq(irq, matrixio);
 	printk(KERN_ALERT "DEBUG_END %s %d \n",__FUNCTION__,__LINE__);
 }
@@ -205,33 +155,24 @@ static void matrixio_uart_shutdown(struct uart_port *port)
 static void matrixio_uart_set_termios(struct uart_port *port,
 				      struct ktermios *termios,
 				      struct ktermios *old)
-{
-	printk(KERN_ALERT "DEBUG_PAS %s %d \n",__FUNCTION__,__LINE__);
-}
+{}
 
 static const char *matrixio_uart_type(struct uart_port *port)
 {
-	printk(KERN_ALERT "DEBUG_PAS %s %d \n",__FUNCTION__,__LINE__);
 	return "matrixio-uart";
 }
 
 static int matrixio_uart_request_port(struct uart_port *port) { 
-	printk(KERN_ALERT "DEBUG_PAS %s %d \n",__FUNCTION__,__LINE__);
 	return 0; 
 }
 
-static void matrixio_uart_config_port(struct uart_port *port, int flags) {
-	printk(KERN_ALERT "DEBUG_PAS %s %d \n",__FUNCTION__,__LINE__);
-}
+static void matrixio_uart_config_port(struct uart_port *port, int flags) {}
 
-static void matrixio_uart_release_port(struct uart_port *port) {
-	printk(KERN_ALERT "DEBUG_PAS %s %d \n",__FUNCTION__,__LINE__);
-}
+static void matrixio_uart_release_port(struct uart_port *port) {}
 
 static int matrixio_uart_verify_port(struct uart_port *port,
 				     struct serial_struct *ser)
 {
-	printk(KERN_ALERT "DEBUG_PAS %s %d \n",__FUNCTION__,__LINE__);
 	return 0;
 }
 
