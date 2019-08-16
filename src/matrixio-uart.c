@@ -87,7 +87,6 @@ static void matrixio_uart_start_tx(struct uart_port *port)
 		matrixio_reg_write(
 		    matrixio, MATRIXIO_UART_BASE + 0x101,
 		    port->state->xmit.buf[port->state->xmit.tail]);
-		if(port->state->xmit.buf[port->state->xmit.tail])
 		port->state->xmit.tail =
 		    (port->state->xmit.tail + 1) & (UART_XMIT_SIZE - 1);
 		port->icount.tx++;
