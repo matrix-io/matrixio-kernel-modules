@@ -63,7 +63,9 @@ static void matrixio_uart_work(struct work_struct *w)
 
 static unsigned int matrixio_uart_tx_empty(struct uart_port *port) { return 1; }
 
-static void matrixio_uart_set_mctrl(struct uart_port *port, unsigned int mctrl) {}
+static void matrixio_uart_set_mctrl(struct uart_port *port, unsigned int mctrl)
+{
+}
 
 static unsigned int matrixio_uart_get_mctrl(struct uart_port *port)
 {
@@ -149,16 +151,15 @@ static void matrixio_uart_shutdown(struct uart_port *port)
 static void matrixio_uart_set_termios(struct uart_port *port,
 				      struct ktermios *termios,
 				      struct ktermios *old)
-{}
+{
+}
 
 static const char *matrixio_uart_type(struct uart_port *port)
 {
 	return "matrixio-uart";
 }
 
-static int matrixio_uart_request_port(struct uart_port *port) { 
-	return 0; 
-}
+static int matrixio_uart_request_port(struct uart_port *port) { return 0; }
 
 static void matrixio_uart_config_port(struct uart_port *port, int flags) {}
 
@@ -256,7 +257,7 @@ static struct platform_driver matrixio_uart_platform_driver = {
 	{
 	    .name = "matrixio-uart",
 	    .of_match_table = of_match_ptr(matrixio_uart_dt_ids),
-		.owner = THIS_MODULE,
+	    .owner = THIS_MODULE,
 	},
     .probe = matrixio_uart_probe,
     .remove = matrixio_uart_remove,
