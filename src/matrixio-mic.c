@@ -87,8 +87,7 @@ static irqreturn_t matrixio_pcm_interrupt(int irq, void *irq_data)
 {
 	if (ms->substream == 0)
 		return IRQ_NONE;
-
-	schedule_work(&ms->work);
+	queue_work(ms->wq, &ms->work);
 
 	return IRQ_HANDLED;
 }
@@ -109,11 +108,18 @@ static int matrixio_pcm_open(struct snd_pcm_substream *substream)
 
 	ms->position = 0;
 
+	ms->wq = create_singlethread_workqueue("matrixio_pcm");
+
+	if (!ms->wq) {
+		return -ENOMEM;
+	}
+
 	INIT_WORK(&ms->work, matrixio_pcm_capture_work);
 
 	ret = request_irq(ms->irq, matrixio_pcm_interrupt, 0,
 			  "matrixio-capture", ms);
 	if (ret) {
+		destroy_workqueue(ms->wq);
 		return -EBUSY;
 	}
 
@@ -123,6 +129,8 @@ static int matrixio_pcm_open(struct snd_pcm_substream *substream)
 static int matrixio_pcm_close(struct snd_pcm_substream *substream)
 {
 	free_irq(ms->irq, ms);
+	flush_workqueue(ms->wq);
+	destroy_workqueue(ms->wq);
 	cancel_work_sync(&ms->work);
 	ms->substream = 0;
 
