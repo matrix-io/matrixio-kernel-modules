@@ -1,3 +1,10 @@
+matrixio-kernel-modules (0.1.9) unstable; urgency=low
+
+  * Bug Fix: UART ttyMATRIX0
+  * Reimplement Workqueue in mics driver to better performance
+
+ -- Leonardo Urrego <leonardo.urrego@admobilize.com>  Fri, 16 Aug 2019 22:00:00 -0500
+
 matrixio-kernel-modules (0.1.8) unstable; urgency=low
 
   * Raspbian Buster support added
