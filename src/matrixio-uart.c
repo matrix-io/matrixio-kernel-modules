@@ -20,7 +20,6 @@ static struct uart_port port;
 static int irq;
 static struct workqueue_struct *workqueue;
 static struct work_struct work;
-static int force_end_work;
 static spinlock_t conf_lock;
 
 struct matrixio_uart_status {
@@ -38,7 +37,7 @@ struct matrixio_uart_data {
 static const char driver_name[] = "ttyMATRIX";
 static const char tty_dev_name[] = "ttyMATRIX";
 
-static irqreturn_t uart_rxint(int irq, void *id)
+static irqreturn_t uart_rxint(int irq, void *dev_id)
 {
 	if (!freezing(current))
 		queue_work(workqueue, &work);
@@ -49,7 +48,7 @@ static void matrixio_uart_work(struct work_struct *w)
 {
 	struct matrixio_uart_data uart_data;
 
-	spin_lock(&conf_lock);
+	spin_lock_irq(&conf_lock);
 	matrixio_read(matrixio, MATRIXIO_UART_BASE, sizeof(uart_data),
 		      (void *)&uart_data);
 
@@ -59,7 +58,7 @@ static void matrixio_uart_work(struct work_struct *w)
 				     TTY_NORMAL);
 		tty_flip_buffer_push(&port.state->port);
 	}
-	spin_unlock(&conf_lock);
+	spin_unlock_irq(&conf_lock);
 }
 
 static unsigned int matrixio_uart_tx_empty(struct uart_port *port) { return 1; }
@@ -78,16 +77,13 @@ static void matrixio_uart_stop_tx(struct uart_port *port) {}
 static void matrixio_uart_start_tx(struct uart_port *port)
 {
 	struct matrixio_uart_status uart_status;
-
 	spin_lock(&conf_lock);
 
 	while (1) {
-
 		do {
 			matrixio_read(matrixio, MATRIXIO_UART_BASE + 0x100,
 				      sizeof(uart_status),
 				      (void *)&uart_status);
-
 		} while (uart_status.uart_tx_busy);
 
 		matrixio_reg_write(
@@ -113,7 +109,6 @@ static void matrixio_uart_break_ctl(struct uart_port *port, int break_state) {}
 static int matrixio_uart_startup(struct uart_port *port)
 {
 	int ret;
-	char workqueue_name[12];
 
 	spin_lock(&conf_lock);
 
@@ -122,16 +117,12 @@ static int matrixio_uart_startup(struct uart_port *port)
 
 	spin_unlock(&conf_lock);
 
-	sprintf(workqueue_name, "matrixio_uart");
-
-	workqueue = create_freezable_workqueue(workqueue_name);
+	workqueue = create_singlethread_workqueue("matrixio_uart");
 
 	if (!workqueue) {
 		dev_err(port->dev, "cannot create workqueue");
 		return -EBUSY;
 	}
-
-	force_end_work = 0;
 
 	INIT_WORK(&work, matrixio_uart_work);
 
@@ -153,6 +144,7 @@ static void matrixio_uart_shutdown(struct uart_port *port)
 {
 	flush_workqueue(workqueue);
 	destroy_workqueue(workqueue);
+	cancel_work_sync(&work);
 	free_irq(irq, matrixio);
 }
 
@@ -202,7 +194,7 @@ static struct uart_driver matrixio_uart_driver = {
     .owner = THIS_MODULE,
     .driver_name = driver_name,
     .dev_name = tty_dev_name,
-    .major = 204,
+    .major = TTY_MAJOR,
     .minor = 209,
     .nr = 1,
 };
@@ -212,7 +204,6 @@ static int matrixio_uart_probe(struct platform_device *pdev)
 	int ret;
 	struct device *dev = &pdev->dev;
 	struct device_node *np = dev->of_node;
-
 	matrixio = dev_get_drvdata(pdev->dev.parent);
 
 	if (np)
@@ -245,7 +236,6 @@ static int matrixio_uart_probe(struct platform_device *pdev)
 		dev_err(matrixio->dev, "Failed to add port: %d\n", ret);
 		return ret;
 	}
-
 	return ret;
 }
 
@@ -267,6 +257,7 @@ static struct platform_driver matrixio_uart_platform_driver = {
 	{
 	    .name = "matrixio-uart",
 	    .of_match_table = of_match_ptr(matrixio_uart_dt_ids),
+	    .owner = THIS_MODULE,
 	},
     .probe = matrixio_uart_probe,
     .remove = matrixio_uart_remove,
