@@ -18,7 +18,7 @@ pipeline:
     commands:
       - curl https://apt.matrix.one/doc/apt-key.gpg | apt-key add -
       - echo "deb https://apt.matrix.one/raspbian ${CODENAME} main" > /etc/apt/sources.list.d/matrixlabs.list
-      - apt-get update
+      - ${UPDATE_CMD}
       - debuild -us -uc -b
       - mv ../*.deb .
 
@@ -67,13 +67,15 @@ pipeline:
     template: file:///drone/src/github.com/matrix-io/matrixio-kernel-modules/notification.tpl
 
 matrix:
-  include: 
+  include:
     - CODENAME: stretch
       DISTRIBUTION: raspbian
       ARCHITECTURE: armhf
+      UPDATE_CMD: "apt update"
       IMAGE_TAG: 84d9bfb7 
 
     - CODENAME: buster
       DISTRIBUTION: raspbian
       ARCHITECTURE: armhf
+      UPDATE_CMD: "apt update -y --allow-releaseinfo-change"
       IMAGE_TAG: 84d9bfb7
