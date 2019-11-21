@@ -1,12 +1,23 @@
 #!/usr/bin/make -f
 #DH_VERBOSE = 1
-
 DPKG_EXPORT_BUILDFLAGS = 1
-include /usr/share/dpkg/default.mk
 
-override_dh_auto_build:
-
-override_dh_auto_install:
+include /usr/share/dpkg/pkg-info.mk
 
 %:
-	dh $@ 
+	dh $@ --with dkms
+
+override_dh_auto_build:
+	dh_auto_build -v -D src -- matrixio.dtbo
+
+override_dh_install:
+	dh_install src/*.c src/*.h src/Makefile src/Kbuild usr/src/matrixio-kernel-modules-$(DEB_VERSION_UPSTREAM)/
+	dh_install src/matrixio.dtbo boot/overlays
+
+override_dh_dkms:
+	dh_dkms -V $(DEB_VERSION_UPSTREAM)
+
+override_dh_auto_configure:
+override_dh_auto_test:
+override_dh_auto_install:
+override_dh_auto_clean:
