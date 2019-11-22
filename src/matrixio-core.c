@@ -22,45 +22,75 @@
 
 #include "matrixio-core.h"
 
+
+/* We need to send the address before reading/writing the data after it.  This
+ * can be done with two transfers in one message: one for the address followed
+ * by one for the data.  Or with one transfer: with the address and data copied
+ * in/out of a single buffer.  One transfer is faster for small messages, while
+ * two transfers are faster for large messages.  The two transfer method also
+ * avoids needing to impose a max size limit on the data as it goes directly
+ * to/from a user supplied buffer.
+ *
+ * This value is the threshold where the driver switches from one xfer to the
+ * two xfer method.  It also provides the largest bounce buffer size needed.
+ */
+#define MATRIXIO_SPI_BOUNCE_SIZE 2048
+
 struct hardware_cmd {
 	uint8_t readnwrite : 1;
 	uint16_t reg : 15;
 };
 
-static struct regmap_config matrixio_regmap_config = {
-    .reg_bits = 16,
-    .val_bits = 16,
-    .reg_read = matrixio_reg_read,
-    .reg_write = matrixio_reg_write,
-};
-
-static ssize_t matrixio_spi_sync(struct matrixio *matrixio,
-				 struct spi_message *message)
+/* For a large read, does not use rx_buffer to bounce the data */
+static int matrixio_large_read(struct matrixio *matrixio, unsigned int add, int length,
+		               void *data)
 {
-	DECLARE_COMPLETION_ONSTACK(done);
-	struct spi_device *spi;
-
-	spin_lock_irq(&matrixio->spi_lock);
-	spi = matrixio->spi;
-	spin_unlock_irq(&matrixio->spi_lock);
-
-	return spi_sync(spi, message);
-}
-
-static int matrixio_spi_transfer(struct matrixio *matrixio,
-				 uint8_t *send_buffer, uint8_t *receive_buffer,
-				 unsigned int size)
-{
-	struct spi_transfer t = {.rx_buf = receive_buffer,
-				 .tx_buf = send_buffer,
-				 .len = size,
-				 .speed_hz = matrixio->speed_hz};
+	/* Don't use stack hw_cmd as it must be dma-safe */
+	struct hardware_cmd* hw_cmd = (struct hardware_cmd*)matrixio->tx_buffer;
+	struct spi_transfer t[] = {
+		{
+			.tx_buf = hw_cmd,
+			.len = sizeof(*hw_cmd),
+		},
+		{
+			.rx_buf = data,
+			.len = length,
+		}
+	};
 	struct spi_message m;
 
-	spi_message_init(&m);
-	spi_message_add_tail(&t, &m);
+	hw_cmd->reg = add;
+	hw_cmd->readnwrite = 1;
+	spi_message_init_with_transfers(&m, t, ARRAY_SIZE(t));
 
-	return matrixio_spi_sync(matrixio, &m);
+	return spi_sync(matrixio->spi, &m);
+}
+
+/* For small reads, bounces the data through tx/rx buffer */
+static int matrixio_small_read(struct matrixio *matrixio, unsigned int add, int length,
+		               void *data)
+{
+	struct hardware_cmd* hw_cmd = (struct hardware_cmd*)matrixio->tx_buffer;
+	struct spi_transfer t[] = {
+		{
+			.tx_buf = matrixio->tx_buffer,
+			.rx_buf = matrixio->rx_buffer,
+			.len = length + sizeof(*hw_cmd),
+		}
+	};
+	struct spi_message m;
+	int ret;
+
+	hw_cmd->reg = add;
+	hw_cmd->readnwrite = 1;
+	memset(matrixio->tx_buffer + sizeof(*hw_cmd), 0, length);
+
+	spi_message_init_with_transfers(&m, t, ARRAY_SIZE(t));
+	ret = spi_sync(matrixio->spi, &m);
+
+	memcpy(data, matrixio->rx_buffer + sizeof(*hw_cmd), length);
+
+	return ret;
 }
 
 int matrixio_read(struct matrixio *matrixio, unsigned int add, int length,
@@ -68,23 +98,12 @@ int matrixio_read(struct matrixio *matrixio, unsigned int add, int length,
 {
 	int ret;
 
-	struct hardware_cmd *hw_addr;
-
 	mutex_lock(&matrixio->reg_lock);
-
-	memset(matrixio->tx_buffer, 0, length);
-
-	hw_addr = (struct hardware_cmd *)matrixio->tx_buffer;
-
-	hw_addr->reg = add;
-	hw_addr->readnwrite = 1;
-
-	ret = matrixio_spi_transfer(matrixio, matrixio->tx_buffer,
-				    matrixio->rx_buffer, length + 2);
-
-	if (ret == 0)
-		memcpy(data, &matrixio->rx_buffer[2], length);
-
+	if (length > MATRIXIO_SPI_BOUNCE_SIZE - sizeof(struct hardware_cmd)) {
+		ret = matrixio_large_read(matrixio, add, length, data);
+	} else {
+		ret = matrixio_small_read(matrixio, add, length, data);
+	}
 	mutex_unlock(&matrixio->reg_lock);
 
 	return ret;
@@ -95,34 +114,41 @@ int matrixio_write(struct matrixio *matrixio, unsigned int add, int length,
 		   void *data)
 {
 	int ret;
-	struct hardware_cmd *hw_cmd;
+	struct hardware_cmd *hw_cmd = (struct hardware_cmd*)matrixio->tx_buffer;
+	struct spi_transfer xfers[2] = {
+		{
+			.tx_buf = matrixio->tx_buffer,
+		},
+	};
+	struct spi_message m;
 
 	mutex_lock(&matrixio->reg_lock);
 
-	memset(matrixio->tx_buffer, 0, length + sizeof(struct hardware_cmd));
-
-	hw_cmd = (struct hardware_cmd *)matrixio->tx_buffer;
-
 	hw_cmd->reg = add;
 	hw_cmd->readnwrite = 0;
+	if (length > MATRIXIO_SPI_BOUNCE_SIZE - sizeof(*hw_cmd)) {
+		xfers[0].len = sizeof(*hw_cmd);
+		xfers[1].tx_buf = data;
+		xfers[1].len = length;
+		spi_message_init_with_transfers(&m, xfers, 2);
+	} else {
+		xfers[0].len = length + sizeof(*hw_cmd);
+		memcpy(matrixio->tx_buffer + sizeof(*hw_cmd), data, length);
+		spi_message_init_with_transfers(&m, xfers, 1);
+	}
 
-	memcpy(&matrixio->tx_buffer[2], data, length);
-
-	ret = matrixio_spi_transfer(matrixio, matrixio->tx_buffer,
-				    matrixio->rx_buffer, length + 2);
-
+	ret = spi_sync(matrixio->spi, &m);
 	mutex_unlock(&matrixio->reg_lock);
 
 	return ret;
 }
 EXPORT_SYMBOL(matrixio_write);
 
-int matrixio_reg_read(void *context, unsigned int reg, unsigned int *val)
+static int matrixio_reg_read(void *context, unsigned int reg, unsigned int *val)
 {
 	return matrixio_read((struct matrixio *)(context), reg, sizeof(int16_t),
 			     &val);
 }
-EXPORT_SYMBOL(matrixio_reg_read);
 
 int matrixio_reg_write(void *context, unsigned int reg, unsigned int val)
 {
@@ -212,6 +238,13 @@ static int matrixio_init(struct matrixio *matrixio,
 	return 0;
 }
 
+static const struct regmap_config matrixio_regmap_config = {
+    .reg_bits = 16,
+    .val_bits = 16,
+    .reg_read = matrixio_reg_read,
+    .reg_write = matrixio_reg_write,
+};
+
 static int matrixio_core_probe(struct spi_device *spi)
 {
 	int ret;
@@ -233,19 +266,13 @@ static int matrixio_core_probe(struct spi_device *spi)
 
 	matrixio->spi = spi;
 
-	spin_lock_init(&matrixio->spi_lock);
-
 	mutex_init(&matrixio->reg_lock);
 
-	matrixio->speed_hz = spi->max_speed_hz;
-
-	matrixio->rx_buffer = devm_kzalloc(&spi->dev, 4096, GFP_KERNEL);
-
+	matrixio->rx_buffer = devm_kzalloc(&spi->dev, MATRIXIO_SPI_BOUNCE_SIZE, GFP_KERNEL);
 	if (matrixio->rx_buffer == NULL)
 		return -ENOMEM;
 
-	matrixio->tx_buffer = devm_kzalloc(&spi->dev, 4096, GFP_KERNEL);
-
+	matrixio->tx_buffer = devm_kzalloc(&spi->dev, MATRIXIO_SPI_BOUNCE_SIZE, GFP_KERNEL);
 	if (matrixio->tx_buffer == NULL)
 		return -ENOMEM;
 
