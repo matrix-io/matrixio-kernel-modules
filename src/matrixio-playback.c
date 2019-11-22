@@ -31,9 +31,6 @@
 #include <sound/soc.h>
 #include <sound/tlv.h>
 
-#define MATRIXIO_CHANNELS_MAX 8
-#define MATRIXIO_RATES SNDRV_PCM_RATE_8000_96000
-#define MATRIXIO_FORMATS SNDRV_PCM_FMTBIT_S16_LE
 #define MATRIXIO_MICARRAY_BUFFER_SIZE (512 * 2)
 #define kFIFOSize 4096
 #define KERNEL_FIFO_SIZE 32768
@@ -183,8 +180,6 @@ static int matrixio_playback_hw_params(struct snd_pcm_substream *substream,
 {
 	int i;
 	int rate;
-
-	ms->channels = params_channels(hw_params);
 
 	if (snd_pcm_format_width(params_format(hw_params)) != 16)
 		return -EINVAL;

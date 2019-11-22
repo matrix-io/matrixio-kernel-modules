@@ -1,3 +1,8 @@
+matrixio-kernel-modules (0.2.1) unstable; urgency=low
+  * Rewrite of microphone array driver.  Does not crash the kernel anymore.
+
+ -- Trent Piepho <trent.piepho@synapse.com>  Thu, 21 Nov 2019 18:38:23 -0800
+
 matrixio-kernel-modules (0.2.0) unstable; urgency=low
   * Redo DKMS package so it works properly, uninstalls and upgrades, builds dtbo file
 
