@@ -1,0 +1,12 @@
+obj-m += matrixio-core.o
+obj-m += matrixio-uart.o
+obj-m += matrixio-everloop.o
+obj-m += matrixio-codec.o
+obj-m += matrixio-mic.o
+obj-m += matrixio-playback.o
+obj-m += matrixio-gpio.o
+obj-m += matrixio-env.o
+obj-m += matrixio-imu.o
+obj-m += matrixio-regmap.o
+
+ccflags-y := -Wno-missing-attributes
