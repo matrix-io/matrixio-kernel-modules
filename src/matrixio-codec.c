@@ -25,9 +25,7 @@
 #include <sound/tlv.h>
 
 #include "matrixio-core.h"
-
-#define MATRIXIO_RATES SNDRV_PCM_RATE_8000_96000
-#define MATRIXIO_FORMATS SNDRV_PCM_FMTBIT_S16_LE
+#include "matrixio-pcm.h"
 
 static struct snd_soc_dai_link matrixio_snd_soc_dai[] = {
     {
@@ -94,7 +92,7 @@ static struct snd_soc_dai_driver matrixio_dai_driver[] = {
 	    {
 		.stream_name = "matrixio-mic.0",
 		.channels_min = 1,
-		.channels_max = 8,
+		.channels_max = MATRIXIO_CHANNELS_MAX,
 		.rates = MATRIXIO_RATES,
 		.rate_min = 8000,
 		.rate_max = 96000,

@@ -1,6 +1,6 @@
-PACKAGE_NAME="matrixio"
+PACKAGE_NAME="matrixio-kernel-modules"
 
-PACKAGE_VERSION="0.1"
+PACKAGE_VERSION="#MODULE_VERSION#"
 
 BUILT_MODULE_NAME[0]="matrixio-core"
 BUILT_MODULE_NAME[1]="matrixio-codec"

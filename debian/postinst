@@ -1,9 +1,0 @@
-#!/bin/bash -e
-
-echo "Enabling firmware loading at startup"
-dkms add -m matrixio -v 0.1
-dkms build -m matrixio -v 0.1
-dkms install -m matrixio -v 0.1
-
-echo "Enable configurations in /boot/config.txt"
-cp /boot/config.txt /boot/config.txt.matrixio.bk && /usr/share/matrixlabs/matrixio-devices/matrixlabs_edit_settings.py /boot/config.txt.matrixio.bk /usr/share/matrixlabs/matrixio-devices/config/kernel_modifications.txt > /boot/config.txt

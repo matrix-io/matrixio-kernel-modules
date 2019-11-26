@@ -1,4 +1,0 @@
-#!/bin/bash
-echo "Remove kernel modules for MATRIX devices"
-dkms remove --force -m matrixio -v 0.1 --all
-

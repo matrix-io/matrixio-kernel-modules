@@ -32,19 +32,16 @@ struct matrixio {
 	struct device *dev;
 	struct regmap *regmap;
 	struct mutex reg_lock;
-	spinlock_t spi_lock;
 	struct spi_device *spi;
 	u8 *tx_buffer;
 	u8 *rx_buffer;
-	u32 speed_hz;
 };
 
 struct matrixio_platform_data {
 	int (*platform_init)(struct device *dev);
 };
 
-int matrixio_reg_read(void *context, unsigned int reg, unsigned int *val);
-
+/* This is called directly in some places.  They should use regmap */
 int matrixio_reg_write(void *context, unsigned int reg, unsigned int val);
 
 int matrixio_read(struct matrixio *matrixio, unsigned int add, int length,
