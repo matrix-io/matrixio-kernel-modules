@@ -18,6 +18,7 @@ pipeline:
     commands:
       - curl https://apt.matrix.one/doc/apt-key.gpg | apt-key add -
       - echo "deb https://apt.matrix.one/raspbian ${CODENAME} main" > /etc/apt/sources.list.d/matrixlabs.list
+      - apt install -y dkms
       - ${UPDATE_CMD}
       - debuild -us -uc -b
       - mv ../*.deb .
@@ -31,7 +32,7 @@ pipeline:
     secrets: [aws_access_key_id, aws_secret_access_key, gpg_key, gpg_pass]
     commands:
       # Prepare GPG
-      - echo "$${GPG_KEY}" > /tmp/tmpkey && gpg --import /tmp/tmpkey && rm /tmp/tmpkey
+      - echo "$${GPG_KEY}" > /tmp/tmpkey && gpg --import --batch /tmp/tmpkey && rm /tmp/tmpkey
       - echo "personal-digest-preferences SHA512" >> /root/.gnupg/gpg.conf
 
       # Only TAG events are published to main
@@ -39,8 +40,8 @@ pipeline:
       - export PKG_VER=$(dpkg-parsechangelog --show-field Version -ldebian/changelog)
 
       # Upload packages
-      - mv matrixio-kernel-modules_$${PKG_VER}_armhf.deb 
-           matrixio-kernel-modules_${DISTRIBUTION}-${CODENAME}-$${PKG_VER}-$${COMPONENT}_armhf.deb
+      - mv matrixio-kernel-modules_$${PKG_VER}_all.deb 
+           matrixio-kernel-modules_${DISTRIBUTION}-${CODENAME}-$${PKG_VER}-$${COMPONENT}_all.deb
 
       - echo "$${GPG_PASS}" | deb-s3 upload --bucket apt.matrix.one 
         --prefix $DISTRIBUTION
@@ -50,7 +51,7 @@ pipeline:
         --secret-access-key $${AWS_SECRET_ACCESS_KEY}
         --sign info@matrix.one 
         --gpg-options="--batch --passphrase-fd 0"
-        matrixio-kernel-modules_${DISTRIBUTION}-${CODENAME}-$${PKG_VER}-$${COMPONENT}_armhf.deb
+        matrixio-kernel-modules_${DISTRIBUTION}-${CODENAME}-$${PKG_VER}-$${COMPONENT}_all.deb
 
       # Render the notification template for the notify-slack step
       - j2 --var-delimiter '%%' .drone/slack.tpl > notification.tpl
