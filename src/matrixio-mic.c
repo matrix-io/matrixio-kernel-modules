@@ -35,11 +35,13 @@
  * makes this hard!  */
 static struct matrixio_mic_substream *ms;
 
-static const struct {
+struct  matrixio_pcm_param {
 	unsigned rate;
 	unsigned short decimation; /* sample rate = (PDM clock = 3 MHz) / (decimation+1) */
 	unsigned short gain; /* in bits */
-} matrixio_params[] = {
+};
+
+static const struct matrixio_pcm_param matrixio_params[] = {
 	{8000, 374, 1},	 {12000, 249, 2}, {16000, 186, 3},
 	{22050, 135, 5}, {24000, 124, 5}, {32000, 92, 6},
 	{44100, 67, 7},	 {48000, 61, 7},  {96000, 30, 10}
