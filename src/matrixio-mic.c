@@ -35,36 +35,33 @@
  * makes this hard!  */
 static struct matrixio_mic_substream *ms;
 
-struct  matrixio_pcm_param {
+static const struct {
 	unsigned rate;
 	unsigned short decimation; /* sample rate = (PDM clock = 3 MHz) / (decimation+1) */
 	unsigned short gain; /* in bits */
-};
-
-static const struct matrixio_pcm_param matrixio_params[] = {
-	{8000, 374, 1},	 {12000, 249, 2}, {16000, 186, 3},
-	{22050, 135, 5}, {24000, 124, 5}, {32000, 92, 6},
-	{44100, 67, 7},	 {48000, 61, 7},  {96000, 30, 10}
-};
+} matrixio_params[] = {{8000, 374, 1},  {12000, 249, 2}, {16000, 186, 3},
+		       {22050, 135, 5}, {24000, 124, 5}, {32000, 92, 6},
+		       {44100, 67, 7},  {48000, 61, 7},  {96000, 30, 10}};
 
 static struct snd_pcm_hardware matrixio_pcm_capture_hw = {
-	.info = SNDRV_PCM_INFO_INTERLEAVED | SNDRV_PCM_INFO_MMAP,
-	.formats = MATRIXIO_FORMATS,
-	.rates = MATRIXIO_RATES,
-	.rate_min = matrixio_params[0].rate,
-	.rate_max = matrixio_params[ARRAY_SIZE(matrixio_params)-1].rate,
-	.channels_min = 1,
-	.channels_max = MATRIXIO_CHANNELS_MAX,
-	.buffer_bytes_max = MATRIXIO_BUFFER_MAX,
-	.period_bytes_min = MATRIXIO_PERIOD_BYTES_PER_CH * 1,
-	.period_bytes_max = MATRIXIO_PERIOD_BYTES_PER_CH * MATRIXIO_CHANNELS_MAX,
-	.periods_min = MATRIXIO_MIN_PERIODS,
-	.periods_max = MATRIXIO_BUFFER_MAX / MATRIXIO_PERIOD_BYTES_PER_CH,
+    .info = SNDRV_PCM_INFO_INTERLEAVED | SNDRV_PCM_INFO_MMAP,
+    .formats = MATRIXIO_FORMATS,
+    .rates = MATRIXIO_RATES,
+    .rate_min = 8000,
+    .rate_max = 96000,
+    .channels_min = 1,
+    .channels_max = MATRIXIO_CHANNELS_MAX,
+    .buffer_bytes_max = MATRIXIO_BUFFER_MAX,
+    .period_bytes_min = MATRIXIO_PERIOD_BYTES_PER_CH * 1,
+    .period_bytes_max = MATRIXIO_PERIOD_BYTES_PER_CH * MATRIXIO_CHANNELS_MAX,
+    .periods_min = MATRIXIO_MIN_PERIODS,
+    .periods_max = MATRIXIO_BUFFER_MAX / MATRIXIO_PERIOD_BYTES_PER_CH,
 };
 
 static void matrixio_pcm_capture_work(struct work_struct *wk)
 {
-	struct matrixio_mic_substream *ms = container_of(wk, struct matrixio_mic_substream, work);
+	struct matrixio_mic_substream *ms =
+	    container_of(wk, struct matrixio_mic_substream, work);
 	struct snd_pcm_substream *substream = ms->substream;
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	unsigned long flags;
@@ -73,9 +70,9 @@ static void matrixio_pcm_capture_work(struct work_struct *wk)
 	unsigned i, c;
 	int ret;
 
-	ret = matrixio_read(ms->mio, MATRIXIO_MICARRAY_BASE,
-			    snd_pcm_lib_period_bytes(substream),
-			    ms->frag_buffer);
+	ret =
+	    matrixio_read(ms->mio, MATRIXIO_MICARRAY_BASE,
+			  snd_pcm_lib_period_bytes(substream), ms->frag_buffer);
 	/* Clear SPI xfer in progress bit */
 	smp_mb__before_atomic();
 	clear_bit(1, &ms->flags);
@@ -99,10 +96,11 @@ static void matrixio_pcm_capture_work(struct work_struct *wk)
 	}
 	pos = atomic_read(&ms->position);
 	/* Interleave data from fragment into "dma" buffer */
-	buf = (uint16_t*)(runtime->dma_area + frames_to_bytes(runtime, pos));
+	buf = (uint16_t *)(runtime->dma_area + frames_to_bytes(runtime, pos));
 	for (i = 0; i < MATRIXIO_PERIOD_FRAMES; i++)
 		for (c = 0; c < runtime->channels; c++)
-			*buf++ = ms->frag_buffer[c * MATRIXIO_PERIOD_FRAMES + i];
+			*buf++ =
+			    ms->frag_buffer[c * MATRIXIO_PERIOD_FRAMES + i];
 
 	pos += MATRIXIO_PERIOD_FRAMES;
 	if (pos >= runtime->buffer_size)
@@ -121,13 +119,15 @@ static irqreturn_t matrixio_pcm_interrupt(int irq, void *irq_data)
 	if (ms->substream == NULL)
 		return IRQ_NONE;
 
-	/* Have we started receive? Device will generate interrupts constantly. */
+	/* Have we started receive? Device will generate interrupts constantly.
+	 */
 	if (!test_bit(0, &ms->flags))
 		return IRQ_HANDLED;
 
 	if (test_and_set_bit(1, &ms->flags)) {
 		/* Buffer was not yet empty */
-		pcm_warn(ms->substream->pcm, "Possible overflow, work queue not keeping up\n");
+		pcm_warn(ms->substream->pcm,
+			 "Possible overflow, work queue not keeping up\n");
 	}
 	queue_work(ms->wq, &ms->work);
 
@@ -141,8 +141,10 @@ static int matrixio_pcm_open(struct snd_pcm_substream *substream)
 
 	snd_soc_set_runtime_hwparams(substream, &matrixio_pcm_capture_hw);
 	snd_pcm_hw_constraint_integer(runtime, SNDRV_PCM_HW_PARAM_PERIODS);
-	snd_pcm_hw_constraint_step(runtime, 0, SNDRV_PCM_HW_PARAM_BUFFER_SIZE, MATRIXIO_PERIOD_FRAMES);
-	snd_pcm_hw_constraint_single(runtime, SNDRV_PCM_HW_PARAM_PERIOD_SIZE, MATRIXIO_PERIOD_FRAMES);
+	snd_pcm_hw_constraint_step(runtime, 0, SNDRV_PCM_HW_PARAM_BUFFER_SIZE,
+				   MATRIXIO_PERIOD_FRAMES);
+	snd_pcm_hw_constraint_single(runtime, SNDRV_PCM_HW_PARAM_PERIOD_SIZE,
+				     MATRIXIO_PERIOD_FRAMES);
 
 	snd_pcm_set_sync(substream);
 
@@ -161,19 +163,20 @@ static int matrixio_pcm_open(struct snd_pcm_substream *substream)
 
 	INIT_WORK(&ms->work, matrixio_pcm_capture_work);
 
-	/* Clear the running flag, so the irq handler will not do anything when it starts */
+	/* Clear the running flag, so the irq handler will not do anything when
+	 * it starts */
 	clear_bit(0, &ms->flags);
 	smp_mb__after_atomic();
-	ret = request_irq(ms->irq, matrixio_pcm_interrupt, 0,
-			  "matrixio-mic", ms);
+	ret =
+	    request_irq(ms->irq, matrixio_pcm_interrupt, 0, "matrixio-mic", ms);
 	if (ret < 0)
 		goto fail_workqueue;
 
 	return 0;
 
- fail_workqueue:
+fail_workqueue:
 	destroy_workqueue(ms->wq);
- fail_substream:
+fail_substream:
 	ms->substream = NULL;
 
 	return ret;
@@ -181,7 +184,9 @@ static int matrixio_pcm_open(struct snd_pcm_substream *substream)
 
 static int matrixio_pcm_close(struct snd_pcm_substream *substream)
 {
-	clear_bit(0, &ms->flags); /* Should already be clear from trigger stop, but just in case */
+	clear_bit(0,
+		  &ms->flags); /* Should already be clear from trigger stop, but
+				  just in case */
 	free_irq(ms->irq, ms);
 	destroy_workqueue(ms->wq);
 	cancel_work_sync(&ms->work);
@@ -190,8 +195,7 @@ static int matrixio_pcm_close(struct snd_pcm_substream *substream)
 	return 0;
 }
 
-static int matrixio_pcm_trigger(struct snd_pcm_substream *substream,
-				int cmd)
+static int matrixio_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 {
 	unsigned long flags;
 
@@ -267,10 +271,13 @@ static int matrixio_pcm_hw_free(struct snd_pcm_substream *substream)
 static int matrixio_pcm_prepare(struct snd_pcm_substream *substream)
 {
 	if (substream->runtime->period_size != MATRIXIO_PERIOD_FRAMES) {
-		pcm_err(substream->pcm, "Need %u frames/period, got %lu\n", MATRIXIO_PERIOD_FRAMES, substream->runtime->period_size);
+		pcm_err(substream->pcm, "Need %u frames/period, got %lu\n",
+			MATRIXIO_PERIOD_FRAMES,
+			substream->runtime->period_size);
 		return -EINVAL;
 	}
-	/* We don't need the lock since the work queue can not be running when prepare is called */
+	/* We don't need the lock since the work queue can not be running when
+	 * prepare is called */
 	atomic_set(&ms->position, 0);
 	return 0;
 }
@@ -282,23 +289,21 @@ matrixio_pcm_pointer(struct snd_pcm_substream *substream)
 }
 
 static const struct snd_pcm_ops matrixio_pcm_ops = {
-	.open = matrixio_pcm_open,
-	.ioctl = snd_pcm_lib_ioctl,
-	.hw_params = matrixio_pcm_hw_params,
-	.hw_free = matrixio_pcm_hw_free,
-	.prepare = matrixio_pcm_prepare,
-	.pointer = matrixio_pcm_pointer,
-	.close = matrixio_pcm_close,
-	.trigger = matrixio_pcm_trigger,
-	.page = snd_pcm_lib_get_vmalloc_page,
+    .open = matrixio_pcm_open,
+    .ioctl = snd_pcm_lib_ioctl,
+    .hw_params = matrixio_pcm_hw_params,
+    .hw_free = matrixio_pcm_hw_free,
+    .prepare = matrixio_pcm_prepare,
+    .pointer = matrixio_pcm_pointer,
+    .close = matrixio_pcm_close,
+    .trigger = matrixio_pcm_trigger,
+    .page = snd_pcm_lib_get_vmalloc_page,
 };
 
-static int matrixio_pcm_new(struct snd_soc_pcm_runtime *rtd)
-{ return 0; }
+static int matrixio_pcm_new(struct snd_soc_pcm_runtime *rtd) { return 0; }
 
 static const struct snd_soc_component_driver matrixio_soc_platform = {
-	.ops = &matrixio_pcm_ops,
-	.pcm_new = matrixio_pcm_new,
+    .ops = &matrixio_pcm_ops, .pcm_new = matrixio_pcm_new,
 };
 
 static int matrixio_pcm_platform_probe(struct platform_device *pdev)
@@ -312,9 +317,12 @@ static int matrixio_pcm_platform_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "Failed to allocate matrixio substream");
 		return -ENOMEM;
 	}
-	ms->frag_buffer = devm_kmalloc(&pdev->dev, matrixio_pcm_capture_hw.period_bytes_max, GFP_KERNEL);
+	ms->frag_buffer = devm_kmalloc(
+	    &pdev->dev, matrixio_pcm_capture_hw.period_bytes_max, GFP_KERNEL);
 	if (!ms->frag_buffer) {
-		dev_err(&pdev->dev, "Failed to allocate SPI fragment buffer (%zu bytes)", matrixio_pcm_capture_hw.period_bytes_max);
+		dev_err(&pdev->dev,
+			"Failed to allocate SPI fragment buffer (%zu bytes)",
+			matrixio_pcm_capture_hw.period_bytes_max);
 		return -ENOMEM;
 	}
 
@@ -334,24 +342,25 @@ static int matrixio_pcm_platform_probe(struct platform_device *pdev)
 
 	dev_set_drvdata(&pdev->dev, ms);
 
-	dev_info(&pdev->dev, "MATRIXIO mic array audio driver loaded (IRQ=%u)", ms->irq);
+	dev_info(&pdev->dev, "MATRIXIO mic array audio driver loaded (IRQ=%u)",
+		 ms->irq);
 
 	return 0;
 }
 
 static const struct of_device_id snd_matrixio_pcm_of_match[] = {
-	{ .compatible = "matrixio-mic", },
-	{},
+    {
+	.compatible = "matrixio-mic",
+    },
+    {},
 };
 MODULE_DEVICE_TABLE(of, snd_matrixio_pcm_of_match);
 
 static struct platform_driver matrixio_codec_driver = {
-	.driver = {
-		.name = "matrixio-mic",
-		.owner = THIS_MODULE,
-		.of_match_table = snd_matrixio_pcm_of_match
-	},
-	.probe = matrixio_pcm_platform_probe,
+    .driver = {.name = "matrixio-mic",
+	       .owner = THIS_MODULE,
+	       .of_match_table = snd_matrixio_pcm_of_match},
+    .probe = matrixio_pcm_platform_probe,
 };
 
 module_platform_driver(matrixio_codec_driver);
