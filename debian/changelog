@@ -1,3 +1,8 @@
+matrixio-kernel-modules (0.2.2) unstable; urgency=low
+  * hardcoding rates for stretch compatibility
+
+ -- Andres Calderon <andres.calderon@admobilize.com>  Mon, 9 Dec 2019 14:30:00 -0800
+
 matrixio-kernel-modules (0.2.1) unstable; urgency=low
   * Rewrite of microphone array driver.  Does not crash the kernel anymore.
 
