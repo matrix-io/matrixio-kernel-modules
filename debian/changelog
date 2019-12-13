@@ -1,3 +1,8 @@
+matrixio-kernel-modules (0.2.3) unstable; urgency=low
+  * Adding dsnoop in asound.conf to support simultaneous recording from different channels
+  
+  -- Samreen Islam <samreen.islam@matrixlabs.ai> Fri, 13 Dec 2019 10:57:00 -1057
+
 matrixio-kernel-modules (0.2.2) unstable; urgency=low
   * hardcoding rates for stretch compatibility
 
