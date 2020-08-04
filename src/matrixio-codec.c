@@ -27,22 +27,26 @@
 #include "matrixio-core.h"
 #include "matrixio-pcm.h"
 
+SND_SOC_DAILINK_DEFS(matrixio_mic,
+	DAILINK_COMP_ARRAY(COMP_CPU("matrixio-mic.0")),
+	DAILINK_COMP_ARRAY(COMP_CODEC("snd-soc-dummy", "snd-soc-dummy-dai")),
+	DAILINK_COMP_ARRAY(COMP_PLATFORM("matrixio-mic")));
+
+SND_SOC_DAILINK_DEFS(matrixio_playback,
+	DAILINK_COMP_ARRAY(COMP_CPU("matrixio-pcm-out.0")),
+	DAILINK_COMP_ARRAY(COMP_CODEC("snd-soc-dummy", "snd-soc-dummy-dai")),
+	DAILINK_COMP_ARRAY(COMP_PLATFORM("matrixio-playback")));
+
 static struct snd_soc_dai_link matrixio_snd_soc_dai[] = {
     {
 	.name = "matrixio.mic.0",
 	.stream_name = "matrixio.mic.0",
-	.codec_dai_name = "snd-soc-dummy-dai",
-	.cpu_dai_name = "matrixio-mic.0",
-	.platform_name = "matrixio-mic",
-	.codec_name = "snd-soc-dummy",
+	SND_SOC_DAILINK_REG(matrixio_mic),
     },
     {
 	.name = "matrixio.pcm-out.0",
 	.stream_name = "matrixio.pcm-out.0",
-	.codec_dai_name = "snd-soc-dummy-dai",
-	.cpu_dai_name = "matrixio-pcm-out.0",
-	.platform_name = "matrixio-playback",
-	.codec_name = "snd-soc-dummy",
+	SND_SOC_DAILINK_REG(matrixio_playback),
     }};
 
 static struct snd_soc_card matrixio_soc_card = {
