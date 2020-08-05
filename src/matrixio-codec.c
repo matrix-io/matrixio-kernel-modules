@@ -1,7 +1,7 @@
 /*
  * matrix-codec.c -- MATRIX microphone array audio driver
  *
- * Copyright 2017 MATRIX Labs
+ * Copyright 2017-2020 MATRIX Labs
  *
  * Author: Andres Calderon <andres.calderon@admobilize.com>
  *
@@ -27,6 +27,25 @@
 #include "matrixio-core.h"
 #include "matrixio-pcm.h"
 
+#if LINUX_VERSION_CODE <= KERNEL_VERSION(5,3,0)
+static struct snd_soc_dai_link matrixio_snd_soc_dai[] = {
+    {
+	.name = "matrixio.mic.0",
+	.stream_name = "matrixio.mic.0",
+	.codec_dai_name = "snd-soc-dummy-dai",
+	.cpu_dai_name = "matrixio-mic.0",
+	.platform_name = "matrixio-mic",
+	.codec_name = "snd-soc-dummy",
+    },
+    {
+	.name = "matrixio.pcm-out.0",
+	.stream_name = "matrixio.pcm-out.0",
+	.codec_dai_name = "snd-soc-dummy-dai",
+	.cpu_dai_name = "matrixio-pcm-out.0",
+	.platform_name = "matrixio-playback",
+	.codec_name = "snd-soc-dummy",
+    }};
+#else
 SND_SOC_DAILINK_DEFS(matrixio_mic,
 	DAILINK_COMP_ARRAY(COMP_CPU("matrixio-mic.0")),
 	DAILINK_COMP_ARRAY(COMP_CODEC("snd-soc-dummy", "snd-soc-dummy-dai")),
@@ -48,6 +67,7 @@ static struct snd_soc_dai_link matrixio_snd_soc_dai[] = {
 	.stream_name = "matrixio.pcm-out.0",
 	SND_SOC_DAILINK_REG(matrixio_playback),
     }};
+#endif
 
 static struct snd_soc_card matrixio_soc_card = {
     .name = "MATRIXIO-SOUND",
