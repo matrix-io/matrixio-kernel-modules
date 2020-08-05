@@ -3,7 +3,7 @@ set -e
 
 DKMS_NAME=matrixio-kernel-modules
 DKMS_PACKAGE_NAME=$DKMS_NAME-dkms
-DKMS_VERSION=0.2.3
+DKMS_VERSION=0.2.4
 
 postinst_found=0
 

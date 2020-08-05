@@ -2,7 +2,6 @@ pipeline:
   # Make sure the host machine is able to emulate arm devices
   arm-support:
     when:
-      branch: [master]
       matrix:
         ARCHITECTURE: armhf
     privileged: true

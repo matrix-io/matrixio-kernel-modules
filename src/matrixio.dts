@@ -10,22 +10,29 @@
 	};
 
 	fragment@1 {
+		target = <&spi0_cs_pins>;
+		frag1: __overlay__ {
+			brcm,pins = <8 7>;
+		};
+	};
+
+	fragment@2 {
 		target = <&spi0>;
-		__overlay__ {
+		frag2: __overlay__ {
 			#address-cells = <1>;
 			#size-cells = <0>;
-			status = "okay"; 
+			status = "okay";
+			cs-gpios = <&gpio 8 1>, <&gpio 7 1>;
+ 
 			matrixio_core_0: matrixio_core@0 {
 				compatible = "matrixio-core";
 				spi-max-frequency = <15000000>;
-				spi-cs-high = <1>;
 				reg = <0>;
 			};
 		};
 	};
 
-
-	fragment@2 {
+	fragment@3 {
 		target = <&gpio>;
 		__overlay__ {
 			matrixio_pins: matrixio_pins {
@@ -36,7 +43,7 @@
 	};
 
 
-        fragment@3 {
+        fragment@4 {
                 target-path = "/";
                 __overlay__ {
                         matrixio-everloop@0 {
@@ -46,7 +53,7 @@
                 };
         };
 
-        fragment@4 {
+        fragment@5 {
                 target = <&matrixio_core_0>;
                 __overlay__ {
                         matrixio-uart@0 {
@@ -58,7 +65,7 @@
                 };
         };
 
-        fragment@5 {
+        fragment@6 {
                 target = <&matrixio_core_0>;
                 __overlay__ {
                         matrixio-gpio@0 {
@@ -68,7 +75,7 @@
                 };
         };
 
-        fragment@6 {
+        fragment@7 {
                 target = <&matrixio_core_0>;
                 __overlay__ {
                         matrixio-pwm@0 {
@@ -78,7 +85,7 @@
                 };
         };
 
-	fragment@7 {
+	fragment@8 {
 		target = <&matrixio_core_0>;
 		__overlay__ {
 			matrixio-env@0 {
@@ -87,7 +94,7 @@
 			};
 		};
 	};
-	fragment@8 {
+	fragment@9 {
 		target = <&matrixio_core_0>;
 		__overlay__ {
 			matrixio-imu@0 {
@@ -97,7 +104,7 @@
 		};
 	};
 
-        fragment@9 {
+        fragment@10 {
                 target = <&matrixio_core_0>;
                 __overlay__ {
                         matrix-mic@0 {
@@ -107,7 +114,7 @@
                         };
                 };
         };
-        fragment@10 {
+        fragment@11 {
                 target = <&matrixio_core_0>;
                 __overlay__ {
                         matrix-playback@0 {
@@ -115,7 +122,7 @@
                         };
                 };
         };
-        fragment@11 {
+        fragment@12 {
                 target = <&matrixio_core_0>;
                 __overlay__ {
                         matrix-codec@0 {
@@ -124,7 +131,7 @@
                 };
         };
 
-        fragment@12 {
+        fragment@13 {
                 target-path = "/";
                 __overlay__ {
                         matrixio-regmap@0 {
@@ -133,5 +140,12 @@
                         };
                 };
         };
+
+	__overrides__ {
+		cs0_pin  = <&frag1>,"brcm,pins:0",
+			   <&frag2>,"cs-gpios:4";
+		cs1_pin  = <&frag1>,"brcm,pins:4",
+			   <&frag2>,"cs-gpios:16";
+	};
 };
 

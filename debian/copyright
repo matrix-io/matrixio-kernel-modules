@@ -3,7 +3,7 @@ Upstream-Name: matrix-creator-init
 Source: https://www.admobilize.com/
 
 Files: *
-Copyright: 2016 <Admobilize info@admobilize.com>
+Copyright: 2016-2020 <Admobilize info@admobilize.com>
 License: <special license>
  The firmware for the MCU is free and can be downloaded from this
  repository: https://github.com/matrix-io/matrix-creator-mcu.
