@@ -2,7 +2,7 @@ pipeline:
   # Make sure the host machine is able to emulate arm devices
   arm-support:
     when:
-      branch: [master]
+      branch: [master, ul/fix_dai_link_5.3]
       matrix:
         ARCHITECTURE: armhf
     privileged: true
