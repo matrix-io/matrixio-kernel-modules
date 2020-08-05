@@ -1,3 +1,8 @@
+matrixio-kernel-modules (0.2.4) unstable; urgency=low
+  * Codec driver and device tree updated for 5.4.x kernel series
+  
+ -- Andres Calderon <andres.calderon@admobilize.com>  Wed, 5 Ago 2020 22:00:00 -0500
+  
 matrixio-kernel-modules (0.2.3) unstable; urgency=low
   * Adding dsnoop in asound.conf to support simultaneous recording from different channels
   
