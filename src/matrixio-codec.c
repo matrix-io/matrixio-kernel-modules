@@ -18,6 +18,7 @@
 #include <linux/moduleparam.h>
 #include <linux/of_irq.h>
 #include <linux/platform_device.h>
+#include <linux/version.h>
 #include <sound/core.h>
 #include <sound/pcm.h>
 #include <sound/pcm_params.h>
