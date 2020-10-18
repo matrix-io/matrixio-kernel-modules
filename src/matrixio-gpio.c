@@ -1,4 +1,3 @@
-#include <asm/uaccess.h>
 #include <linux/bitops.h>
 #include <linux/fs.h>
 #include <linux/gpio.h>
