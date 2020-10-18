@@ -255,7 +255,7 @@ static int matrixio_pcm_hw_params(struct snd_soc_component *component, struct sn
 	if (!FIR_Coeff[i].rate_)
 		return -EINVAL;
 
-	return snd_pcm_lib_alloc_vmalloc_buffer(substream,
+	return snd_pcm_lib_malloc_pages(substream,
 						params_buffer_bytes(hw_params));
 }
 
@@ -265,7 +265,7 @@ static int matrixio_pcm_hw_free(struct snd_soc_component *component, struct snd_
 	snd_BUG_ON(test_bit(0, &ms->flags));
 	/* Make sure work function is finished */
 	flush_workqueue(ms->wq);
-	return snd_pcm_lib_free_vmalloc_buffer(substream);
+	return snd_pcm_lib_free_pages(substream);
 }
 
 static int matrixio_pcm_prepare(struct snd_soc_component *component, struct snd_pcm_substream *substream)
@@ -299,7 +299,6 @@ static const struct snd_soc_component_driver matrixio_soc_platform = {
     .pointer = matrixio_pcm_pointer,
     .close = matrixio_pcm_close,
     .trigger = matrixio_pcm_trigger,
-    .page = snd_pcm_lib_get_vmalloc_page,
 };
 
 static int matrixio_pcm_platform_probe(struct platform_device *pdev)
