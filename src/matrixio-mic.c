@@ -134,7 +134,7 @@ static irqreturn_t matrixio_pcm_interrupt(int irq, void *irq_data)
 	return IRQ_HANDLED;
 }
 
-static int matrixio_pcm_open(struct snd_pcm_substream *substream)
+static int matrixio_pcm_open(struct snd_soc_component *component, struct snd_pcm_substream *substream)
 {
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	int ret;
@@ -182,7 +182,7 @@ fail_substream:
 	return ret;
 }
 
-static int matrixio_pcm_close(struct snd_pcm_substream *substream)
+static int matrixio_pcm_close(struct snd_soc_component *component, struct snd_pcm_substream *substream)
 {
 	clear_bit(0,
 		  &ms->flags); /* Should already be clear from trigger stop, but
@@ -195,7 +195,7 @@ static int matrixio_pcm_close(struct snd_pcm_substream *substream)
 	return 0;
 }
 
-static int matrixio_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
+static int matrixio_pcm_trigger(struct snd_soc_component *component, struct snd_pcm_substream *substream, int cmd)
 {
 	unsigned long flags;
 
@@ -218,7 +218,7 @@ static int matrixio_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 	}
 }
 
-static int matrixio_pcm_hw_params(struct snd_pcm_substream *substream,
+static int matrixio_pcm_hw_params(struct snd_soc_component *component, struct snd_pcm_substream *substream,
 				  struct snd_pcm_hw_params *hw_params)
 {
 	int i;
@@ -259,7 +259,7 @@ static int matrixio_pcm_hw_params(struct snd_pcm_substream *substream,
 						params_buffer_bytes(hw_params));
 }
 
-static int matrixio_pcm_hw_free(struct snd_pcm_substream *substream)
+static int matrixio_pcm_hw_free(struct snd_soc_component *component, struct snd_pcm_substream *substream)
 {
 	/* Capture should have been stopped already */
 	snd_BUG_ON(test_bit(0, &ms->flags));
@@ -268,7 +268,7 @@ static int matrixio_pcm_hw_free(struct snd_pcm_substream *substream)
 	return snd_pcm_lib_free_vmalloc_buffer(substream);
 }
 
-static int matrixio_pcm_prepare(struct snd_pcm_substream *substream)
+static int matrixio_pcm_prepare(struct snd_soc_component *component, struct snd_pcm_substream *substream)
 {
 	if (substream->runtime->period_size != MATRIXIO_PERIOD_FRAMES) {
 		pcm_err(substream->pcm, "Need %u frames/period, got %lu\n",
@@ -283,12 +283,15 @@ static int matrixio_pcm_prepare(struct snd_pcm_substream *substream)
 }
 
 static snd_pcm_uframes_t
-matrixio_pcm_pointer(struct snd_pcm_substream *substream)
+matrixio_pcm_pointer(struct snd_soc_component *component, struct snd_pcm_substream *substream)
 {
 	return atomic_read(&ms->position);
 }
 
-static const struct snd_pcm_ops matrixio_pcm_ops = {
+static int matrixio_pcm_new(struct snd_soc_component *component, struct snd_soc_pcm_runtime *rtd) { return 0; }
+
+static const struct snd_soc_component_driver matrixio_soc_platform = {
+    .pcm_construct = matrixio_pcm_new,
     .open = matrixio_pcm_open,
     .ioctl = snd_pcm_lib_ioctl,
     .hw_params = matrixio_pcm_hw_params,
@@ -298,12 +301,6 @@ static const struct snd_pcm_ops matrixio_pcm_ops = {
     .close = matrixio_pcm_close,
     .trigger = matrixio_pcm_trigger,
     .page = snd_pcm_lib_get_vmalloc_page,
-};
-
-static int matrixio_pcm_new(struct snd_soc_pcm_runtime *rtd) { return 0; }
-
-static const struct snd_soc_component_driver matrixio_soc_platform = {
-    .ops = &matrixio_pcm_ops, .pcm_new = matrixio_pcm_new,
 };
 
 static int matrixio_pcm_platform_probe(struct platform_device *pdev)
