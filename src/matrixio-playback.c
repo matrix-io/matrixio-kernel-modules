@@ -328,7 +328,6 @@ static const struct snd_soc_component_driver matrixio_soc_platform = {
     .controls = matrixio_snd_controls,
     .num_controls = ARRAY_SIZE(matrixio_snd_controls),
     .open = matrixio_playback_open,
-    .ioctl = snd_pcm_lib_ioctl,
     .hw_params = matrixio_playback_hw_params,
     .hw_free = matrixio_playback_hw_free,
     .prepare = matrixio_playback_prepare,

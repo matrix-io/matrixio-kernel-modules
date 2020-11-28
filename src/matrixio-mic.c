@@ -293,7 +293,6 @@ static int matrixio_pcm_new(struct snd_soc_component *component, struct snd_soc_
 static const struct snd_soc_component_driver matrixio_soc_platform = {
     .pcm_construct = matrixio_pcm_new,
     .open = matrixio_pcm_open,
-    .ioctl = snd_pcm_lib_ioctl,
     .hw_params = matrixio_pcm_hw_params,
     .hw_free = matrixio_pcm_hw_free,
     .prepare = matrixio_pcm_prepare,
