@@ -37,14 +37,16 @@ static struct matrixio_mic_substream *ms;
 
 static const struct {
 	unsigned rate;
-	unsigned short decimation; /* sample rate = (PDM clock = 3 MHz) / (decimation+1) */
+	unsigned short
+	    decimation; /* sample rate = (PDM clock = 3 MHz) / (decimation+1) */
 	unsigned short gain; /* in bits */
 } matrixio_params[] = {{8000, 374, 1},  {12000, 249, 2}, {16000, 186, 3},
 		       {22050, 135, 5}, {24000, 124, 5}, {32000, 92, 6},
 		       {44100, 67, 7},  {48000, 61, 7},  {96000, 30, 10}};
 
 static struct snd_pcm_hardware matrixio_pcm_capture_hw = {
-    .info = SNDRV_PCM_INFO_INTERLEAVED | SNDRV_PCM_INFO_MMAP,
+    .info = SNDRV_PCM_INFO_INTERLEAVED | SNDRV_PCM_INFO_MMAP_VALID |
+	    SNDRV_PCM_INFO_BLOCK_TRANSFER,
     .formats = MATRIXIO_FORMATS,
     .rates = MATRIXIO_RATES,
     .rate_min = 8000,
@@ -134,10 +136,19 @@ static irqreturn_t matrixio_pcm_interrupt(int irq, void *irq_data)
 	return IRQ_HANDLED;
 }
 
-static int matrixio_pcm_open(struct snd_soc_component *component, struct snd_pcm_substream *substream)
+static int matrixio_pcm_open(struct snd_soc_component *component,
+			     struct snd_pcm_substream *substream)
 {
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	int ret;
+
+	struct snd_soc_pcm_runtime *rtd = asoc_substream_to_rtd(substream);
+
+	void *p;
+
+	snd_soc_set_runtime_hwparams(substream, &matrixio_pcm_capture_hw);
+	p = snd_soc_dai_get_dma_data(asoc_rtd_to_cpu(rtd, 0), substream);
+	runtime->private_data = p;
 
 	snd_soc_set_runtime_hwparams(substream, &matrixio_pcm_capture_hw);
 	snd_pcm_hw_constraint_integer(runtime, SNDRV_PCM_HW_PARAM_PERIODS);
@@ -182,11 +193,11 @@ fail_substream:
 	return ret;
 }
 
-static int matrixio_pcm_close(struct snd_soc_component *component, struct snd_pcm_substream *substream)
+static int matrixio_pcm_close(struct snd_soc_component *component,
+			      struct snd_pcm_substream *substream)
 {
-	clear_bit(0,
-		  &ms->flags); /* Should already be clear from trigger stop, but
-				  just in case */
+	clear_bit(0, &ms->flags); /* Should already be clear from trigger stop,
+				     but just in case */
 	free_irq(ms->irq, ms);
 	destroy_workqueue(ms->wq);
 	cancel_work_sync(&ms->work);
@@ -195,7 +206,8 @@ static int matrixio_pcm_close(struct snd_soc_component *component, struct snd_pc
 	return 0;
 }
 
-static int matrixio_pcm_trigger(struct snd_soc_component *component, struct snd_pcm_substream *substream, int cmd)
+static int matrixio_pcm_trigger(struct snd_soc_component *component,
+				struct snd_pcm_substream *substream, int cmd)
 {
 	unsigned long flags;
 
@@ -218,7 +230,8 @@ static int matrixio_pcm_trigger(struct snd_soc_component *component, struct snd_
 	}
 }
 
-static int matrixio_pcm_hw_params(struct snd_soc_component *component, struct snd_pcm_substream *substream,
+static int matrixio_pcm_hw_params(struct snd_soc_component *component,
+				  struct snd_pcm_substream *substream,
 				  struct snd_pcm_hw_params *hw_params)
 {
 	int i;
@@ -255,11 +268,11 @@ static int matrixio_pcm_hw_params(struct snd_soc_component *component, struct sn
 	if (!FIR_Coeff[i].rate_)
 		return -EINVAL;
 
-	return snd_pcm_lib_malloc_pages(substream,
-						params_buffer_bytes(hw_params));
+	return 0;
 }
 
-static int matrixio_pcm_hw_free(struct snd_soc_component *component, struct snd_pcm_substream *substream)
+static int matrixio_pcm_hw_free(struct snd_soc_component *component,
+				struct snd_pcm_substream *substream)
 {
 	/* Capture should have been stopped already */
 	snd_BUG_ON(test_bit(0, &ms->flags));
@@ -268,7 +281,8 @@ static int matrixio_pcm_hw_free(struct snd_soc_component *component, struct snd_
 	return snd_pcm_lib_free_pages(substream);
 }
 
-static int matrixio_pcm_prepare(struct snd_soc_component *component, struct snd_pcm_substream *substream)
+static int matrixio_pcm_prepare(struct snd_soc_component *component,
+				struct snd_pcm_substream *substream)
 {
 	if (substream->runtime->period_size != MATRIXIO_PERIOD_FRAMES) {
 		pcm_err(substream->pcm, "Need %u frames/period, got %lu\n",
@@ -283,12 +297,21 @@ static int matrixio_pcm_prepare(struct snd_soc_component *component, struct snd_
 }
 
 static snd_pcm_uframes_t
-matrixio_pcm_pointer(struct snd_soc_component *component, struct snd_pcm_substream *substream)
+matrixio_pcm_pointer(struct snd_soc_component *component,
+		     struct snd_pcm_substream *substream)
 {
 	return atomic_read(&ms->position);
 }
 
-static int matrixio_pcm_new(struct snd_soc_component *component, struct snd_soc_pcm_runtime *rtd) { return 0; }
+static int matrixio_pcm_new(struct snd_soc_component *component,
+			    struct snd_soc_pcm_runtime *rtd)
+{
+	snd_pcm_set_managed_buffer_all(
+	    rtd->pcm, SNDRV_DMA_TYPE_DEV, component->dev,
+	    matrixio_pcm_capture_hw.buffer_bytes_max * 16,
+	    matrixio_pcm_capture_hw.buffer_bytes_max * 16);
+	return 0;
+}
 
 static const struct snd_soc_component_driver matrixio_soc_platform = {
     .pcm_construct = matrixio_pcm_new,
