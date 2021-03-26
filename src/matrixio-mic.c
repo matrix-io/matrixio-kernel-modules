@@ -299,7 +299,7 @@ static int matrixio_pcm_new(struct snd_soc_component *component,
 			    struct snd_soc_pcm_runtime *rtd)
 {
 	snd_pcm_set_managed_buffer_all(
-	    rtd->pcm, SNDRV_DMA_TYPE_DEV, component->dev,
+	    rtd->pcm, SNDRV_DMA_TYPE_VMALLOC, component->dev,
 	    matrixio_pcm_capture_hw.buffer_bytes_max,
 	    matrixio_pcm_capture_hw.buffer_bytes_max);
 	return 0;
