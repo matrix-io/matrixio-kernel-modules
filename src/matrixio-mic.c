@@ -142,14 +142,6 @@ static int matrixio_pcm_open(struct snd_soc_component *component,
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	int ret;
 
-	struct snd_soc_pcm_runtime *rtd = asoc_substream_to_rtd(substream);
-
-	void *p;
-
-	snd_soc_set_runtime_hwparams(substream, &matrixio_pcm_capture_hw);
-	p = snd_soc_dai_get_dma_data(asoc_rtd_to_cpu(rtd, 0), substream);
-	runtime->private_data = p;
-
 	snd_soc_set_runtime_hwparams(substream, &matrixio_pcm_capture_hw);
 	snd_pcm_hw_constraint_integer(runtime, SNDRV_PCM_HW_PARAM_PERIODS);
 	snd_pcm_hw_constraint_step(runtime, 0, SNDRV_PCM_HW_PARAM_BUFFER_SIZE,
@@ -313,6 +305,13 @@ static int matrixio_pcm_new(struct snd_soc_component *component,
 	return 0;
 }
 
+static int matrixio_pcm_dma_mmap(struct snd_soc_component *component,
+			  struct snd_pcm_substream *substream,
+			  struct vm_area_struct *vma)
+{
+	return snd_pcm_lib_default_mmap(substream, vma);
+}
+
 static const struct snd_soc_component_driver matrixio_soc_platform = {
     .pcm_construct = matrixio_pcm_new,
     .open = matrixio_pcm_open,
@@ -321,6 +320,7 @@ static const struct snd_soc_component_driver matrixio_soc_platform = {
     .prepare = matrixio_pcm_prepare,
     .pointer = matrixio_pcm_pointer,
     .close = matrixio_pcm_close,
+    .mmap = matrixio_pcm_dma_mmap,
     .trigger = matrixio_pcm_trigger,
 };
 
