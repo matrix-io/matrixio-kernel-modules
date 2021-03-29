@@ -37,14 +37,16 @@ static struct matrixio_mic_substream *ms;
 
 static const struct {
 	unsigned rate;
-	unsigned short decimation; /* sample rate = (PDM clock = 3 MHz) / (decimation+1) */
+	unsigned short
+	    decimation; /* sample rate = (PDM clock = 3 MHz) / (decimation+1) */
 	unsigned short gain; /* in bits */
 } matrixio_params[] = {{8000, 374, 1},  {12000, 249, 2}, {16000, 186, 3},
 		       {22050, 135, 5}, {24000, 124, 5}, {32000, 92, 6},
 		       {44100, 67, 7},  {48000, 61, 7},  {96000, 30, 10}};
 
 static struct snd_pcm_hardware matrixio_pcm_capture_hw = {
-    .info = SNDRV_PCM_INFO_INTERLEAVED | SNDRV_PCM_INFO_MMAP,
+    .info = SNDRV_PCM_INFO_INTERLEAVED | SNDRV_PCM_INFO_MMAP_VALID |
+	    SNDRV_PCM_INFO_BLOCK_TRANSFER,
     .formats = MATRIXIO_FORMATS,
     .rates = MATRIXIO_RATES,
     .rate_min = 8000,
@@ -134,7 +136,8 @@ static irqreturn_t matrixio_pcm_interrupt(int irq, void *irq_data)
 	return IRQ_HANDLED;
 }
 
-static int matrixio_pcm_open(struct snd_pcm_substream *substream)
+static int matrixio_pcm_open(struct snd_soc_component *component,
+			     struct snd_pcm_substream *substream)
 {
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	int ret;
@@ -182,11 +185,11 @@ fail_substream:
 	return ret;
 }
 
-static int matrixio_pcm_close(struct snd_pcm_substream *substream)
+static int matrixio_pcm_close(struct snd_soc_component *component,
+			      struct snd_pcm_substream *substream)
 {
-	clear_bit(0,
-		  &ms->flags); /* Should already be clear from trigger stop, but
-				  just in case */
+	clear_bit(0, &ms->flags); /* Should already be clear from trigger stop,
+				     but just in case */
 	free_irq(ms->irq, ms);
 	destroy_workqueue(ms->wq);
 	cancel_work_sync(&ms->work);
@@ -195,7 +198,8 @@ static int matrixio_pcm_close(struct snd_pcm_substream *substream)
 	return 0;
 }
 
-static int matrixio_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
+static int matrixio_pcm_trigger(struct snd_soc_component *component,
+				struct snd_pcm_substream *substream, int cmd)
 {
 	unsigned long flags;
 
@@ -218,7 +222,8 @@ static int matrixio_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 	}
 }
 
-static int matrixio_pcm_hw_params(struct snd_pcm_substream *substream,
+static int matrixio_pcm_hw_params(struct snd_soc_component *component,
+				  struct snd_pcm_substream *substream,
 				  struct snd_pcm_hw_params *hw_params)
 {
 	int i;
@@ -255,20 +260,21 @@ static int matrixio_pcm_hw_params(struct snd_pcm_substream *substream,
 	if (!FIR_Coeff[i].rate_)
 		return -EINVAL;
 
-	return snd_pcm_lib_alloc_vmalloc_buffer(substream,
-						params_buffer_bytes(hw_params));
+	return 0;
 }
 
-static int matrixio_pcm_hw_free(struct snd_pcm_substream *substream)
+static int matrixio_pcm_hw_free(struct snd_soc_component *component,
+				struct snd_pcm_substream *substream)
 {
 	/* Capture should have been stopped already */
 	snd_BUG_ON(test_bit(0, &ms->flags));
 	/* Make sure work function is finished */
 	flush_workqueue(ms->wq);
-	return snd_pcm_lib_free_vmalloc_buffer(substream);
+	return snd_pcm_lib_free_pages(substream);
 }
 
-static int matrixio_pcm_prepare(struct snd_pcm_substream *substream)
+static int matrixio_pcm_prepare(struct snd_soc_component *component,
+				struct snd_pcm_substream *substream)
 {
 	if (substream->runtime->period_size != MATRIXIO_PERIOD_FRAMES) {
 		pcm_err(substream->pcm, "Need %u frames/period, got %lu\n",
@@ -283,27 +289,39 @@ static int matrixio_pcm_prepare(struct snd_pcm_substream *substream)
 }
 
 static snd_pcm_uframes_t
-matrixio_pcm_pointer(struct snd_pcm_substream *substream)
+matrixio_pcm_pointer(struct snd_soc_component *component,
+		     struct snd_pcm_substream *substream)
 {
 	return atomic_read(&ms->position);
 }
 
-static const struct snd_pcm_ops matrixio_pcm_ops = {
+static int matrixio_pcm_new(struct snd_soc_component *component,
+			    struct snd_soc_pcm_runtime *rtd)
+{
+	snd_pcm_set_managed_buffer_all(
+	    rtd->pcm, SNDRV_DMA_TYPE_VMALLOC, component->dev,
+	    matrixio_pcm_capture_hw.buffer_bytes_max,
+	    matrixio_pcm_capture_hw.buffer_bytes_max);
+	return 0;
+}
+
+static int matrixio_pcm_dma_mmap(struct snd_soc_component *component,
+			  struct snd_pcm_substream *substream,
+			  struct vm_area_struct *vma)
+{
+	return snd_pcm_lib_default_mmap(substream, vma);
+}
+
+static const struct snd_soc_component_driver matrixio_soc_platform = {
+    .pcm_construct = matrixio_pcm_new,
     .open = matrixio_pcm_open,
-    .ioctl = snd_pcm_lib_ioctl,
     .hw_params = matrixio_pcm_hw_params,
     .hw_free = matrixio_pcm_hw_free,
     .prepare = matrixio_pcm_prepare,
     .pointer = matrixio_pcm_pointer,
     .close = matrixio_pcm_close,
+    .mmap = matrixio_pcm_dma_mmap,
     .trigger = matrixio_pcm_trigger,
-    .page = snd_pcm_lib_get_vmalloc_page,
-};
-
-static int matrixio_pcm_new(struct snd_soc_pcm_runtime *rtd) { return 0; }
-
-static const struct snd_soc_component_driver matrixio_soc_platform = {
-    .ops = &matrixio_pcm_ops, .pcm_new = matrixio_pcm_new,
 };
 
 static int matrixio_pcm_platform_probe(struct platform_device *pdev)
