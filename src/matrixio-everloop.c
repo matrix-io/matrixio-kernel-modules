@@ -1,4 +1,3 @@
-#include <asm/uaccess.h>
 #include <linux/cdev.h>
 #include <linux/fs.h>
 #include <linux/init.h>

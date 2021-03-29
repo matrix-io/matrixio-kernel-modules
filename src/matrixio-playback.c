@@ -136,7 +136,7 @@ static int thread_pcm_playback(void *data)
 	return 0;
 }
 
-static int matrixio_playback_open(struct snd_pcm_substream *substream)
+static int matrixio_playback_open(struct snd_soc_component *component, struct snd_pcm_substream *substream)
 {
 	snd_soc_set_runtime_hwparams(substream, &matrixio_playback_capture_hw);
 
@@ -162,7 +162,7 @@ static int matrixio_playback_open(struct snd_pcm_substream *substream)
 	return 0;
 }
 
-static int matrixio_playback_close(struct snd_pcm_substream *substream)
+static int matrixio_playback_close(struct snd_soc_component *component, struct snd_pcm_substream *substream)
 {
 	up(&sem);
 
@@ -175,7 +175,7 @@ static int matrixio_playback_close(struct snd_pcm_substream *substream)
 	return 0;
 }
 
-static int matrixio_playback_hw_params(struct snd_pcm_substream *substream,
+static int matrixio_playback_hw_params(struct snd_soc_component *component, struct snd_pcm_substream *substream,
 				       struct snd_pcm_hw_params *hw_params)
 {
 	int i;
@@ -198,19 +198,19 @@ static int matrixio_playback_hw_params(struct snd_pcm_substream *substream,
 	return -EINVAL;
 }
 
-static int matrixio_playback_hw_free(struct snd_pcm_substream *substream)
+static int matrixio_playback_hw_free(struct snd_soc_component *component, struct snd_pcm_substream *substream)
 {
 	return snd_pcm_lib_free_pages(substream);
 }
 
-static int matrixio_playback_prepare(struct snd_pcm_substream *substream)
+static int matrixio_playback_prepare(struct snd_soc_component *component, struct snd_pcm_substream *substream)
 {
 	ms->position = 0;
 	return 0;
 }
 
 static snd_pcm_uframes_t
-matrixio_playback_pointer(struct snd_pcm_substream *substream)
+matrixio_playback_pointer(struct snd_soc_component *component, struct snd_pcm_substream *substream)
 {
 	struct snd_pcm_runtime *runtime = substream->runtime;
 
@@ -225,7 +225,7 @@ matrixio_playback_pointer(struct snd_pcm_substream *substream)
 	return bytes_to_frames(runtime, ms->position);
 }
 
-static int matrixio_playback_copy(struct snd_pcm_substream *substream,
+static int matrixio_playback_copy(struct snd_soc_component *component, struct snd_pcm_substream *substream,
 				  int channel, snd_pcm_uframes_t pos,
 				  void __user *buf, snd_pcm_uframes_t bytes)
 {
@@ -241,17 +241,6 @@ static int matrixio_playback_copy(struct snd_pcm_substream *substream,
 
 	return frame_count;
 }
-
-static struct snd_pcm_ops matrixio_playback_ops = {
-    .open = matrixio_playback_open,
-    .ioctl = snd_pcm_lib_ioctl,
-    .hw_params = matrixio_playback_hw_params,
-    .hw_free = matrixio_playback_hw_free,
-    .prepare = matrixio_playback_prepare,
-    .pointer = matrixio_playback_pointer,
-    .copy_user = matrixio_playback_copy,
-    .close = matrixio_playback_close,
-};
 
 static int matrixio_playback_select_info(struct snd_kcontrol *kcontrol,
 					 struct snd_ctl_elem_info *uinfo)
@@ -332,13 +321,19 @@ static const struct snd_kcontrol_new matrixio_snd_controls[] = {
 	.put = matrixio_volume_put,
     }};
 
-static int matrixio_playback_new(struct snd_soc_pcm_runtime *rtd) { return 0; }
+static int matrixio_playback_new(struct snd_soc_component *component, struct snd_soc_pcm_runtime *rtd) { return 0; }
 
 static const struct snd_soc_component_driver matrixio_soc_platform = {
-    .ops = &matrixio_playback_ops,
-    .pcm_new = matrixio_playback_new,
+    .pcm_construct = matrixio_playback_new,
     .controls = matrixio_snd_controls,
     .num_controls = ARRAY_SIZE(matrixio_snd_controls),
+    .open = matrixio_playback_open,
+    .hw_params = matrixio_playback_hw_params,
+    .hw_free = matrixio_playback_hw_free,
+    .prepare = matrixio_playback_prepare,
+    .pointer = matrixio_playback_pointer,
+    .copy_user = matrixio_playback_copy,
+    .close = matrixio_playback_close,
 };
 
 static int matrixio_playback_platform_probe(struct platform_device *pdev)

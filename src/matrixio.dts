@@ -44,7 +44,7 @@
 
 
         fragment@4 {
-                target-path = "/";
+                target = <&matrixio_core_0>;
                 __overlay__ {
                         matrixio-everloop@0 {
                                 compatible = "matrixio-everloop";
@@ -132,7 +132,7 @@
         };
 
         fragment@13 {
-                target-path = "/";
+                target = <&matrixio_core_0>;
                 __overlay__ {
                         matrixio-regmap@0 {
                                 compatible = "matrixio-regmap";
