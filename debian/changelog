@@ -1,3 +1,8 @@
+matrixio-kernel-modules (0.2.5) unstable; urgency=low
+  * Mic driver and device tree updated for 5.10.x kernel series
+
+ -- Andres Calderon <andres.calderon@admobilize.com>  Mon, 29 Mar 2021 10:00 -0500
+
 matrixio-kernel-modules (0.2.4) unstable; urgency=low
   * Codec driver and device tree updated for 5.4.x kernel series
   
